@@ -1,0 +1,5 @@
+# rust stuff
+/target
+
+# macOS stuff
+*.DS_STORE
