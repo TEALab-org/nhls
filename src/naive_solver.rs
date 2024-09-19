@@ -31,8 +31,7 @@ impl Naive1DSolver {
         // Loop over time
         for _ in 0..self.domain.final_t {
             // apply stencils
-            let apply_iter =
-                ApplicationIter::new(&mut buffer_2, &self.domain.zone_widths, bc_size);
+            let apply_iter = ApplicationIter::new(&mut buffer_2, &self.domain.zone_widths, bc_size);
             apply_iter.for_each(|application| {
                 let result: f32 = linear_stencil::apply_stencil(
                     &self.system.stencils[application.stencil],
@@ -45,7 +44,7 @@ impl Naive1DSolver {
             // swap buffers
             std::mem::swap(&mut buffer_1, &mut buffer_2);
         }
-        
+
         println!("{:?}", buffer_1);
     }
 }

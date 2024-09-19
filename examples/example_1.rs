@@ -1,5 +1,5 @@
-use nhls::linear_stencil::*;
 use nhls::domain::*;
+use nhls::linear_stencil::*;
 use nhls::naive_solver::*;
 
 fn main() {
