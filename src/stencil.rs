@@ -1,19 +1,28 @@
-pub struct Stencil<FloatType, Operation, const DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-where
-    Operation: Fn(&[FloatType; NEIGHBORHOOD_SIZE]) -> FloatType,
+/// All stencils operations must provide an operation that adheres to this type
+pub trait StencilOperation<FloatType: num::Float, const NEIGHBORHOOD_SIZE: usize> =
+    Fn(&[FloatType; NEIGHBORHOOD_SIZE]) -> FloatType;
+
+/// Stencils are the combination of an operation and neighbors
+pub struct Stencil<
+    FloatType: num::Float,
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+> where
+    Operation: StencilOperation<FloatType, NEIGHBORHOOD_SIZE>,
 {
     operation: Operation,
-    offsets: [[i32; DIMENSION]; NEIGHBORHOOD_SIZE],
+    offsets: [[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE],
     float_type: std::marker::PhantomData<FloatType>,
 }
 
-impl<FloatType, Operation, const DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    Stencil<FloatType, Operation, DIMENSION, NEIGHBORHOOD_SIZE>
+impl<FloatType, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    Stencil<FloatType, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 where
-    Operation: Fn(&[FloatType; NEIGHBORHOOD_SIZE]) -> FloatType,
+    Operation: StencilOperation<FloatType, NEIGHBORHOOD_SIZE>,
     FloatType: num::Float,
 {
-    pub fn new(offsets: [[i32; DIMENSION]; NEIGHBORHOOD_SIZE], operation: Operation) -> Self {
+    pub fn new(offsets: [[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE], operation: Operation) -> Self {
         Stencil {
             offsets,
             operation,
@@ -32,6 +41,14 @@ where
             arg_buffer[n] = FloatType::zero();
         }
         weights
+    }
+
+    pub fn offsets(&self) -> &[[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE] {
+        &self.offsets
+    }
+
+    pub fn apply(&self, args: &[FloatType; NEIGHBORHOOD_SIZE]) -> FloatType {
+        (self.operation)(args)
     }
 }
 

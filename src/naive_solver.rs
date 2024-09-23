@@ -1,7 +1,6 @@
 use crate::apply_iter::*;
 use crate::domain;
 use crate::linear_stencil;
-use rayon::prelude::*;
 
 pub struct Naive1DSolver {
     domain: domain::APBlockDomainD1,
