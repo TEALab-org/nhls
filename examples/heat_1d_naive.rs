@@ -27,9 +27,11 @@ where
 
 fn main() {
     // Grid size
-    let N: usize = 100;
+    let N: usize = 2000;
 
-    let final_t: usize = 50;
+    let final_t: usize = 10000;
+
+    let steps_per_image = 10;
 
     // Step size t
     let dt: f32 = 1.0;
@@ -41,7 +43,7 @@ fn main() {
     let dy: f32 = 1.0;
 
     // Heat transfer coefficient
-    let k: f32 = 0.9;
+    let k: f32 = 0.5;
 
     let s = Stencil::new([[-1], [0], [1]], |args: &[f32; 3]| {
         let left = args[0];
@@ -70,30 +72,23 @@ fn main() {
 
     // Make image
     let gradient = colorous::TURBO;
-    let mut test_img = image::RgbImage::new(N as u32, final_t as u32 + 1);
-    for x in 0..N as u32 {
-        let c = gradient.eval_continuous(grid_input[x as usize] as f64);
-        test_img.put_pixel(x, 0, image::Rgb(c.as_array()));
-    }
+    let mut test_img = image::RgbImage::new(N as u32, (final_t / steps_per_image) as u32);
     for t in 0..final_t as u32 {
         println!("t: {}", t);
        for x in 0..N {
             let r = apply_1d_stencil_periodic(&s, &grid_input, x as i32);
             grid_output[x] = r;
-            let c = gradient.eval_continuous(r as f64);
-            test_img.put_pixel(x as u32, (t + 1), image::Rgb(c.as_array()));
+
+            if t as usize % steps_per_image == 0 {
+                let c = gradient.eval_continuous(r as f64);
+                let y = t / steps_per_image as u32;
+                test_img.put_pixel(x as u32, y, image::Rgb(c.as_array()));
+            }
        }
        std::mem::swap(&mut grid_output, &mut grid_input);
     }
 
-    /*
-    for x in 0..N as u32 {
-        for y in 0..N as u32 {
-            let c = gradient.eval_continuous(grid_input[x as usize] as f64);
-            test_img.put_pixel(x, y, image::Rgb(c.as_array()));
-        }
-    }
-    */
-
     test_img.save("test_image.png").expect("Couldn't save test img");
+
+    println!("{:?}", grid_input);
 }
