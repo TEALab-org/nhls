@@ -39,9 +39,6 @@ fn main() {
     // Step size x
     let dx: f32 = 1.0;
 
-    // Step size y
-    let dy: f32 = 1.0;
-
     // Heat transfer coefficient
     let k: f32 = 0.5;
 
