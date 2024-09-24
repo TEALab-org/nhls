@@ -5,9 +5,9 @@ use nhls::stencil::*;
 
 fn main() {
     // Grid size
-    let N: usize = 200;
+    let N: usize = 2000;
 
-    let final_t: usize = 10000;
+    //let final_t: usize = 200;
 
     let steps_per_image = 10;
 
@@ -100,7 +100,7 @@ fn main() {
         .unwrap();
 
     // Repeated Square V
-    for _ in 0..4 {
+    for _ in 0..5 {
       for i in 0..N {
           let r = fft_stencil_output_buffer[i];
           fft_stencil_output_buffer[i] = r * r;
@@ -108,7 +108,7 @@ fn main() {
     }
 
     let gradient = colorous::TURBO;
-    let T = 300;
+    let T = 2000;
     let mut test_img = image::RgbImage::new(N as u32, T);
 
     // Backward FFT of result V
@@ -120,11 +120,10 @@ fn main() {
 
         backward_plan.r2r(&mut fft_ic_output_buffer, &mut fft_ic_input_buffer).unwrap();
         for i in 0..N as u32 {
-            let c = gradient.eval_continuous(fft_ic_input_buffer[i as usize] as f64);
+            let c = gradient.eval_continuous((fft_ic_input_buffer[i as usize] / N as f32) as f64);
             test_img.put_pixel(i, t, image::Rgb(c.as_array()));
         }
     }
 
     test_img.save("test_image_fft.png").expect("Couldn't save test img");
-    println!("{:?}", fft_ic_input_buffer.as_slice());
 }

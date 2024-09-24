@@ -29,9 +29,9 @@ fn main() {
     // Grid size
     let N: usize = 2000;
 
-    let final_t: usize = 10000;
+    let final_t: usize = 2000 * 32;
 
-    let steps_per_image = 10;
+    let steps_per_image = 16;
 
     // Step size t
     let dt: f32 = 1.0;
@@ -71,7 +71,7 @@ fn main() {
     let gradient = colorous::TURBO;
     let mut test_img = image::RgbImage::new(N as u32, (final_t / steps_per_image) as u32);
     for t in 0..final_t as u32 {
-        println!("t: {}", t);
+       //println!("t: {}", t);
        for x in 0..N {
             let r = apply_1d_stencil_periodic(&s, &grid_input, x as i32);
             grid_output[x] = r;
@@ -87,5 +87,5 @@ fn main() {
 
     test_img.save("test_image.png").expect("Couldn't save test img");
 
-    println!("{:?}", grid_input);
+    //println!("{:?}", grid_input);
 }
