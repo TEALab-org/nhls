@@ -27,10 +27,6 @@ fn main() {
         middle + (k * dt / (dx * dx)) * (left - 2.0 * middle + right)
     });
 
-    // Create buffers
-    let mut grid_input = vec![0.0; N];
-    let mut grid_output = vec![0.0; N];
-
     // Fill in with IC values (use normal dist for spike in the middle)
     let N_f = N as f32;
     let sigma_sq: f32 = (N_f / 25.0) * (N_f / 25.0);
@@ -40,9 +36,6 @@ fn main() {
         let exp = -x * x / (2.0 * sigma_sq);
         exp.exp()
     };
-    for i in 0..N {
-        grid_input[i] = ic_gen(i);
-    }
 
     // Setup FFT stuff
     let mut forward_plan = fftw::plan::R2RPlan32::aligned(

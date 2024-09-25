@@ -11,22 +11,27 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
-    - name: ⚡ Cache
+    - name: Cache
       uses: actions/cache@v4.0.2
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
+          ~/.rustup
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: 📝 Formatting
+    - name: Setup toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+            components: rustfmt, clippy
+    - name: Formatting
       run: cargo fmt --check
-    - name: 🔨 Build
+    - name: Build
       run: cargo build --verbose
-    - name: 🔎 Test
+    - name: Test
       run: cargo test --verbose
