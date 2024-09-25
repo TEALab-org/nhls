@@ -101,10 +101,10 @@ fn main() {
 
     // Repeated Square V
     for _ in 0..5 {
-      for i in 0..N {
-          let r = fft_stencil_output_buffer[i];
-          fft_stencil_output_buffer[i] = r * r;
-      }
+        for i in 0..N {
+            let r = fft_stencil_output_buffer[i];
+            fft_stencil_output_buffer[i] = r * r;
+        }
     }
 
     let gradient = colorous::TURBO;
@@ -118,12 +118,16 @@ fn main() {
             fft_ic_input_buffer[i] = 0.0;
         }
 
-        backward_plan.r2r(&mut fft_ic_output_buffer, &mut fft_ic_input_buffer).unwrap();
+        backward_plan
+            .r2r(&mut fft_ic_output_buffer, &mut fft_ic_input_buffer)
+            .unwrap();
         for i in 0..N as u32 {
             let c = gradient.eval_continuous((fft_ic_input_buffer[i as usize] / N as f32) as f64);
             test_img.put_pixel(i, t, image::Rgb(c.as_array()));
         }
     }
 
-    test_img.save("test_image_fft.png").expect("Couldn't save test img");
+    test_img
+        .save("test_image_fft.png")
+        .expect("Couldn't save test img");
 }
