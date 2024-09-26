@@ -32,7 +32,7 @@ fn main() {
 
     let steps_per_image = 64;
 
-    let final_t: usize = 100 * steps_per_image;
+    let final_t: usize = 200 * steps_per_image;
 
     // Step size t
     let dt: f32 = 1.0;
@@ -139,7 +139,7 @@ fn main() {
         .unwrap();
 
     // Repeated Square V
-    for _ in 0..5 {
+    for _ in 0..6 {
         for i in 0..width * height {
             let r = fft_stencil_output_buffer[i];
             fft_stencil_output_buffer[i] = r * r;
