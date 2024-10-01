@@ -76,14 +76,14 @@ fn main() {
 
     // Setup FFT stuff
     let mut forward_plan = fftw::plan::R2RPlan32::aligned(
-        &[width * height],
+        &[width, height],
         fftw::types::R2RKind::FFTW_R2HC,
         fftw::types::Flag::ESTIMATE,
     )
     .unwrap();
 
     let mut backward_plan = fftw::plan::R2RPlan32::aligned(
-        &[width * height],
+        &[width, height],
         fftw::types::R2RKind::FFTW_HC2R,
         fftw::types::Flag::ESTIMATE,
     )
