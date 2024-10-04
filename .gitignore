@@ -3,3 +3,8 @@
 
 # macOS stuff
 *.DS_STORE
+
+# Misc stuff
+*.png
+*.mp4
+*.sh

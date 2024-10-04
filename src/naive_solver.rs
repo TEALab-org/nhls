@@ -1,7 +1,6 @@
 use crate::apply_iter::*;
 use crate::domain;
 use crate::linear_stencil;
-use rayon::prelude::*;
 
 pub struct Naive1DSolver {
     domain: domain::APBlockDomainD1,
@@ -20,6 +19,11 @@ impl Naive1DSolver {
         let bc_size = self.domain.boundary_values.len();
         let buffer_width: usize = bc_size * 2 + self.domain.zone_widths.iter().sum::<usize>();
         let mut buffer_1 = vec![0.0f32; buffer_width];
+        for j in 0..buffer_width - bc_size {
+            let i = j - bc_size;
+            let v = (i * 13 + 8) as f32;
+            buffer_1[j] = v;
+        }
 
         // Set BCs
         buffer_1[0..bc_size].copy_from_slice(&self.domain.boundary_values);
