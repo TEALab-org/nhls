@@ -62,9 +62,9 @@ fn main() {
     };
 
     let domain = APBlockDomainD1 {
-        boundary_values: vec![1.0; 10],
-        zone_widths: vec![10000, 10000, 15000],
-        final_t: 40000,
+        boundary_values: vec![0.0; 10],
+        zone_widths: vec![1000, 1000, 1000],
+        final_t: 512,
     };
 
     let solver = Naive1DSolver::new(domain, system);
