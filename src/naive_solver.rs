@@ -20,9 +20,9 @@ impl Naive1DSolver {
         let buffer_width: usize = bc_size * 2 + self.domain.zone_widths.iter().sum::<usize>();
         let mut buffer_1 = vec![0.0f32; buffer_width];
         for j in 0..buffer_width - bc_size {
-                let i = j - bc_size;
-                let v = (i * 13 + 8) as f32;
-                buffer_1[j] = v;
+            let i = j - bc_size;
+            let v = (i * 13 + 8) as f32;
+            buffer_1[j] = v;
         }
 
         // Set BCs
