@@ -19,9 +19,9 @@ fn coord_to_linear(width: i32, i: i32, j: i32) -> usize {
     (i * width + j) as usize
 }
 
-fn linear_to_coord(width: usize, height: usize, index: usize) -> (i32, i32) {
+fn linear_to_coord(width: usize, _: usize, index: usize) -> (i32, i32) {
     let i = (index / width) as i32;
-    let j = (index % height) as i32;
+    let j = (index % width) as i32;
     (i, j)
 }
 

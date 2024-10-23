@@ -5,7 +5,8 @@ edition = "2021"
 
 [dependencies]
 colorous = "1.0.14"
-fftw = "0.8.0"
+fftw = { path = "/Users/russell/projects/rust/fftw3-rs/fftw", features = ["system"] }
+
 image = "0.25.2"
 num = "0.4.3"
 rayon = "1.10.0"

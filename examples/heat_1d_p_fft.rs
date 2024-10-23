@@ -123,4 +123,7 @@ fn main() {
     test_img
         .save("test_image_fft.png")
         .expect("Couldn't save test img");
+
+    //fftw::wisdom::export_wisdom_file_f32(&"/tmp/wisdom_f32").unwrap();
+    //fftw::wisdom::export_wisdom_file_f64(&"/tmp/wisdom_f64").unwrap();
 }
