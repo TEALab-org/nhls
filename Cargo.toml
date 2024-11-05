@@ -9,6 +9,7 @@ fftw = { path = "/Users/russell/projects/rust/fftw3-rs/fftw", features = ["syste
 
 image = "0.25.2"
 num = "0.4.3"
+num-traits = "0.2.19"
 rayon = "1.10.0"
 
 [dev-dependencies]
