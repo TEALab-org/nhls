@@ -30,22 +30,14 @@ fn main() {
     // Fill in with IC values (use normal dist for spike in the middle)
     let N_f = N as f32;
     let sigma_sq: f32 = (N_f / 25.0) * (N_f / 25.0);
-    let ic_gen = |i: usize| {
-        i as f32
-    };
+    let ic_gen = |i: usize| i as f32;
 
     // Setup FFT stuff
-    let mut forward_plan = fftw::plan::R2CPlan32::aligned(
-        &[N],
-        fftw::types::Flag::ESTIMATE,
-    )
-    .unwrap();
+    let mut forward_plan =
+        fftw::plan::R2CPlan32::aligned(&[N], fftw::types::Flag::ESTIMATE).unwrap();
 
-    let mut backward_plan = fftw::plan::C2RPlan32::aligned(
-        &[N],
-        fftw::types::Flag::ESTIMATE,
-    )
-    .unwrap();
+    let mut backward_plan =
+        fftw::plan::C2RPlan32::aligned(&[N], fftw::types::Flag::ESTIMATE).unwrap();
 
     let mut fft_stencil_input_buffer = fftw::array::AlignedVec::new(N);
     let mut fft_stencil_output_buffer = fftw::array::AlignedVec::new(N / 2 + 1);
@@ -56,7 +48,7 @@ fn main() {
         fft_ic_input_buffer[i] = 0.0f32;
     }
 
-    for i in 0..N/2 + 1 {
+    for i in 0..N / 2 + 1 {
         fft_stencil_output_buffer[i] = c32::new(0.0f32, 0.0f32);
         fft_ic_output_buffer[i] = c32::new(0.0f32, 0.0f32);
     }
@@ -75,7 +67,10 @@ fn main() {
         fft_stencil_input_buffer[index] = w[i];
     }
 
-    println!("stencil_input_buffer: {:?}", fft_stencil_input_buffer.as_slice());
+    println!(
+        "stencil_input_buffer: {:?}",
+        fft_stencil_input_buffer.as_slice()
+    );
 
     forward_plan
         .r2c(
@@ -84,7 +79,10 @@ fn main() {
         )
         .unwrap();
 
-    println!("stencil_output_buffer: {:?}", fft_stencil_output_buffer.as_slice());
+    println!(
+        "stencil_output_buffer: {:?}",
+        fft_stencil_output_buffer.as_slice()
+    );
 
     // Forward FFT of a0 ->
     for i in 0..N {
@@ -99,12 +97,15 @@ fn main() {
 
     // Repeated Square V
     for _ in 0..1 {
-        for i in 0..N / 2  + 1 {
+        for i in 0..N / 2 + 1 {
             let r = fft_stencil_output_buffer[i];
             fft_stencil_output_buffer[i] = r * r;
         }
     }
-    println!("repeated squares: {:?}", fft_stencil_output_buffer.as_slice());
+    println!(
+        "repeated squares: {:?}",
+        fft_stencil_output_buffer.as_slice()
+    );
 
     let gradient = colorous::TURBO;
     //let T = 2000;
@@ -137,11 +138,11 @@ fn main() {
         */
         println!("output: {:?}", fft_ic_input_buffer.as_slice());
     }
-/*
-    test_img
-        .save("test_image_fft.png")
-        .expect("Couldn't save test img");
-*/
+    /*
+        test_img
+            .save("test_image_fft.png")
+            .expect("Couldn't save test img");
+    */
     //fftw::wisdom::export_wisdom_file_f32(&"/tmp/wisdom_f32").unwrap();
     //fftw::wisdom::export_wisdom_file_f64(&"/tmp/wisdom_f64").unwrap();
 }

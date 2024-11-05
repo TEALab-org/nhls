@@ -49,7 +49,7 @@ fn main() {
     let mut grid_output = vec![0.0; N];
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    let ic_gen = |_: usize| { 0.0 };
+    let ic_gen = |_: usize| 0.0;
     for i in 1..N {
         grid_input[i] = ic_gen(i);
     }
@@ -61,7 +61,7 @@ fn main() {
     let mut test_img = image::RgbImage::new(N as u32, (final_t / steps_per_image) as u32);
     for t in 0..final_t as u32 {
         //println!("t: {}", t);
-        for x in 1..N-1 {
+        for x in 1..N - 1 {
             let r = apply_1d_stencil(&s, &grid_input, x as i32);
             grid_output[x] = r;
 
