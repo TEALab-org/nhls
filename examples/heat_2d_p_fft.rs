@@ -157,10 +157,6 @@ fn main() {
             fft_backwards_buffer[i] = fft_ic_output_buffer[i];
         }
 
-        for i in 0..width * height {
-            fft_ic_input_buffer[i] = 0.0;
-        }
-
         backward_plan
             .c2r(&mut fft_backwards_buffer, &mut fft_ic_input_buffer)
             .unwrap();
