@@ -17,8 +17,8 @@ jobs:
     - name: Setup toolchain
       uses: dtolnay/rust-toolchain@master
       with:
-      toolchain: nightly
-      components: rustfmt
+        toolchain: nightly
+        components: rustfmt
     - name: Cache
       uses: actions/cache@v4.0.2
       with:
