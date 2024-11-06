@@ -14,6 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Setup toolchain
+      uses: dtolnay/rust-toolchain@master
+      with:
+      toolchain: nightly
+      components: rustfmt
     - name: Cache
       uses: actions/cache@v4.0.2
       with:
@@ -22,13 +27,7 @@ jobs:
           ~/.cargo/git
           ~/.rustup
           target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Setup toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        override: true
-        components: rustfmt, clippy
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{steps.toolchain.outputs.name}}
     - name: Formatting
       run: cargo fmt --check
     - name: Build
