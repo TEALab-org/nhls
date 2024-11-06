@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 colorous = "1.0.14"
-fftw = { path = "/Users/russell/projects/rust/fftw3-rs/fftw", features = ["system"] }
+fftw = { git = "https://github.com/SallySoul/fftw3-rs.git", tag = "fftw3-v0.8.1" }
 
 image = "0.25.2"
 num = "0.4.3"
