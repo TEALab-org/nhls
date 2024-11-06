@@ -5,5 +5,5 @@ pub mod basic_domain;
 pub mod domain;
 pub mod linear_stencil;
 pub mod naive_solver;
-pub mod stencil;
 pub mod squaring;
+pub mod stencil;
