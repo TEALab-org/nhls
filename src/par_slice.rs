@@ -1,3 +1,5 @@
+//! Parallelized operations over slices of numerical data.
+
 use num_traits::Num;
 use rayon::prelude::*;
 
@@ -27,6 +29,7 @@ pub fn square<NumType: Num + Copy + Send + Sync>(a_slice: &mut [NumType], chunk_
         });
 }
 
+/// Implements a = a * b over slice elements.
 pub fn multiply_by<NumType: Num + Copy + Send>(
     a_slice: &mut [NumType],
     b_slice: &mut [NumType],
@@ -40,6 +43,35 @@ pub fn multiply_by<NumType: Num + Copy + Send>(
                 *a = *a * *b;
             }
         });
+}
+
+/// Returns the number of bits needed to represent i.
+pub fn n_binary_digits(i: usize) -> usize {
+    (usize::BITS - i.leading_zeros()) as usize
+}
+
+/// Implements power operation with repeated square algorithm.
+pub fn power<NumType: Num + Copy + Send + Sync + std::marker::Sized>(
+    n: usize,
+    x_buffer: &mut [NumType],
+    result_buffer: &mut [NumType],
+    chunk_size: usize,
+) {
+    debug_assert!(x_buffer.len() == result_buffer.len());
+    let mut exp = n;
+
+    // Result buffer starts as 1
+    set_value(result_buffer, NumType::one(), chunk_size);
+
+    let k = n_binary_digits(exp);
+    for _ in 0..k {
+        // Is the Least significant bit 1?
+        if exp & 1 == 1 {
+            multiply_by(result_buffer, x_buffer, chunk_size);
+        }
+        exp >>= 1;
+        square(x_buffer, chunk_size);
+    }
 }
 
 #[cfg(test)]
@@ -69,6 +101,58 @@ mod unit_tests {
 
             for v in a {
                 assert_eq!(v, value);
+            }
+        }
+    }
+
+    #[test]
+    fn n_binary_digits_test() {
+        assert_eq!(n_binary_digits(1), 1);
+        assert_eq!(n_binary_digits(2), 2);
+        assert_eq!(n_binary_digits(3), 2);
+        assert_eq!(n_binary_digits(4), 3);
+        assert_eq!(n_binary_digits(5), 3);
+        assert_eq!(n_binary_digits(6), 3);
+        assert_eq!(n_binary_digits(7), 3);
+        assert_eq!(n_binary_digits(8), 4);
+        assert_eq!(n_binary_digits(9), 4);
+    }
+
+    #[test]
+    fn square_test() {
+        let mut data = vec![1, 2, 3, 4, 5];
+        square(&mut data, 1);
+        for (i, x) in data.iter().enumerate() {
+            assert_eq!(*x, (i + 1).pow(2));
+        }
+    }
+
+    #[test]
+    fn multiply_by_test() {
+        let mut a = vec![1, 2, 3, 4, 5];
+        let mut b = vec![6, 7, 8, 9, 10];
+        multiply_by(&mut a, &mut b, 1);
+        for (i, x) in a.iter().enumerate() {
+            assert_eq!(*x, (i + 1) * (i + 6));
+        }
+    }
+
+    #[test]
+    fn power_test() {
+        {
+            let mut data = vec![1, 2, 3, 4, 5];
+            let mut buffer = vec![0; 5];
+            power(5, &mut data, &mut buffer, 1);
+            for (i, x) in buffer.iter().enumerate() {
+                assert_eq!(*x, (i + 1).pow(5));
+            }
+        }
+        {
+            let mut data = vec![1, 2, 3, 4, 5];
+            let mut buffer = vec![0; 5];
+            power(5, &mut data, &mut buffer, 100);
+            for (i, x) in buffer.iter().enumerate() {
+                assert_eq!(*x, (i + 1).pow(5));
             }
         }
     }

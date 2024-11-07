@@ -1,7 +1,7 @@
 use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
-use nhls::squaring::*;
+use nhls::par_slice;
 use nhls::stencil::*;
 use num_traits::identities::Zero;
 
@@ -144,7 +144,7 @@ fn main() {
         .r2c(&mut fft_ic_input_buffer, &mut fft_ic_output_buffer)
         .unwrap();
 
-    repeated_square(
+    par_slice::power(
         steps_per_image,
         fft_stencil_output_buffer.as_slice_mut(),
         squared_stencil_buffer.as_slice_mut(),
