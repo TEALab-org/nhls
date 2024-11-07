@@ -1,12 +1,14 @@
-use num_traits::{Num, One};
+use crate::par_slice;
+use num_traits::Num;
 use rayon::prelude::*;
 
+/// Basicly works out to `log2(i) + 1
 pub fn log2ceil(i: usize) -> usize {
     (usize::BITS - i.leading_zeros()) as usize
 }
 
-// Reference implementation for integers
-pub fn repeated_square(exp0: usize, i: usize) -> usize {
+/// Reference implementation of repeated squares for positive integers
+pub fn repeated_square_reference(exp0: usize, i: usize) -> usize {
     let mut exp = exp0;
     let mut squares = i;
     let mut result = 1;
@@ -23,8 +25,14 @@ pub fn repeated_square(exp0: usize, i: usize) -> usize {
     result
 }
 
-// Parallelized vector squaring
-pub fn repeated_square_slice<NumType: Num + Copy + Send + std::marker::Sized>(
+/// Parallelized squaring of slice elements.
+/// Implements the following recursion description:
+///
+///
+/// x^n = { x * (x^2)^((n -1)/2)
+///       { x * (x2)^k
+/// Our base case if $n
+pub fn repeated_square<NumType: Num + Copy + Send + Sync + std::marker::Sized>(
     exp0: usize,
     data: &mut [NumType],
     result_buffer: &mut [NumType],
@@ -34,36 +42,18 @@ pub fn repeated_square_slice<NumType: Num + Copy + Send + std::marker::Sized>(
     let mut exp = exp0;
 
     // Result buffer starts as 1
-    result_buffer
-        .par_chunks_mut(chunk_size)
-        .for_each(|xs: &mut [NumType]| {
-            for x in xs {
-                *x = NumType::one();
-            }
-        });
+    par_slice::set_value(result_buffer, NumType::one(), chunk_size);
 
     let n = log2ceil(exp0);
     for _ in 0..n {
         if exp % 2 == 1 {
-            result_buffer
-                .par_chunks_mut(chunk_size)
-                .zip(data.par_chunks_mut(chunk_size))
-                .for_each(|(rs, ds)| {
-                    for (r, d) in rs.iter_mut().zip(ds.iter_mut()) {
-                        *r = *r * *d;
-                    }
-                });
+            par_slice::multiply_by(result_buffer, data, chunk_size);
 
             //result *= data;
             exp -= 1;
         }
         exp /= 2;
-        data.par_chunks_mut(chunk_size)
-            .for_each(|xs: &mut [NumType]| {
-                for x in xs {
-                    *x = *x * *x;
-                }
-            });
+        par_slice::square(data, chunk_size);
     }
 }
 
@@ -85,11 +75,11 @@ mod unit_tests {
 
     #[test]
     fn repeated_square_test() {
-        assert_eq!(repeated_square(2, 2), 4);
-        assert_eq!(repeated_square(3, 2), 8);
-        assert_eq!(repeated_square(4, 2), 16);
-        assert_eq!(repeated_square(5, 2), 32);
-        assert_eq!(repeated_square(9, 3), 19683);
+        assert_eq!(repeated_square_reference(2, 2), 4);
+        assert_eq!(repeated_square_reference(3, 2), 8);
+        assert_eq!(repeated_square_reference(4, 2), 16);
+        assert_eq!(repeated_square_reference(5, 2), 32);
+        assert_eq!(repeated_square_reference(9, 3), 19683);
     }
 
     #[test]
@@ -97,7 +87,7 @@ mod unit_tests {
         {
             let mut data = vec![1, 2, 3, 4, 5];
             let mut buffer = vec![0; 5];
-            repeated_square_slice(5, &mut data, &mut buffer, 1);
+            repeated_square(5, &mut data, &mut buffer, 1);
             for (i, x) in buffer.iter().enumerate() {
                 assert_eq!(*x, (i + 1).pow(5));
             }
@@ -105,7 +95,7 @@ mod unit_tests {
         {
             let mut data = vec![1, 2, 3, 4, 5];
             let mut buffer = vec![0; 5];
-            repeated_square_slice(5, &mut data, &mut buffer, 100);
+            repeated_square(5, &mut data, &mut buffer, 100);
             for (i, x) in buffer.iter().enumerate() {
                 assert_eq!(*x, (i + 1).pow(5));
             }

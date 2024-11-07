@@ -1,6 +1,7 @@
 use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
+use nhls::squaring::*;
 use nhls::stencil::*;
 use num_traits::identities::Zero;
 
@@ -34,6 +35,8 @@ fn main() {
     let steps_per_image = 64;
 
     let final_t: usize = 200 * steps_per_image;
+
+    let chunk_size = 1000;
 
     // Step size t
     let dt: f32 = 1.0;
@@ -84,6 +87,7 @@ fn main() {
 
     let mut fft_stencil_input_buffer = fftw::array::AlignedVec::new(width * height);
     let mut fft_stencil_output_buffer = fftw::array::AlignedVec::new(width * (height / 2 + 1));
+    let mut squared_stencil_buffer = fftw::array::AlignedVec::new(width * (height / 2 + 1));
     let mut fft_backwards_buffer = fftw::array::AlignedVec::new(width * (height / 2 + 1));
     let mut fft_ic_input_buffer = fftw::array::AlignedVec::new(width * height);
     let mut fft_ic_output_buffer = fftw::array::AlignedVec::new(width * (height / 2 + 1));
@@ -96,6 +100,7 @@ fn main() {
         fft_stencil_output_buffer[i] = c32::new(0.0, 0.0);
         fft_ic_output_buffer[i] = c32::new(0.0, 0.0);
         fft_backwards_buffer[i] = c32::new(0.0, 0.0);
+        squared_stencil_buffer[i] = c32::new(0.0, 0.0);
     }
 
     // Forward FFT of U -> V
@@ -139,21 +144,17 @@ fn main() {
         .r2c(&mut fft_ic_input_buffer, &mut fft_ic_output_buffer)
         .unwrap();
 
-    // Repeated Square V
-    //for _ in 0..6 {
-    for _ in 0..9 {
-        for i in 0..width * (height / 2 + 1) {
-            let r = fft_stencil_output_buffer[i];
-            fft_stencil_output_buffer[i] = r * r;
-        }
-    }
-
-    let T = 100;
+    repeated_square(
+        steps_per_image,
+        fft_stencil_output_buffer.as_slice_mut(),
+        squared_stencil_buffer.as_slice_mut(),
+        chunk_size,
+    );
 
     // Backward FFT of result V
     for t in 0..200 {
         for i in 0..width * (height / 2 + 1) {
-            fft_ic_output_buffer[i] *= fft_stencil_output_buffer[i];
+            fft_ic_output_buffer[i] *= squared_stencil_buffer[i];
             fft_backwards_buffer[i] = fft_ic_output_buffer[i];
         }
 
