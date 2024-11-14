@@ -4,7 +4,7 @@ use crate::util::*;
 use rayon::prelude::*;
 
 /// Modifies input buffer!!
-pub fn apply<Lookup, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+pub fn box_apply<Lookup, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
     bc_lookup: &Lookup,
     input: &[f32],
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
@@ -36,6 +36,47 @@ pub fn apply<Lookup, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
             }
         });
 }
+/*
+/// Modifies input buffer!!
+pub fn trapezoid_apply<Lookup, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+    bc_lookup: &Lookup,
+    stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    input: &[f32],
+    output: &mut [f32],
+    input_boxbound: &Box<GRID_DIMENSION>,
+    output_box: &Box<GRID_DIMENSION>,
+    chunk_size: usize,
+) where
+    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+    Lookup: BCLookup<GRID_DIMENSION>,
+{
+    debug_assert_eq!(input.len(), output.len());
+    output
+        .par_chunks_mut(chunk_size)
+        .enumerate()
+        .for_each(|(i, output_chunk)| {
+            let offset = i * chunk_size;
+            for i in 0..output_chunk.len() {
+                // account of output_chunk location
+                let output_index = offset + i;
+
+                let output_coord = linear_to_coord(output_index, &bound);
+
+                // translate to world_coord
+                let world_coord = coord +
+
+                // Gather neighbor values
+                let args = gather_args(stencil, bc_lookup, input, &coord);
+
+                // Evaluate stencil
+                let v = stencil.apply(&args);
+
+                // Save result into output_chunk
+                output_chunk[i] = v;
+            }
+        });
+}
+*/
 
 #[cfg(test)]
 mod unit_test {
@@ -53,7 +94,7 @@ mod unit_test {
             let input = vec![1.0; n_r];
             let lookup = PeriodicBCLookup::new(max_size);
             let mut output = vec![0.0; n_r];
-            apply(&lookup, &input, &stencil, &max_size, &mut output, 1);
+            box_apply(&lookup, &input, &stencil, &max_size, &mut output, 1);
             for x in &output {
                 assert_approx_eq!(f32, *x, 1.0);
             }
@@ -63,7 +104,7 @@ mod unit_test {
             let input = vec![2.0; n_r];
             let lookup = PeriodicBCLookup::new(max_size);
             let mut output = vec![0.0; n_r];
-            apply(&lookup, &input, &stencil, &max_size, &mut output, 3);
+            box_apply(&lookup, &input, &stencil, &max_size, &mut output, 3);
             for x in &output {
                 assert_approx_eq!(f32, *x, 2.0);
             }

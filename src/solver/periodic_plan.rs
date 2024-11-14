@@ -10,13 +10,13 @@ use fftw::types::*;
 use crate::util::*;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct PeriodicPlanDescriptor<const GRID_DIMENSION: usize> {
+struct PeriodicPlanDescriptor<const GRID_DIMENSION: usize> {
     pub space_size: Bound<GRID_DIMENSION>,
     pub delta_t: usize,
 }
 
 impl<const GRID_DIMENSION: usize> PeriodicPlanDescriptor<GRID_DIMENSION> {
-    pub fn new(space_size: Bound<GRID_DIMENSION>, delta_t: usize) -> Self {
+    fn new(space_size: Bound<GRID_DIMENSION>, delta_t: usize) -> Self {
         PeriodicPlanDescriptor {
             space_size,
             delta_t,
@@ -33,9 +33,9 @@ pub struct PeriodicPlanLibrary<
 > where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
-    pub convolution_map: HashMap<PeriodicPlanDescriptor<GRID_DIMENSION>, AlignedVec<c32>>,
-    pub fft_plan_library: FFTPlanLibrary<GRID_DIMENSION>,
-    pub stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    convolution_map: HashMap<PeriodicPlanDescriptor<GRID_DIMENSION>, AlignedVec<c32>>,
+    fft_plan_library: FFTPlanLibrary<GRID_DIMENSION>,
+    stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     real_buffer: AlignedVec<f32>,
     convolution_buffer: AlignedVec<c32>,
     stencil_weights: [f32; NEIGHBORHOOD_SIZE],
@@ -71,14 +71,14 @@ where
 
     pub fn apply(
         &mut self,
-        size: Bound<GRID_DIMENSION>,
+        bound: Bound<GRID_DIMENSION>,
         n: usize,
         input: &mut [f32],
         output: &mut [f32],
         complex_buffer: &mut [c32],
         chunk_size: usize,
     ) {
-        let key = PeriodicPlanDescriptor::new(size, n);
+        let key = PeriodicPlanDescriptor::new(bound, n);
         // Can't do clippy fix on this line,
         // creating the new convolution requires mutable self borrow,
         // should probably break that out a bit so we can borrow self members separately.
@@ -88,11 +88,11 @@ where
             self.convolution_map.insert(key, new_convolution);
         }
         let convolution = self.convolution_map.get(&key).unwrap();
-        let fft_plan = self.fft_plan_library.get_plan(size);
+        let fft_plan = self.fft_plan_library.get_plan(bound);
 
         // fftw bindings expect slices of specific size
-        let n_r = real_buffer_size(&size);
-        let n_c = complex_buffer_size(&size);
+        let n_r = real_buffer_size(&bound);
+        let n_c = complex_buffer_size(&bound);
         fft_plan
             .forward_plan
             .r2c(&mut input[0..n_r], &mut complex_buffer[0..n_c])
@@ -177,7 +177,6 @@ mod unit_tests {
     {
         let chunk_size = 1;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        println!("{:?}", stencil.extract_weights());
         let rbs = real_buffer_size(&bound);
         let cbs = complex_buffer_size(&bound);
 

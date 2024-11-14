@@ -3,7 +3,7 @@ pub use num_traits::{Num, One, Zero};
 pub trait NumTrait = Num + Copy + Send + Sync;
 
 pub type Bound<const GRID_DIMENSION: usize> = nalgebra::SVector<i32, { GRID_DIMENSION }>;
-pub type Slopes<const GRID_DIMENSION: usize> = nalgebra::SMatrix<i32, { GRID_DIMENSION }, 2>;
+pub type Box<const GRID_DIMENSION: usize> = nalgebra::SMatrix<i32, { GRID_DIMENSION }, 2>;
 
 pub fn real_buffer_size<const GRID_DIMENSION: usize>(space_size: &Bound<GRID_DIMENSION>) -> usize {
     let mut accumulator = 1;
@@ -96,10 +96,57 @@ pub fn periodic_index<const GRID_DIMENSION: usize>(
     result
 }
 
+pub fn coord_to_linear_in_box<const GRID_DIMENSION: usize>(
+    coord: &Bound<GRID_DIMENSION>,
+    b: &Box<GRID_DIMENSION>,
+) -> usize {
+    #[cfg(test)]
+    {
+        for d in 0..GRID_DIMENSION {
+            assert!(coord[d] >= b[(d, 0)]);
+            assert!(coord[d] <= b[(d, 1)]);
+        }
+    }
+
+    let bound = b.column(1) - b.column(0);
+    let translated_coord = coord - b.column(0);
+    let mut accumulator = 0;
+    for d in 0..GRID_DIMENSION {
+        let mut dim_accumulator = translated_coord[d] as usize;
+        for dn in (d + 1)..GRID_DIMENSION {
+            dim_accumulator *= bound[dn] as usize;
+        }
+        accumulator += dim_accumulator;
+    }
+    accumulator
+}
+
+pub fn linear_to_coord_in_box<const GRID_DIMENSION: usize>(
+    index: usize,
+    b: &Box<GRID_DIMENSION>,
+) -> Bound<GRID_DIMENSION> {
+    let bound = b.column(1) - b.column(0);
+    debug_assert!(index <= real_buffer_size(&bound));
+
+    let mut result = Bound::zero();
+    let mut index_accumulator = index;
+    for d in 0..GRID_DIMENSION - 1 {
+        let mut dim_accumulator = 1;
+        for dn in (d + 1)..GRID_DIMENSION {
+            dim_accumulator *= bound[dn] as usize;
+        }
+
+        result[d] = (index_accumulator / dim_accumulator) as i32;
+        index_accumulator %= dim_accumulator;
+    }
+    result[GRID_DIMENSION - 1] = index_accumulator as i32;
+    result + b.column(0)
+}
+
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    use nalgebra::vector;
+    use nalgebra::{matrix, vector};
 
     #[test]
     fn buffer_size_test() {
@@ -229,5 +276,26 @@ mod unit_tests {
             let bound = vector![10, 10, 8, 10];
             assert_eq!(linear_to_coord(index, &bound), vector![0, 0, 0, 0]);
         }
+    }
+
+    #[test]
+    fn coord_to_linear_in_box_test() {
+        assert_eq!(
+            coord_to_linear_in_box(&vector![5, 5, 5], &matrix![0, 10; 0, 10; 0, 10]),
+            linear_index(&vector![5, 5, 5], &vector![10, 10, 10])
+        );
+
+        assert_eq!(
+            coord_to_linear_in_box(&vector![5, 5, 5], &matrix![2, 8; 2, 8; 2, 8]),
+            linear_index(&vector![3, 3, 3], &vector![6, 6, 6])
+        );
+    }
+
+    #[test]
+    fn linear_to_coord_in_box_test() {
+        assert_eq!(
+            linear_to_coord_in_box(5, &matrix![2, 8]),
+            linear_to_coord(7, &vector![10])
+        );
     }
 }
