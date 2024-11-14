@@ -1,4 +1,5 @@
 pub mod fft_plan;
+pub mod naive;
 pub mod periodic_plan;
 
 // Axis Aligned subset of global state at time t
