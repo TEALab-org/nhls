@@ -2,7 +2,7 @@ use crate::util::*;
 
 /// All stencils operations must provide an operation that adheres to this type
 pub trait StencilOperation<NumType: NumTrait, const NEIGHBORHOOD_SIZE: usize> =
-    Fn(&[NumType; NEIGHBORHOOD_SIZE]) -> NumType;
+    Fn(&[NumType; NEIGHBORHOOD_SIZE]) -> NumType + Sync;
 
 pub type StencilF32<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize> =
     Stencil<f32, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>;

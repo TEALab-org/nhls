@@ -52,4 +52,3 @@ impl<const GRID_DIMENSION: usize> FFTPlanLibrary<GRID_DIMENSION> {
         self.plan_map.entry(key).or_insert(FFTPlan::new(size))
     }
 }
-

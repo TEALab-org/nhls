@@ -97,7 +97,11 @@ where
             .forward_plan
             .r2c(&mut input[0..n_r], &mut complex_buffer[0..n_c])
             .unwrap();
-        par_slice::multiply_by(&mut complex_buffer[0..n_c], convolution.as_slice(), chunk_size);
+        par_slice::multiply_by(
+            &mut complex_buffer[0..n_c],
+            convolution.as_slice(),
+            chunk_size,
+        );
         fft_plan
             .backward_plan
             .c2r(&mut complex_buffer[0..n_c], &mut output[0..n_r])
@@ -124,7 +128,10 @@ where
         let fft_plan = self.fft_plan_library.get_plan(descriptor.space_size);
         fft_plan
             .forward_plan
-            .r2c(&mut self.real_buffer[0..n_r], &mut self.convolution_buffer[0..n_c])
+            .r2c(
+                &mut self.real_buffer[0..n_r],
+                &mut self.convolution_buffer[0..n_c],
+            )
             .unwrap();
 
         // clean up real buffer
@@ -144,7 +151,11 @@ where
             chunk_size,
         );
         // overkill, could only set the values we know we touched,
-        par_slice::set_value(&mut self.convolution_buffer[0..n_c], c32::zero(), chunk_size);
+        par_slice::set_value(
+            &mut self.convolution_buffer[0..n_c],
+            c32::zero(),
+            chunk_size,
+        );
 
         result_buffer
     }
@@ -197,7 +208,7 @@ mod unit_tests {
         let max_size = vector![100];
         let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
 
-        test_unit_stencil(&stencil, max_size, 10, &mut plan_library); 
+        test_unit_stencil(&stencil, max_size, 10, &mut plan_library);
         test_unit_stencil(&stencil, vector![99], 20, &mut plan_library);
     }
 

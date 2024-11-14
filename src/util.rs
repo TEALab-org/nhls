@@ -206,14 +206,9 @@ mod unit_tests {
         {
             let index = vector![0, -1, -4, -19, 134];
             let bound = vector![100, 100, 100, 100, 100];
-            assert_eq!(
-                periodic_index(&index, &bound),
-                vector![0, 99, 96, 81, 34]
-            );
+            assert_eq!(periodic_index(&index, &bound), vector![0, 99, 96, 81, 34]);
         }
     }
-
-
 
     #[test]
     fn linear_to_coord_test() {
