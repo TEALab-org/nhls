@@ -1,11 +1,7 @@
 use crate::par_slice;
 use crate::solver::fft_plan::*;
-use crate::solver::*;
 use crate::stencil::*;
-use nalgebra::*;
 use std::collections::HashMap;
-
-use crate::par_slice;
 
 use fftw::array::AlignedVec;
 use fftw::plan::*;
@@ -25,32 +21,6 @@ impl<const GRID_DIMENSION: usize> PeriodicPlanDescriptor<GRID_DIMENSION> {
             space_size,
             delta_t,
         }
-    }
-}
-
-pub struct PeriodicPlan<'a> {
-    pub fft_plan: &'a mut FFTPlan,
-    pub convolution: &'a AlignedVec<c32>,
-}
-
-impl<'a> PeriodicPlan<'a> {
-    pub fn apply(
-        &mut self,
-        mut input: AlignedVec<f32>,
-        output: &mut AlignedVec<f32>,
-        complex_buffer: &mut AlignedVec<c32>,
-        chunk_size: usize,
-    ) -> AlignedVec<f32> {
-        self.fft_plan
-            .forward_plan
-            .r2c(&mut input, complex_buffer)
-            .unwrap();
-        par_slice::multiply_by(complex_buffer, self.convolution.as_slice(), chunk_size);
-        self.fft_plan
-            .backward_plan
-            .c2r(complex_buffer, output)
-            .unwrap();
-        input
     }
 }
 
@@ -99,13 +69,20 @@ where
         }
     }
 
-    pub fn get_plan(
-        &'a mut self,
+    pub fn apply(
+        &mut self,
         size: Bound<GRID_DIMENSION>,
-        delta_t: usize,
+        n: usize,
+        input: &mut [f32],
+        output: &mut [f32],
+        complex_buffer: &mut [c32],
         chunk_size: usize,
-    ) -> PeriodicPlan<'a> {
-        let key = PeriodicPlanDescriptor::new(size, delta_t);
+    ) {
+        let key = PeriodicPlanDescriptor::new(size, n);
+        // Can't do clippy fix on this line,
+        // creating the new convolution requires mutable self borrow,
+        // should probably break that out a bit so we can borrow self members separately.
+        #[allow(clippy::map_entry)]
         if !self.convolution_map.contains_key(&key) {
             let new_convolution = self.new_convolution(&key, chunk_size);
             self.convolution_map.insert(key, new_convolution);
@@ -113,10 +90,11 @@ where
         let convolution = self.convolution_map.get(&key).unwrap();
         let fft_plan = self.fft_plan_library.get_plan(size);
 
-        PeriodicPlan {
-            convolution,
-            fft_plan,
-        }
+        fft_plan.forward_plan.r2c(input, complex_buffer).unwrap();
+        par_slice::multiply_by(complex_buffer, convolution.as_slice(), chunk_size);
+        fft_plan.backward_plan.c2r(complex_buffer, output).unwrap();
+        let n = real_buffer_size(&size);
+        par_slice::div(output, n as f32, chunk_size);
     }
 
     fn new_convolution(
@@ -159,5 +137,64 @@ where
         par_slice::set_value(&mut self.convolution_buffer, c32::zero(), chunk_size);
 
         result_buffer
+    }
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+    use float_cmp::assert_approx_eq;
+    use nalgebra::vector;
+
+    #[test]
+    fn test_1d() {
+        let chunk_size = 1;
+        let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
+        let max_size = vector![100];
+        //let real_buffer_size = crate::solver::fft_plan::real_buffer_size(&max_size);
+        let complex_buffer_size = crate::solver::fft_plan::complex_buffer_size(&max_size);
+        let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
+
+        // Data set one
+        {
+            let mut input_x = fftw::array::AlignedVec::new(100);
+            for x in input_x.as_slice_mut() {
+                *x = 1.0f32;
+            }
+            let mut complex_buffer = fftw::array::AlignedVec::new(100);
+            let mut result_buffer = fftw::array::AlignedVec::new(100);
+            plan_library.apply(
+                max_size,
+                10,
+                &mut input_x,
+                &mut result_buffer,
+                &mut complex_buffer[0..complex_buffer_size],
+                chunk_size,
+            );
+            let mut input_x = fftw::array::AlignedVec::new(100);
+            for x in input_x.as_slice_mut() {
+                *x = 1.0f32;
+            }
+        }
+
+        {
+            let mut input_x = fftw::array::AlignedVec::new(100);
+            for x in input_x.as_slice_mut() {
+                *x = 1.0f32;
+            }
+            let mut complex_buffer = fftw::array::AlignedVec::new(100);
+            let mut result_buffer = fftw::array::AlignedVec::new(100);
+            plan_library.apply(
+                max_size,
+                20,
+                &mut input_x,
+                &mut result_buffer,
+                &mut complex_buffer[0..complex_buffer_size],
+                chunk_size,
+            );
+            for x in result_buffer.as_slice() {
+                assert_approx_eq!(f32, *x, 1.0);
+            }
+        }
     }
 }

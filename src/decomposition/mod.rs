@@ -7,6 +7,7 @@
 //
 // Face vectors
 
+/*
 #[derive(Debug)]
 pub enum Boundary {
     SPACE,
@@ -33,3 +34,4 @@ pub struct FFTSolveArgs {
 pub fn recursive_solve(args: FFTSolveArgs, p: FFTParams, level: usize) {
     println!("RS: args: {:?}, p: {:?}", args, p);
 }
+*/

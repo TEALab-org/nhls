@@ -1,3 +1,4 @@
+/*
 use crate::stencil::*;
 use crate::util::*;
 use nalgebra;
@@ -8,6 +9,7 @@ pub struct Region<const GRID_DIMENSION: usize> {
     t: i32,
     slopes: Slopes<GRID_DIMENSION>,
 }
+*/
 /*
 impl <const GRID_DIMENSION: usize> Region<GRID_DIMENSION> {
     fn new(end_min: Bound<GRID_DIMENSION>, end_max: Bound<GRID_DIMENSION>, t: i32) -> Self {

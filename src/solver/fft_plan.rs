@@ -1,8 +1,3 @@
-use crate::solver::*;
-
-use nalgebra::*;
-
-use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
 
@@ -114,6 +109,7 @@ impl<const GRID_DIMENSION: usize> FFTPlanLibrary<GRID_DIMENSION> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+    use nalgebra::vector;
 
     #[test]
     fn buffer_size_test() {

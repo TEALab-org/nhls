@@ -23,7 +23,7 @@ pub struct FFTParams {
 
 #[derive(Debug, Copy, Clone)]
 pub struct FFTSolveArgs {
-    boundaries: [Boundary; 2],
+    //boundaries: [Boundary; 2],
     t0: usize,
     t_end: usize,
     x0: usize,
@@ -87,7 +87,7 @@ fn main() {
     };
 
     let args = FFTSolveArgs {
-        boundaries: [Boundary::FIXED, Boundary::FIXED],
+        //boundaries: [Boundary::FIXED, Boundary::FIXED],
         t0: 0,
         t_end: 200,
         x0: 0,
