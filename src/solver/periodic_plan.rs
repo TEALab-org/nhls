@@ -11,12 +11,12 @@ use crate::util::*;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 struct PeriodicPlanDescriptor<const GRID_DIMENSION: usize> {
-    pub space_size: Bound<GRID_DIMENSION>,
+    pub space_size: Coord<GRID_DIMENSION>,
     pub delta_t: usize,
 }
 
 impl<const GRID_DIMENSION: usize> PeriodicPlanDescriptor<GRID_DIMENSION> {
-    fn new(space_size: Bound<GRID_DIMENSION>, delta_t: usize) -> Self {
+    fn new(space_size: Coord<GRID_DIMENSION>, delta_t: usize) -> Self {
         PeriodicPlanDescriptor {
             space_size,
             delta_t,
@@ -47,7 +47,7 @@ where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
     pub fn new(
-        max_size: &Bound<GRID_DIMENSION>,
+        max_size: &Coord<GRID_DIMENSION>,
         stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) -> Self {
         // Zeroed out by construction
@@ -71,7 +71,7 @@ where
 
     pub fn apply(
         &mut self,
-        bound: Bound<GRID_DIMENSION>,
+        bound: Coord<GRID_DIMENSION>,
         n: usize,
         input: &mut [f32],
         output: &mut [f32],
@@ -169,7 +169,7 @@ mod unit_tests {
 
     fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        bound: Bound<GRID_DIMENSION>,
+        bound: Coord<GRID_DIMENSION>,
         n: usize,
         plan_library: &mut PeriodicPlanLibrary<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) where

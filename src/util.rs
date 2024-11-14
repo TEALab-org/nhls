@@ -2,10 +2,10 @@ pub use num_traits::{Num, One, Zero};
 
 pub trait NumTrait = Num + Copy + Send + Sync;
 
-pub type Bound<const GRID_DIMENSION: usize> = nalgebra::SVector<i32, { GRID_DIMENSION }>;
+pub type Coord<const GRID_DIMENSION: usize> = nalgebra::SVector<i32, { GRID_DIMENSION }>;
 pub type Box<const GRID_DIMENSION: usize> = nalgebra::SMatrix<i32, { GRID_DIMENSION }, 2>;
 
-pub fn real_buffer_size<const GRID_DIMENSION: usize>(space_size: &Bound<GRID_DIMENSION>) -> usize {
+pub fn real_buffer_size<const GRID_DIMENSION: usize>(space_size: &Coord<GRID_DIMENSION>) -> usize {
     let mut accumulator = 1;
     for d in space_size {
         accumulator *= *d as usize;
@@ -14,7 +14,7 @@ pub fn real_buffer_size<const GRID_DIMENSION: usize>(space_size: &Bound<GRID_DIM
 }
 
 pub fn complex_buffer_size<const GRID_DIMENSION: usize>(
-    space_size: &Bound<GRID_DIMENSION>,
+    space_size: &Coord<GRID_DIMENSION>,
 ) -> usize {
     let mut accumulator = 1;
     let mut size_iter = space_size.iter().rev();
@@ -26,8 +26,8 @@ pub fn complex_buffer_size<const GRID_DIMENSION: usize>(
 }
 
 pub fn linear_index<const GRID_DIMENSION: usize>(
-    index: &Bound<GRID_DIMENSION>,
-    bound: &Bound<GRID_DIMENSION>,
+    index: &Coord<GRID_DIMENSION>,
+    bound: &Coord<GRID_DIMENSION>,
 ) -> usize {
     let mut accumulator = 0;
     for d in 0..GRID_DIMENSION {
@@ -43,9 +43,9 @@ pub fn linear_index<const GRID_DIMENSION: usize>(
 
 pub fn linear_to_coord<const GRID_DIMENSION: usize>(
     linear_index: usize,
-    bound: &Bound<GRID_DIMENSION>,
-) -> Bound<GRID_DIMENSION> {
-    let mut result = Bound::zero();
+    bound: &Coord<GRID_DIMENSION>,
+) -> Coord<GRID_DIMENSION> {
+    let mut result = Coord::zero();
     let mut index_accumulator = linear_index;
 
     for d in 0..GRID_DIMENSION - 1 {
@@ -62,10 +62,10 @@ pub fn linear_to_coord<const GRID_DIMENSION: usize>(
 }
 
 pub fn periodic_offset_index<const GRID_DIMENSION: usize>(
-    index: &Bound<GRID_DIMENSION>,
-    bound: &Bound<GRID_DIMENSION>,
-) -> Bound<GRID_DIMENSION> {
-    let mut result = Bound::zero();
+    index: &Coord<GRID_DIMENSION>,
+    bound: &Coord<GRID_DIMENSION>,
+) -> Coord<GRID_DIMENSION> {
+    let mut result = Coord::zero();
     for d in 0..GRID_DIMENSION {
         let di_raw = index[d];
         debug_assert!(di_raw < bound[d]);
@@ -79,10 +79,10 @@ pub fn periodic_offset_index<const GRID_DIMENSION: usize>(
 }
 
 pub fn periodic_index<const GRID_DIMENSION: usize>(
-    index: &Bound<GRID_DIMENSION>,
-    bound: &Bound<GRID_DIMENSION>,
-) -> Bound<GRID_DIMENSION> {
-    let mut result = Bound::zero();
+    index: &Coord<GRID_DIMENSION>,
+    bound: &Coord<GRID_DIMENSION>,
+) -> Coord<GRID_DIMENSION> {
+    let mut result = Coord::zero();
     for d in 0..GRID_DIMENSION {
         let di_raw = index[d];
         result[d] = if di_raw < 0 {
@@ -97,7 +97,7 @@ pub fn periodic_index<const GRID_DIMENSION: usize>(
 }
 
 pub fn coord_to_linear_in_box<const GRID_DIMENSION: usize>(
-    coord: &Bound<GRID_DIMENSION>,
+    coord: &Coord<GRID_DIMENSION>,
     b: &Box<GRID_DIMENSION>,
 ) -> usize {
     #[cfg(test)]
@@ -124,11 +124,11 @@ pub fn coord_to_linear_in_box<const GRID_DIMENSION: usize>(
 pub fn linear_to_coord_in_box<const GRID_DIMENSION: usize>(
     index: usize,
     b: &Box<GRID_DIMENSION>,
-) -> Bound<GRID_DIMENSION> {
+) -> Coord<GRID_DIMENSION> {
     let bound = b.column(1) - b.column(0);
     debug_assert!(index <= real_buffer_size(&bound));
 
-    let mut result = Bound::zero();
+    let mut result = Coord::zero();
     let mut index_accumulator = index;
     for d in 0..GRID_DIMENSION - 1 {
         let mut dim_accumulator = 1;

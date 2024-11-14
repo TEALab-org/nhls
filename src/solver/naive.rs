@@ -14,7 +14,7 @@ pub fn naive_block_solve<
 >(
     bc_lookup: &Lookup,
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    bound: Bound<GRID_DIMENSION>,
+    bound: Coord<GRID_DIMENSION>,
     n: usize,
     input: &mut AlignedVec<f32>,
     output: &mut AlignedVec<f32>,
@@ -46,7 +46,7 @@ mod unit_tests {
     >(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bc_lookup: &Lookup,
-        bound: Bound<GRID_DIMENSION>,
+        bound: Coord<GRID_DIMENSION>,
         n: usize,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,

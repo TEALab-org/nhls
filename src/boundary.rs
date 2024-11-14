@@ -2,14 +2,14 @@ use crate::stencil::*;
 use crate::util::*;
 
 pub trait BCLookup<const GRID_DIMENSION: usize>: Sync {
-    fn value(&self, coord: &Bound<GRID_DIMENSION>, input: &[f32]) -> f32;
+    fn value(&self, coord: &Coord<GRID_DIMENSION>, input: &[f32]) -> f32;
 }
 
 pub fn gather_args<Lookup, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     lookup: &Lookup,
     input: &[f32],
-    coord: &Bound<GRID_DIMENSION>,
+    coord: &Coord<GRID_DIMENSION>,
 ) -> [f32; NEIGHBORHOOD_SIZE]
 where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
@@ -24,17 +24,17 @@ where
 }
 
 pub struct PeriodicBCLookup<const GRID_DIMENSION: usize> {
-    bound: Bound<GRID_DIMENSION>,
+    bound: Coord<GRID_DIMENSION>,
 }
 
 impl<const GRID_DIMENSION: usize> PeriodicBCLookup<GRID_DIMENSION> {
-    pub fn new(bound: Bound<GRID_DIMENSION>) -> Self {
+    pub fn new(bound: Coord<GRID_DIMENSION>) -> Self {
         PeriodicBCLookup { bound }
     }
 }
 
 impl<const GRID_DIMENSION: usize> BCLookup<GRID_DIMENSION> for PeriodicBCLookup<GRID_DIMENSION> {
-    fn value(&self, coord: &Bound<GRID_DIMENSION>, input: &[f32]) -> f32 {
+    fn value(&self, coord: &Coord<GRID_DIMENSION>, input: &[f32]) -> f32 {
         let p_coord = periodic_index(coord, &self.bound);
         let i = linear_index(&p_coord, &self.bound);
         input[i]
@@ -43,17 +43,17 @@ impl<const GRID_DIMENSION: usize> BCLookup<GRID_DIMENSION> for PeriodicBCLookup<
 
 pub struct ConstantBCLookup<const GRID_DIMENSION: usize> {
     value: f32,
-    bound: Bound<GRID_DIMENSION>,
+    bound: Coord<GRID_DIMENSION>,
 }
 
 impl<const GRID_DIMENSION: usize> ConstantBCLookup<GRID_DIMENSION> {
-    pub fn new(value: f32, bound: Bound<GRID_DIMENSION>) -> Self {
+    pub fn new(value: f32, bound: Coord<GRID_DIMENSION>) -> Self {
         ConstantBCLookup { value, bound }
     }
 }
 
 impl<const GRID_DIMENSION: usize> BCLookup<GRID_DIMENSION> for ConstantBCLookup<GRID_DIMENSION> {
-    fn value(&self, coord: &Bound<GRID_DIMENSION>, input: &[f32]) -> f32 {
+    fn value(&self, coord: &Coord<GRID_DIMENSION>, input: &[f32]) -> f32 {
         for d in 0..GRID_DIMENSION {
             let c = coord[d];
             if c < 0 || c >= self.bound[d] {

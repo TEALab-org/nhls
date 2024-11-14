@@ -17,7 +17,7 @@ pub struct Stencil<
     Operation: StencilOperation<NumType, NEIGHBORHOOD_SIZE>,
 {
     operation: Operation,
-    offsets: [Bound<GRID_DIMENSION>; NEIGHBORHOOD_SIZE],
+    offsets: [Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE],
     num_type: std::marker::PhantomData<NumType>,
 }
 
@@ -29,7 +29,7 @@ where
 {
     pub fn new(offsets: [[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE], operation: Operation) -> Self {
         Stencil {
-            offsets: std::array::from_fn(|i| Bound::from_column_slice(&offsets[i])),
+            offsets: std::array::from_fn(|i| Coord::from_column_slice(&offsets[i])),
             operation,
             num_type: std::marker::PhantomData,
         }
@@ -48,7 +48,7 @@ where
         weights
     }
 
-    pub fn offsets(&self) -> &[Bound<GRID_DIMENSION>; NEIGHBORHOOD_SIZE] {
+    pub fn offsets(&self) -> &[Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE] {
         &self.offsets
     }
 

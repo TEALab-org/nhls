@@ -8,7 +8,7 @@ pub fn box_apply<Lookup, Operation, const GRID_DIMENSION: usize, const NEIGHBORH
     bc_lookup: &Lookup,
     input: &[f32],
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    bound: &Bound<GRID_DIMENSION>,
+    bound: &Coord<GRID_DIMENSION>,
     output: &mut [f32],
     chunk_size: usize,
 ) where
