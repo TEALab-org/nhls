@@ -153,18 +153,26 @@ fn main() {
 
     // Backward FFT of result V
     for t in 0..200 {
-        for i in 0..width * (height / 2 + 1) {
-            fft_ic_output_buffer[i] *= squared_stencil_buffer[i];
-            fft_backwards_buffer[i] = fft_ic_output_buffer[i];
-        }
+        par_slice::multiply_by(
+            fft_ic_output_buffer.as_slice_mut(),
+            squared_stencil_buffer.as_slice_mut(),
+            chunk_size,
+        );
+        par_slice::copy(
+            fft_backwards_buffer.as_slice_mut(),
+            fft_ic_output_buffer.as_slice(),
+            chunk_size,
+        );
 
         backward_plan
             .c2r(&mut fft_backwards_buffer, &mut fft_ic_input_buffer)
             .unwrap();
 
-        for i in 0..width * height {
-            fft_ic_input_buffer[i] /= (width * height) as f32;
-        }
+        par_slice::div(
+            fft_ic_input_buffer.as_slice_mut(),
+            (width * height) as f32,
+            chunk_size,
+        );
 
         grid_to_image(
             width,

@@ -6,6 +6,11 @@ This repo is for exploring ways to solve NHLS problems.
 
 ## For Developers
 
+Control thread number with 
+```
+export RAYON_NUM_THREADS=n
+```
+
 ### Installing Rust
 
 If this is your first time using rust,

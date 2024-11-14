@@ -1,53 +1,73 @@
+use crate::util::*;
+
 /// All stencils operations must provide an operation that adheres to this type
-pub trait StencilOperation<FloatType: num::Float, const NEIGHBORHOOD_SIZE: usize> =
-    Fn(&[FloatType; NEIGHBORHOOD_SIZE]) -> FloatType;
+pub trait StencilOperation<NumType: NumTrait, const NEIGHBORHOOD_SIZE: usize> =
+    Fn(&[NumType; NEIGHBORHOOD_SIZE]) -> NumType;
+
+pub type StencilF32<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize> =
+    Stencil<f32, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>;
 
 /// Stencils are the combination of an operation and neighbors
 pub struct Stencil<
-    FloatType: num::Float,
+    NumType: NumTrait,
     Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
 > where
-    Operation: StencilOperation<FloatType, NEIGHBORHOOD_SIZE>,
+    Operation: StencilOperation<NumType, NEIGHBORHOOD_SIZE>,
 {
     operation: Operation,
-    offsets: [[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE],
-    float_type: std::marker::PhantomData<FloatType>,
+    offsets: [Bound<GRID_DIMENSION>; NEIGHBORHOOD_SIZE],
+    num_type: std::marker::PhantomData<NumType>,
 }
 
-impl<FloatType, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    Stencil<FloatType, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+impl<NumType, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    Stencil<NumType, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 where
-    Operation: StencilOperation<FloatType, NEIGHBORHOOD_SIZE>,
-    FloatType: num::Float,
+    Operation: StencilOperation<NumType, NEIGHBORHOOD_SIZE>,
+    NumType: NumTrait,
 {
     pub fn new(offsets: [[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE], operation: Operation) -> Self {
         Stencil {
-            offsets,
+            offsets: std::array::from_fn(|i| Bound::from_column_slice(&offsets[i])),
             operation,
-            float_type: std::marker::PhantomData,
+            num_type: std::marker::PhantomData,
         }
     }
 
     /// For linear stencils, we can extract the weight for a neighbor
     /// by passing in 1.0 for that neighbor and 0.0 for the others.
-    pub fn extract_weights(&self) -> [FloatType; NEIGHBORHOOD_SIZE] {
-        let mut weights = [FloatType::zero(); NEIGHBORHOOD_SIZE];
-        let mut arg_buffer = [FloatType::zero(); NEIGHBORHOOD_SIZE];
+    pub fn extract_weights(&self) -> [NumType; NEIGHBORHOOD_SIZE] {
+        let mut weights = [NumType::zero(); NEIGHBORHOOD_SIZE];
+        let mut arg_buffer = [NumType::zero(); NEIGHBORHOOD_SIZE];
         for n in 0..NEIGHBORHOOD_SIZE {
-            arg_buffer[n] = FloatType::one();
+            arg_buffer[n] = NumType::one();
             weights[n] = (self.operation)(&arg_buffer);
-            arg_buffer[n] = FloatType::zero();
+            arg_buffer[n] = NumType::zero();
         }
         weights
     }
 
-    pub fn offsets(&self) -> &[[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE] {
+    pub fn offsets(&self) -> &[Bound<GRID_DIMENSION>; NEIGHBORHOOD_SIZE] {
         &self.offsets
     }
 
-    pub fn apply(&self, args: &[FloatType; NEIGHBORHOOD_SIZE]) -> FloatType {
+    pub fn slopes(&self) -> Slopes<GRID_DIMENSION> {
+        let mut result = Slopes::zero();
+        for neighbor in self.offsets {
+            for d in 0..GRID_DIMENSION {
+                let neighbor_d = neighbor[d];
+                if neighbor_d > 0 {
+                    result[(d, 1)] = result[(d, 1)].max(neighbor_d);
+                } else {
+                    result[(d, 0)] = result[(d, 0)].max(-neighbor_d);
+                }
+            }
+        }
+        result
+    }
+
+    pub fn apply(&self, args: &[NumType; NEIGHBORHOOD_SIZE]) -> NumType {
         (self.operation)(args)
     }
 }
@@ -56,6 +76,7 @@ where
 mod unit_tests {
     use super::*;
     use float_cmp::assert_approx_eq;
+    use nalgebra::matrix;
 
     #[test]
     fn extract_weights() {
@@ -73,6 +94,30 @@ mod unit_tests {
             assert_approx_eq!(f32, w[0], 2.0, ulps = 1);
             assert_approx_eq!(f32, w[1], 3.0, ulps = 1);
             assert_approx_eq!(f32, w[2], 5.0, ulps = 1);
+        }
+    }
+
+    #[test]
+    fn slopes() {
+        {
+            let s = Stencil::new([[1]], |args: &[f32; 1]| 2.0 * args[0]);
+            let w = s.slopes();
+            assert_eq!(w, matrix![0, 1]);
+        }
+
+        {
+            let s = Stencil::new([[-1]], |args: &[f32; 1]| 2.0 * args[0]);
+            let w = s.slopes();
+            assert_eq!(w, matrix![1, 0]);
+        }
+
+        {
+            let s = Stencil::new(
+                [[-1, 0], [0, 0], [1, 0], [0, 2], [0, -3]],
+                |args: &[f32; 5]| 2.0 * args[0] + args[1],
+            );
+            let w = s.slopes();
+            assert_eq!(w, matrix![1, 1; 3, 2]);
         }
     }
 }

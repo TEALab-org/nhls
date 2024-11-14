@@ -74,6 +74,8 @@ fn main() {
 
     let final_t: usize = 200 * steps_per_image;
 
+    let chunk_size = 50000;
+
     // Step size t
     let dt: f32 = 1.0;
 

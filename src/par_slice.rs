@@ -1,15 +1,11 @@
 //! Parallelized operations over slices of numerical data.
 
-use num_traits::Num;
+use crate::util::*;
 use rayon::prelude::*;
 
 /// Sets each element to the same value.
 /// `chunk_size` is break the work into tasks for multi-threading.
-pub fn set_value<NumType: Num + Copy + Send + Sync>(
-    a_slice: &mut [NumType],
-    value: NumType,
-    chunk_size: usize,
-) {
+pub fn set_value<NumType: NumTrait>(a_slice: &mut [NumType], value: NumType, chunk_size: usize) {
     a_slice
         .par_chunks_mut(chunk_size)
         .for_each(|a_chunk: &mut [NumType]| {
@@ -19,7 +15,7 @@ pub fn set_value<NumType: Num + Copy + Send + Sync>(
         });
 }
 
-pub fn square<NumType: Num + Copy + Send + Sync>(a_slice: &mut [NumType], chunk_size: usize) {
+pub fn square<NumType: NumTrait>(a_slice: &mut [NumType], chunk_size: usize) {
     a_slice
         .par_chunks_mut(chunk_size)
         .for_each(|a_chunk: &mut [NumType]| {
@@ -30,17 +26,38 @@ pub fn square<NumType: Num + Copy + Send + Sync>(a_slice: &mut [NumType], chunk_
 }
 
 /// Implements a = a * b over slice elements.
-pub fn multiply_by<NumType: Num + Copy + Send>(
+pub fn multiply_by<NumType: NumTrait>(
     a_slice: &mut [NumType],
-    b_slice: &mut [NumType],
+    b_slice: &[NumType],
     chunk_size: usize,
 ) {
     a_slice
         .par_chunks_mut(chunk_size)
-        .zip(b_slice.par_chunks_mut(chunk_size))
+        .zip(b_slice.par_chunks(chunk_size))
         .for_each(|(a_chunk, b_chunk)| {
-            for (a, b) in a_chunk.iter_mut().zip(b_chunk.iter_mut()) {
+            for (a, b) in a_chunk.iter_mut().zip(b_chunk.iter()) {
                 *a = *a * *b;
+            }
+        });
+}
+
+/// Implements a = a / c over slice elements.
+pub fn div<NumType: NumTrait>(a_slice: &mut [NumType], c: NumType, chunk_size: usize) {
+    a_slice.par_chunks_mut(chunk_size).for_each(|a_chunk| {
+        for a in a_chunk.iter_mut() {
+            *a = *a / c;
+        }
+    });
+}
+
+/// Implements a = b over slice elements.
+pub fn copy<NumType: NumTrait>(a_slice: &mut [NumType], b_slice: &[NumType], chunk_size: usize) {
+    a_slice
+        .par_chunks_mut(chunk_size)
+        .zip(b_slice.par_chunks(chunk_size))
+        .for_each(|(a_chunk, b_chunk)| {
+            for (a, b) in a_chunk.iter_mut().zip(b_chunk.iter()) {
+                *a = *b;
             }
         });
 }
