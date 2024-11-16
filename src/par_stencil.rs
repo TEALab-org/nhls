@@ -1,83 +1,32 @@
-use crate::boundary::*;
+use crate::domain::*;
 use crate::stencil::*;
 use crate::util::*;
 use rayon::prelude::*;
 
-/// Modifies input buffer!!
-pub fn box_apply<Lookup, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
-    bc_lookup: &Lookup,
-    input: &[f32],
+pub fn box_apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+    bc: &BC,
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    bound: &Coord<GRID_DIMENSION>,
-    output: &mut [f32],
+    input: &Domain<GRID_DIMENSION>,
+    output: &mut Domain<GRID_DIMENSION>,
     chunk_size: usize,
 ) where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
-    Lookup: BCLookup<GRID_DIMENSION>,
+    BC: BCCheck<GRID_DIMENSION>,
 {
-    debug_assert_eq!(input.len(), output.len());
     output
-        .par_chunks_mut(chunk_size)
-        .enumerate()
-        .for_each(|(i, output_chunk)| {
-            let offset = i * chunk_size;
-            for i in 0..output_chunk.len() {
-                let linear_index = offset + i;
-                let coord = linear_to_coord(linear_index, &bound);
-
-                // Gather neighbor values
-                let args = gather_args(stencil, bc_lookup, input, &coord);
-
-                // Evaluate stencil
-                let v = stencil.apply(&args);
-
-                // Save result into output_chunk
-                output_chunk[i] = v;
-            }
-        });
+        .par_modify_access(chunk_size)
+        .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
+            d.coord_iter_mut().for_each(
+                |(world_coord, value_mut): (Coord<GRID_DIMENSION>, &mut f32)| {
+                    let args = gather_args(bc, stencil, input, &world_coord);
+                    let result = stencil.apply(&args);
+                    *value_mut = result;
+                },
+            )
+        })
 }
+
 /*
-/// Modifies input buffer!!
-pub fn trapezoid_apply<Lookup, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
-    bc_lookup: &Lookup,
-    stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    input: &[f32],
-    output: &mut [f32],
-    input_boxbound: &Box<GRID_DIMENSION>,
-    output_box: &Box<GRID_DIMENSION>,
-    chunk_size: usize,
-) where
-    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
-    Lookup: BCLookup<GRID_DIMENSION>,
-{
-    debug_assert_eq!(input.len(), output.len());
-    output
-        .par_chunks_mut(chunk_size)
-        .enumerate()
-        .for_each(|(i, output_chunk)| {
-            let offset = i * chunk_size;
-            for i in 0..output_chunk.len() {
-                // account of output_chunk location
-                let output_index = offset + i;
-
-                let output_coord = linear_to_coord(output_index, &bound);
-
-                // translate to world_coord
-                let world_coord = coord +
-
-                // Gather neighbor values
-                let args = gather_args(stencil, bc_lookup, input, &coord);
-
-                // Evaluate stencil
-                let v = stencil.apply(&args);
-
-                // Save result into output_chunk
-                output_chunk[i] = v;
-            }
-        });
-}
-*/
-
 #[cfg(test)]
 mod unit_test {
     use super::*;
@@ -111,3 +60,4 @@ mod unit_test {
         }
     }
 }
+*/

@@ -5,6 +5,11 @@ pub trait NumTrait = Num + Copy + Send + Sync;
 pub type Coord<const GRID_DIMENSION: usize> = nalgebra::SVector<i32, { GRID_DIMENSION }>;
 pub type Box<const GRID_DIMENSION: usize> = nalgebra::SMatrix<i32, { GRID_DIMENSION }, 2>;
 
+pub fn box_buffer_size<const GRID_DIMENSION: usize>(view_box: &Box<GRID_DIMENSION>) -> usize {
+    let diff = view_box.column(1) - view_box.column(2);
+    real_buffer_size(&diff)
+}
+
 pub fn real_buffer_size<const GRID_DIMENSION: usize>(space_size: &Coord<GRID_DIMENSION>) -> usize {
     let mut accumulator = 1;
     for d in space_size {
@@ -26,13 +31,13 @@ pub fn complex_buffer_size<const GRID_DIMENSION: usize>(
 }
 
 pub fn linear_index<const GRID_DIMENSION: usize>(
-    index: &Coord<GRID_DIMENSION>,
+    coord: &Coord<GRID_DIMENSION>,
     bound: &Coord<GRID_DIMENSION>,
 ) -> usize {
     let mut accumulator = 0;
     for d in 0..GRID_DIMENSION {
-        debug_assert!(index[d] >= 0);
-        let mut dim_accumulator = index[d] as usize;
+        debug_assert!(coord[d] >= 0);
+        let mut dim_accumulator = coord[d] as usize;
         for dn in (d + 1)..GRID_DIMENSION {
             dim_accumulator *= bound[dn] as usize;
         }
@@ -141,6 +146,18 @@ pub fn linear_to_coord_in_box<const GRID_DIMENSION: usize>(
     }
     result[GRID_DIMENSION - 1] = index_accumulator as i32;
     result + b.column(0)
+}
+
+pub fn coord_in_box<const GRID_DIMENSION: usize>(
+    coord: &Coord<GRID_DIMENSION>,
+    view: &Box<GRID_DIMENSION>,
+) -> bool {
+    for d in 0..GRID_DIMENSION {
+        if coord[d] < view[(d, 0)] || coord[d] > view[(d, 1)] {
+            return false;
+        }
+    }
+    return true;
 }
 
 #[cfg(test)]
