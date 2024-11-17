@@ -97,13 +97,14 @@ pub fn coord_to_linear_in_box<const GRID_DIMENSION: usize>(
 ) -> usize {
     #[cfg(test)]
     {
+        // TODO replace with `debug_assert!(b,contains ...)`
         for d in 0..GRID_DIMENSION {
             assert!(coord[d] >= b[(d, 0)]);
             assert!(coord[d] <= b[(d, 1)]);
         }
     }
 
-    let bound = b.column(1) - b.column(0);
+    let bound = (b.column(1) - b.column(0)).add_scalar(1);
     let translated_coord = coord - b.column(0);
     let mut accumulator = 0;
     for d in 0..GRID_DIMENSION {
@@ -120,7 +121,7 @@ pub fn linear_to_coord_in_box<const GRID_DIMENSION: usize>(
     index: usize,
     b: &Box<GRID_DIMENSION>,
 ) -> Coord<GRID_DIMENSION> {
-    let bound = b.column(1) - b.column(0);
+    let bound = (b.column(1) - b.column(0)).add_scalar(1);
     debug_assert!(index <= real_buffer_size(&bound));
 
     let mut result = Coord::zero();
@@ -282,13 +283,13 @@ mod unit_tests {
     #[test]
     fn coord_to_linear_in_box_test() {
         assert_eq!(
-            coord_to_linear_in_box(&vector![5, 5, 5], &matrix![0, 10; 0, 10; 0, 10]),
+            coord_to_linear_in_box(&vector![5, 5, 5], &matrix![0, 9; 0, 9; 0, 9]),
             linear_index(&vector![5, 5, 5], &vector![10, 10, 10])
         );
 
         assert_eq!(
             coord_to_linear_in_box(&vector![5, 5, 5], &matrix![2, 8; 2, 8; 2, 8]),
-            linear_index(&vector![3, 3, 3], &vector![6, 6, 6])
+            linear_index(&vector![3, 3, 3], &vector![7, 7, 7])
         );
     }
 
@@ -298,5 +299,22 @@ mod unit_tests {
             linear_to_coord_in_box(5, &matrix![2, 8]),
             linear_to_coord(7, &vector![10])
         );
+    }
+
+    #[test]
+    fn in_box_comp_test() {
+        {
+            let bound = matrix![0, 9];
+            let c = vector![8];
+            let li = coord_to_linear_in_box(&c, &bound);
+            assert_eq!(c, linear_to_coord_in_box(li, &bound));
+        }
+
+        {
+            let bound = matrix![0, 9; 0, 9];
+            let c = vector![9, 8];
+            let li = coord_to_linear_in_box(&c, &bound);
+            assert_eq!(c, linear_to_coord_in_box(li, &bound));
+        }
     }
 }

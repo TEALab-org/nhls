@@ -18,7 +18,7 @@ pub fn box_apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
         .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
             d.coord_iter_mut().for_each(
                 |(world_coord, value_mut): (Coord<GRID_DIMENSION>, &mut f32)| {
-                    let args = gather_args(bc, stencil, input, &world_coord);
+                    let args = gather_args(stencil, bc, input, &world_coord);
                     let result = stencil.apply(&args);
                     *value_mut = result;
                 },

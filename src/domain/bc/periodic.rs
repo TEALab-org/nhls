@@ -39,6 +39,7 @@ fn periodic_coord<const GRID_DIMENSION: usize>(
             di_raw
         }
     }
+    println!("periodic_coord, c: {:?}, r: {:?}", index, result);
     result
 }
 

@@ -19,6 +19,10 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     pub fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f32 {
         debug_assert!(coord_in_box(world_coord, &self.view_box));
         let index = coord_to_linear_in_box(world_coord, &self.view_box);
+        println!(
+            "view, c: {:?}, i: {}, r: {}",
+            world_coord, index, self.buffer[index]
+        );
         self.buffer[index]
     }
 
