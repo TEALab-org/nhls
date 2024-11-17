@@ -22,6 +22,33 @@ pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORH
     }
     par_stencil::box_apply(bc, stencil, input, output, chunk_size);
 }
+
+pub fn periodic_box_apply<
+    'a,
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+>(
+    stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    input: &mut Domain<'a, GRID_DIMENSION>,
+    output: &mut Domain<'a, GRID_DIMENSION>,
+    steps: usize,
+    chunk_size: usize,
+) where
+    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+{
+    debug_assert_eq!(input.view_box(), output.view_box());
+    for _ in 0..steps - 1 {
+        {
+            let bc = PeriodicCheck::new(input);
+            par_stencil::box_apply(&bc, stencil, input, output, chunk_size);
+        }
+        std::mem::swap(input, output);
+    }
+    let bc = PeriodicCheck::new(input);
+    par_stencil::box_apply(&bc, stencil, input, output, chunk_size);
+}
+
 /*
 
 #[cfg(test)]

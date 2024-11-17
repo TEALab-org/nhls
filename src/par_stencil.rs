@@ -26,38 +26,43 @@ pub fn box_apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
         })
 }
 
-/*
 #[cfg(test)]
 mod unit_test {
     use super::*;
     use float_cmp::assert_approx_eq;
-    use nalgebra::vector;
+    use nalgebra::{matrix, vector};
 
     #[test]
     fn par_stencil_test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let max_size = vector![100];
-        let n_r = real_buffer_size(&max_size);
-
+        let bound = matrix![0, 99];
+        let n_r = box_buffer_size(&bound);
         {
-            let input = vec![1.0; n_r];
-            let lookup = PeriodicBCLookup::new(max_size);
-            let mut output = vec![0.0; n_r];
-            box_apply(&lookup, &input, &stencil, &max_size, &mut output, 1);
-            for x in &output {
+            let mut input_buffer = vec![1.0; n_r];
+            let input_domain = Domain::new(bound, &mut input_buffer);
+
+            let mut output_buffer = vec![2.0; n_r];
+            let mut output_domain = Domain::new(bound, &mut output_buffer);
+
+            let bc = PeriodicCheck::new(&input_domain);
+            box_apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
+            for x in &output_buffer {
                 assert_approx_eq!(f32, *x, 1.0);
             }
         }
 
         {
-            let input = vec![2.0; n_r];
-            let lookup = PeriodicBCLookup::new(max_size);
-            let mut output = vec![0.0; n_r];
-            box_apply(&lookup, &input, &stencil, &max_size, &mut output, 3);
-            for x in &output {
+            let mut input_buffer = vec![2.0; n_r];
+            let input_domain = Domain::new(bound, &mut input_buffer);
+
+            let mut output_buffer = vec![1.0; n_r];
+            let mut output_domain = Domain::new(bound, &mut output_buffer);
+
+            let bc = PeriodicCheck::new(&input_domain);
+            box_apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
+            for x in &output_buffer {
                 assert_approx_eq!(f32, *x, 2.0);
             }
         }
     }
 }
-*/

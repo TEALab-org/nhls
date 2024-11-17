@@ -1,3 +1,4 @@
+use nalgebra::*;
 pub use num_traits::{Num, One, Zero};
 
 pub trait NumTrait = Num + Copy + Send + Sync;
@@ -6,7 +7,7 @@ pub type Coord<const GRID_DIMENSION: usize> = nalgebra::SVector<i32, { GRID_DIME
 pub type Box<const GRID_DIMENSION: usize> = nalgebra::SMatrix<i32, { GRID_DIMENSION }, 2>;
 
 pub fn box_buffer_size<const GRID_DIMENSION: usize>(view_box: &Box<GRID_DIMENSION>) -> usize {
-    let diff = view_box.column(1) - view_box.column(2);
+    let diff = (view_box.column(1) - view_box.column(0)).add_scalar(1);
     real_buffer_size(&diff)
 }
 
@@ -28,6 +29,13 @@ pub fn complex_buffer_size<const GRID_DIMENSION: usize>(
         accumulator *= *d as usize;
     }
     accumulator
+}
+
+pub fn box_complex_buffer_size<const GRID_DIMENSION: usize>(
+    view_box: &Box<GRID_DIMENSION>,
+) -> usize {
+    let diff = (view_box.column(1) - view_box.column(0)).add_scalar(1);
+    complex_buffer_size(&diff)
 }
 
 pub fn linear_index<const GRID_DIMENSION: usize>(
@@ -79,24 +87,6 @@ pub fn periodic_offset_index<const GRID_DIMENSION: usize>(
         } else {
             di_raw
         };
-    }
-    result
-}
-
-pub fn periodic_index<const GRID_DIMENSION: usize>(
-    index: &Coord<GRID_DIMENSION>,
-    bound: &Coord<GRID_DIMENSION>,
-) -> Coord<GRID_DIMENSION> {
-    let mut result = Coord::zero();
-    for d in 0..GRID_DIMENSION {
-        let di_raw = index[d];
-        result[d] = if di_raw < 0 {
-            bound[d] + di_raw
-        } else if di_raw >= bound[d] {
-            di_raw % bound[d]
-        } else {
-            di_raw
-        }
     }
     result
 }
@@ -185,6 +175,33 @@ mod unit_tests {
     }
 
     #[test]
+    fn box_buffer_size_test() {
+        {
+            let dimensions = matrix![0, 5];
+            let real_size = box_buffer_size(&dimensions);
+            assert_eq!(real_size, 6);
+            let complex_size = box_complex_buffer_size(&dimensions);
+            assert_eq!(complex_size, (6 / 2) + 1);
+        }
+
+        {
+            let dimensions = matrix![0, 5; 0, 7; 0, 9];
+            let real_size = box_buffer_size(&dimensions);
+            assert_eq!(real_size, 6 * 8 * 10);
+            let complex_size = box_complex_buffer_size(&dimensions);
+            assert_eq!(complex_size, 6 * 8 * ((10 / 2) + 1));
+        }
+
+        {
+            let dimensions = matrix![1, 6; 1, 8; 1, 10];
+            let real_size = box_buffer_size(&dimensions);
+            assert_eq!(real_size, 6 * 8 * 10);
+            let complex_size = box_complex_buffer_size(&dimensions);
+            assert_eq!(complex_size, 6 * 8 * ((10 / 2) + 1));
+        }
+    }
+
+    #[test]
     fn linear_index_test() {
         {
             let index = vector![5, 7, 11];
@@ -238,39 +255,6 @@ mod unit_tests {
                 periodic_offset_index(&index, &bound),
                 vector![0, 99, 96, 81, 34]
             );
-        }
-    }
-
-    #[test]
-    fn periodic_index_test() {
-        {
-            let index = vector![0, 0];
-            let bound = vector![10, 10];
-            assert_eq!(periodic_index(&index, &bound), vector![0, 0]);
-        }
-
-        {
-            let index = vector![-1, 0];
-            let bound = vector![10, 10];
-            assert_eq!(periodic_index(&index, &bound), vector![9, 0]);
-        }
-
-        {
-            let index = vector![0, -1];
-            let bound = vector![10, 10];
-            assert_eq!(periodic_index(&index, &bound), vector![0, 9]);
-        }
-
-        {
-            let index = vector![0, -1];
-            let bound = vector![10, 10];
-            assert_eq!(periodic_index(&index, &bound), vector![0, 9]);
-        }
-
-        {
-            let index = vector![0, -1, -4, -19, 134];
-            let bound = vector![100, 100, 100, 100, 100];
-            assert_eq!(periodic_index(&index, &bound), vector![0, 99, 96, 81, 34]);
         }
     }
 
