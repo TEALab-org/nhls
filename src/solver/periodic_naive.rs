@@ -15,14 +15,14 @@ pub fn box_solve<'a, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
 {
     debug_assert_eq!(input.view_box(), output.view_box());
     for t in 0..steps - 1 {
-        println!("t: {}", t);
+        //println!("t: {}", t);
         {
             let bc = PeriodicCheck::new(input);
             par_stencil::box_apply(&bc, stencil, input, output, chunk_size);
         }
         std::mem::swap(input, output);
     }
-    println!("final t");
+    //println!("final t");
     let bc = PeriodicCheck::new(input);
     par_stencil::box_apply(&bc, stencil, input, output, chunk_size);
 }

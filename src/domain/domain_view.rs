@@ -11,6 +11,14 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
         &self.view_box
     }
 
+    pub fn buffer(&self) -> &[f32] {
+        self.buffer
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut [f32] {
+        self.buffer
+    }
+
     pub fn new(view_box: Box<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
         debug_assert_eq!(buffer.len(), box_buffer_size(&view_box));
         Domain { view_box, buffer }
@@ -19,10 +27,12 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     pub fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f32 {
         debug_assert!(coord_in_box(world_coord, &self.view_box));
         let index = coord_to_linear_in_box(world_coord, &self.view_box);
+        /*
         println!(
             "view, c: {:?}, i: {}, r: {}",
             world_coord, index, self.buffer[index]
         );
+        */
         self.buffer[index]
     }
 

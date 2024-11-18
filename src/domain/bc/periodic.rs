@@ -24,7 +24,7 @@ impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION> for PeriodicCheck<'_, 
 
 /// Find the coord within bound assuming periodic boundary conditions.
 /// Assumes that coords are no more than one box away!
-fn periodic_coord<const GRID_DIMENSION: usize>(
+pub fn periodic_coord<const GRID_DIMENSION: usize>(
     index: &Coord<GRID_DIMENSION>,
     bound: &Box<GRID_DIMENSION>,
 ) -> Coord<GRID_DIMENSION> {
@@ -39,7 +39,7 @@ fn periodic_coord<const GRID_DIMENSION: usize>(
             di_raw
         }
     }
-    println!("periodic_coord, c: {:?}, r: {:?}", index, result);
+    //println!("periodic_coord, c: {:?}, r: {:?}", index, result);
     result
 }
 

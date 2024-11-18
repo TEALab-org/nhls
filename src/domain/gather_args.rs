@@ -18,10 +18,12 @@ where
         result[i] = bc
             .check(&n_world_coord)
             .unwrap_or_else(|| input.view(&n_world_coord));
+        /*
         println!(
             "wc: {:?}, ni: {:?}, nwc: {:?}, r: {}\n",
             world_coord, n_i, n_world_coord, result[i]
         );
+        */
     }
     result
 }
