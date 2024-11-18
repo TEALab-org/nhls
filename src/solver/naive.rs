@@ -1,36 +1,55 @@
-use crate::boundary::*;
+use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
 use crate::util::*;
 use fftw::array::*;
 
-/// Modifies input buffer.
-/// We do double buffering, so can't pass in slices
-pub fn naive_block_solve<
-    Lookup,
+pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+    bc: &BC,
+    stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    input: &mut Domain<'a, GRID_DIMENSION>,
+    output: &mut Domain<'a, GRID_DIMENSION>,
+    steps: usize,
+    chunk_size: usize,
+) where
+    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+    BC: BCCheck<GRID_DIMENSION>,
+{
+    debug_assert_eq!(input.view_box(), output.view_box());
+    for _ in 0..steps - 1 {
+        par_stencil::box_apply(bc, stencil, input, output, chunk_size);
+        std::mem::swap(input, output);
+    }
+    par_stencil::box_apply(bc, stencil, input, output, chunk_size);
+}
+
+pub fn periodic_box_apply<
+    'a,
     Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
 >(
-    bc_lookup: &Lookup,
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    bound: Coord<GRID_DIMENSION>,
-    n: usize,
-    input: &mut AlignedVec<f32>,
-    output: &mut AlignedVec<f32>,
+    input: &mut Domain<'a, GRID_DIMENSION>,
+    output: &mut Domain<'a, GRID_DIMENSION>,
+    steps: usize,
     chunk_size: usize,
 ) where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
-    Lookup: BCLookup<GRID_DIMENSION>,
 {
-    debug_assert_eq!(input.len(), real_buffer_size(&bound));
-    debug_assert_eq!(output.len(), real_buffer_size(&bound));
-    for _ in 0..n - 1 {
-        par_stencil::box_apply(bc_lookup, input, stencil, &bound, output, chunk_size);
+    debug_assert_eq!(input.view_box(), output.view_box());
+    for _ in 0..steps - 1 {
+        {
+            let bc = PeriodicCheck::new(input);
+            par_stencil::box_apply(&bc, stencil, input, output, chunk_size);
+        }
         std::mem::swap(input, output);
     }
-    par_stencil::box_apply(bc_lookup, input, stencil, &bound, output, chunk_size);
+    let bc = PeriodicCheck::new(input);
+    par_stencil::box_apply(&bc, stencil, input, output, chunk_size);
 }
+
+/*
 
 #[cfg(test)]
 mod unit_tests {
@@ -185,3 +204,4 @@ mod unit_tests {
         }
     }
 }
+*/

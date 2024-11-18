@@ -1,3 +1,5 @@
+use crate::domain::periodic_coord;
+use crate::domain::Domain;
 use crate::par_slice;
 use crate::solver::fft_plan::*;
 use crate::stencil::*;
@@ -11,16 +13,13 @@ use crate::util::*;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 struct PeriodicPlanDescriptor<const GRID_DIMENSION: usize> {
-    pub space_size: Coord<GRID_DIMENSION>,
-    pub delta_t: usize,
+    pub bound: Box<GRID_DIMENSION>,
+    pub steps: usize,
 }
 
 impl<const GRID_DIMENSION: usize> PeriodicPlanDescriptor<GRID_DIMENSION> {
-    fn new(space_size: Coord<GRID_DIMENSION>, delta_t: usize) -> Self {
-        PeriodicPlanDescriptor {
-            space_size,
-            delta_t,
-        }
+    fn new(bound: Box<GRID_DIMENSION>, steps: usize) -> Self {
+        PeriodicPlanDescriptor { bound, steps }
     }
 }
 
@@ -37,6 +36,7 @@ pub struct PeriodicPlanLibrary<
     fft_plan_library: FFTPlanLibrary<GRID_DIMENSION>,
     stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     real_buffer: AlignedVec<f32>,
+    complex_buffer: AlignedVec<c32>,
     convolution_buffer: AlignedVec<c32>,
     stencil_weights: [f32; NEIGHBORHOOD_SIZE],
 }
@@ -47,16 +47,16 @@ where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
     pub fn new(
-        max_size: &Coord<GRID_DIMENSION>,
+        max_bound: &Box<GRID_DIMENSION>,
         stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) -> Self {
         // Zeroed out by construction
-        let max_real_size = real_buffer_size(max_size);
+        let max_real_size = box_buffer_size(max_bound);
         let real_buffer = fftw::array::AlignedVec::new(max_real_size);
 
-        let max_complex_size = complex_buffer_size(max_size);
+        let max_complex_size = box_complex_buffer_size(max_bound);
         let convolution_buffer = fftw::array::AlignedVec::new(max_complex_size);
-
+        let complex_buffer = fftw::array::AlignedVec::new(max_complex_size);
         let stencil_weights = stencil.extract_weights();
 
         PeriodicPlanLibrary {
@@ -65,20 +65,20 @@ where
             stencil,
             real_buffer,
             convolution_buffer,
+            complex_buffer,
             stencil_weights,
         }
     }
 
     pub fn apply(
         &mut self,
-        bound: Coord<GRID_DIMENSION>,
-        n: usize,
-        input: &mut [f32],
-        output: &mut [f32],
-        complex_buffer: &mut [c32],
+        input: &mut Domain<GRID_DIMENSION>,
+        output: &mut Domain<GRID_DIMENSION>,
+        steps: usize,
         chunk_size: usize,
     ) {
-        let key = PeriodicPlanDescriptor::new(bound, n);
+        debug_assert_eq!(input.view_box(), output.view_box());
+        let key = PeriodicPlanDescriptor::new(*input.view_box(), steps);
         // Can't do clippy fix on this line,
         // creating the new convolution requires mutable self borrow,
         // should probably break that out a bit so we can borrow self members separately.
@@ -88,25 +88,25 @@ where
             self.convolution_map.insert(key, new_convolution);
         }
         let convolution = self.convolution_map.get(&key).unwrap();
-        let fft_plan = self.fft_plan_library.get_plan(bound);
+        let fft_plan = self.fft_plan_library.get_plan(*input.view_box());
 
         // fftw bindings expect slices of specific size
-        let n_r = real_buffer_size(&bound);
-        let n_c = complex_buffer_size(&bound);
+        let n_r = box_buffer_size(input.view_box());
+        let n_c = box_complex_buffer_size(input.view_box());
         fft_plan
             .forward_plan
-            .r2c(&mut input[0..n_r], &mut complex_buffer[0..n_c])
+            .r2c(input.buffer_mut(), &mut self.complex_buffer[0..n_c])
             .unwrap();
         par_slice::multiply_by(
-            &mut complex_buffer[0..n_c],
+            &mut self.complex_buffer[0..n_c],
             convolution.as_slice(),
             chunk_size,
         );
         fft_plan
             .backward_plan
-            .c2r(&mut complex_buffer[0..n_c], &mut output[0..n_r])
+            .c2r(&mut self.complex_buffer[0..n_c], output.buffer_mut())
             .unwrap();
-        par_slice::div(&mut output[0..n_r], n_r as f32, chunk_size);
+        par_slice::div(output.buffer_mut(), n_r as f32, chunk_size);
     }
 
     fn new_convolution(
@@ -117,15 +117,15 @@ where
         // Place offsets in real buffer
         let offsets = self.stencil.offsets();
         for n_i in 0..NEIGHBORHOOD_SIZE {
-            let index = periodic_offset_index(&offsets[n_i], &descriptor.space_size);
-            let l = linear_index(&index, &descriptor.space_size);
+            let index = periodic_coord(&offsets[n_i], &descriptor.bound);
+            let l = coord_to_linear_in_box(&index, &descriptor.bound);
             self.real_buffer[l] = self.stencil_weights[n_i];
         }
 
         // Calculate convolution of stencil
-        let n_r = real_buffer_size(&descriptor.space_size);
-        let n_c = complex_buffer_size(&descriptor.space_size);
-        let fft_plan = self.fft_plan_library.get_plan(descriptor.space_size);
+        let n_r = box_buffer_size(&descriptor.bound);
+        let n_c = box_complex_buffer_size(&descriptor.bound);
+        let fft_plan = self.fft_plan_library.get_plan(descriptor.bound);
         fft_plan
             .forward_plan
             .r2c(
@@ -136,16 +136,15 @@ where
 
         // clean up real buffer
         for n_i in 0..NEIGHBORHOOD_SIZE {
-            let index = periodic_offset_index(&offsets[n_i], &descriptor.space_size);
-            let l = linear_index(&index, &descriptor.space_size);
+            let index = periodic_coord(&offsets[n_i], &descriptor.bound);
+            let l = coord_to_linear_in_box(&index, &descriptor.bound);
             self.real_buffer[l] = 0.0;
         }
 
         // Apply power calculation to convolution
-        let complex_buffer_size = complex_buffer_size(&descriptor.space_size);
-        let mut result_buffer = fftw::array::AlignedVec::new(complex_buffer_size);
+        let mut result_buffer = fftw::array::AlignedVec::new(n_c);
         par_slice::power(
-            descriptor.delta_t,
+            descriptor.steps,
             &mut self.convolution_buffer[0..n_c],
             &mut result_buffer[0..n_c],
             chunk_size,
@@ -165,36 +164,32 @@ where
 mod unit_tests {
     use super::*;
     use float_cmp::assert_approx_eq;
-    use nalgebra::vector;
+    use nalgebra::{matrix, vector};
 
     fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        bound: Coord<GRID_DIMENSION>,
-        n: usize,
+        bound: Box<GRID_DIMENSION>,
+        steps: usize,
         plan_library: &mut PeriodicPlanLibrary<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     {
         let chunk_size = 1;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let rbs = real_buffer_size(&bound);
-        let cbs = complex_buffer_size(&bound);
+        let rbs = box_buffer_size(&bound);
+        let cbs = box_complex_buffer_size(&bound);
 
-        let mut input_x = fftw::array::AlignedVec::new(rbs + 4);
+        let mut input_x = fftw::array::AlignedVec::new(rbs);
         for x in input_x.as_slice_mut() {
             *x = 1.0f32;
         }
         let input_copy = input_x.clone();
-        let mut complex_buffer = fftw::array::AlignedVec::new(cbs + 10);
-        let mut result_buffer = fftw::array::AlignedVec::new(rbs + 14);
-        plan_library.apply(
-            bound,
-            n,
-            &mut input_x,
-            &mut result_buffer,
-            &mut complex_buffer,
-            chunk_size,
-        );
+        let mut input_domain = Domain::new(bound, input_x.as_slice_mut());
+
+        let mut result_buffer = fftw::array::AlignedVec::new(rbs);
+        let mut output_domain = Domain::new(bound, result_buffer.as_slice_mut());
+
+        plan_library.apply(&mut input_domain, &mut output_domain, steps, chunk_size);
         for x in &result_buffer[0..rbs] {
             assert_approx_eq!(f32, *x, 1.0);
         }
@@ -204,19 +199,19 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let max_size = vector![100];
+        let max_size = matrix![0, 99];
         let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
 
         test_unit_stencil(&stencil, max_size, 10, &mut plan_library);
-        test_unit_stencil(&stencil, vector![99], 20, &mut plan_library);
+        test_unit_stencil(&stencil, matrix![0, 98], 20, &mut plan_library);
     }
 
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let max_size = vector![50, 50];
-        let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
-        test_unit_stencil(&stencil, max_size, 31, &mut plan_library);
+        let bound = matrix![0, 49; 0, 49];
+        let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
+        test_unit_stencil(&stencil, bound, 31, &mut plan_library);
     }
 
     #[test]
@@ -232,9 +227,9 @@ mod unit_tests {
                 r
             },
         );
-        let max_size = vector![50, 50];
-        let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
-        test_unit_stencil(&stencil, max_size, 9, &mut plan_library);
+        let bound = matrix![0, 49; 0, 49];
+        let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
+        test_unit_stencil(&stencil, bound, 9, &mut plan_library);
     }
 
     #[test]
@@ -247,9 +242,9 @@ mod unit_tests {
             }
             r
         });
-        let max_size = vector![100];
-        let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
-        test_unit_stencil(&stencil, max_size, 43, &mut plan_library);
+        let bound = matrix![0, 99];
+        let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
+        test_unit_stencil(&stencil, bound, 43, &mut plan_library);
     }
 
     #[test]
@@ -272,10 +267,10 @@ mod unit_tests {
                 r
             },
         );
-        let max_size = vector![20, 20, 20];
-        let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
-        test_unit_stencil(&stencil, max_size, 13, &mut plan_library);
-        test_unit_stencil(&stencil, max_size, 14, &mut plan_library);
-        test_unit_stencil(&stencil, vector![18, 18, 18], 14, &mut plan_library);
+        let bound = matrix![0, 19; 0, 19; 0, 19];
+        let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
+        test_unit_stencil(&stencil, bound, 13, &mut plan_library);
+        test_unit_stencil(&stencil, bound, 14, &mut plan_library);
+        test_unit_stencil(&stencil, matrix![0, 14; 0, 14; 0, 14], 5, &mut plan_library);
     }
 }
