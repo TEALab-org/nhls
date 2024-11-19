@@ -2,7 +2,6 @@ use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
 use crate::util::*;
-use fftw::array::*;
 
 pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
     bc: &BC,
@@ -23,48 +22,47 @@ pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORH
     par_stencil::box_apply(bc, stencil, input, output, chunk_size);
 }
 
-/*
 
 #[cfg(test)]
 mod unit_tests {
     use super::*;
     use float_cmp::assert_approx_eq;
-    use nalgebra::vector;
+    use fftw::array::AlignedVec;
+    use nalgebra::matrix;
 
     fn test_unit_stencil<
-        Lookup,
+        BC,
         Operation,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        bc_lookup: &Lookup,
-        bound: Coord<GRID_DIMENSION>,
-        n: usize,
+        bc_lookup: &BC,
+        bound: &Box<GRID_DIMENSION>,
+        steps: usize,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
-        Lookup: BCLookup<GRID_DIMENSION>,
+        BC: BCCheck<GRID_DIMENSION>,
     {
         let chunk_size = 3;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let rbs = real_buffer_size(&bound);
+        let n_r = box_buffer_size(bound);
 
-        let mut input_x = fftw::array::AlignedVec::new(rbs);
-        for x in input_x.as_slice_mut() {
-            *x = 1.0f32;
-        }
-        let mut result_buffer = fftw::array::AlignedVec::new(rbs);
-        naive_block_solve(
+        let mut input_buffer = vec![1.0; n_r];
+        let mut output_buffer = vec![2.0; n_r];
+        let mut input_domain = Domain::new(*bound, &mut input_buffer);
+        let mut output_domain = Domain::new(*bound, &mut output_buffer);
+
+       box_apply(
             bc_lookup,
             stencil,
-            bound,
-            n,
-            &mut input_x,
-            &mut result_buffer,
+            &mut input_domain,
+            &mut output_domain,
+            steps,
             chunk_size,
         );
 
-        for x in &result_buffer[0..rbs] {
+        for x in &output_buffer[0..n_r] {
             assert_approx_eq!(f32, *x, 1.0);
         }
     }
@@ -72,17 +70,17 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let max_size = vector![100];
-        let lookup = PeriodicBCLookup::new(max_size);
-        test_unit_stencil(&stencil, &lookup, max_size, 100);
+        let max_size = matrix![0, 99];
+        let lookup = ConstantCheck::new(1.0, max_size);
+        test_unit_stencil(&stencil, &lookup, &max_size, 100);
     }
 
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let max_size = vector![50, 50];
-        let lookup = PeriodicBCLookup::new(max_size);
-        test_unit_stencil(&stencil, &lookup, max_size, 9);
+        let max_size = matrix![0, 49; 0, 49];
+        let lookup = ConstantCheck::new(1.0, max_size);
+        test_unit_stencil(&stencil, &lookup, &max_size, 9);
     }
 
     #[test]
@@ -98,9 +96,9 @@ mod unit_tests {
                 r
             },
         );
-        let max_size = vector![50, 50];
-        let lookup = PeriodicBCLookup::new(max_size);
-        test_unit_stencil(&stencil, &lookup, max_size, 10);
+        let max_size = matrix![0, 49; 0, 49];
+        let lookup = ConstantCheck::new(1.0, max_size);
+        test_unit_stencil(&stencil, &lookup, &max_size, 10);
     }
 
     #[test]
@@ -113,9 +111,9 @@ mod unit_tests {
             }
             r
         });
-        let max_size = vector![100];
-        let lookup = PeriodicBCLookup::new(max_size);
-        test_unit_stencil(&stencil, &lookup, max_size, 10);
+        let max_size = matrix![0, 99];
+        let lookup = ConstantCheck::new(1.0, max_size);
+        test_unit_stencil(&stencil, &lookup, &max_size, 10);
     }
 
     #[test]
@@ -139,43 +137,49 @@ mod unit_tests {
             },
         );
         {
-            let max_size = vector![20, 20, 20];
-            let lookup = ConstantBCLookup::new(1.0, max_size);
-            test_unit_stencil(&stencil, &lookup, max_size, 5);
+            let max_size = matrix![0, 19; 0, 19; 0, 19];
+            let lookup = ConstantCheck::new(1.0, max_size);
+            test_unit_stencil(&stencil, &lookup, &max_size, 5);
         }
 
         {
-            let max_size = vector![11, 9, 20];
-            let lookup = ConstantBCLookup::new(1.0, max_size);
-            test_unit_stencil(&stencil, &lookup, max_size, 5);
+            let max_size = matrix![0, 10; 0, 8; 0, 19];
+            let lookup = ConstantCheck::new(1.0, max_size);
+            test_unit_stencil(&stencil, &lookup, &max_size, 5);
         }
     }
 
     #[test]
     fn shifter() {
         let stencil = Stencil::new([[-1]], |args: &[f32; 1]| args[0]);
-        let max_size = vector![10];
-        let mut input_x = AlignedVec::new(10);
+        let max_size = matrix![0, 9];
+        let mut input_buffer = AlignedVec::new(10);
         for i in 0..10 {
-            input_x[i] = i as f32;
+            input_buffer[i] = i as f32;
         }
-        let mut output_x = AlignedVec::new(10);
-        let bc_lookup = PeriodicBCLookup::new(max_size);
+        let mut output_buffer = AlignedVec::new(10);
+
+        let mut input_domain = Domain::new(max_size, input_buffer.as_slice_mut());
+        let mut output_domain = Domain::new(max_size, output_buffer.as_slice_mut());
+
+        let bc_lookup = ConstantCheck::new(-1.0, max_size);
         let chunk_size = 1;
-        let n = 3;
-        naive_block_solve(
+        let steps = 3;
+
+        box_apply(
             &bc_lookup,
             &stencil,
-            max_size,
-            n,
-            &mut input_x,
-            &mut output_x,
+            &mut input_domain,
+            &mut output_domain,
+            steps,
             chunk_size,
         );
-        println!("output: {:?}", output_x.as_slice());
-        for i in 0..10 {
-            assert_approx_eq!(f32, output_x[(i + n) % 10], i as f32);
+        println!("output: {:?}", output_buffer.as_slice());
+        for i in 0..3 {
+            assert_approx_eq!(f32, output_buffer[i], -1.0);
+        }
+        for i in 3..10 {
+            assert_approx_eq!(f32, output_buffer[i], (i - 3) as f32);
         }
     }
 }
-*/
