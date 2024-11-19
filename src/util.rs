@@ -148,7 +148,21 @@ pub fn coord_in_box<const GRID_DIMENSION: usize>(
             return false;
         }
     }
-    return true;
+    true
+}
+
+/// Check whether b is contained in a. 
+/// Remeber, boxes are inclusive.
+pub fn box_contains_box<const GRID_DIMENSION: usize> (
+    a: &Box<GRID_DIMENSION>,
+    b: &Box<GRID_DIMENSION>
+) -> bool {
+    for d in 0..GRID_DIMENSION {
+        if b[(d, 0)] < a[(d, 0)] || b[(d, 1)] > a[(d, 1)] {
+            return false;
+        }
+    }
+    true
 }
 
 #[cfg(test)]
@@ -315,6 +329,33 @@ mod unit_tests {
             let c = vector![9, 8];
             let li = coord_to_linear_in_box(&c, &bound);
             assert_eq!(c, linear_to_coord_in_box(li, &bound));
+        }
+    }
+
+    #[test]
+    fn box_contains_box_test() {
+        {
+            let a = matrix![1, 2];
+            let b = matrix![1, 2];
+            assert!(box_contains_box(&a, &b));
+        }
+
+        {
+            let a = matrix![0, 9];
+            let b = matrix![1, 2];
+            assert!(box_contains_box(&a, &b));
+        }
+
+        {
+            let a = matrix![2, 9];
+            let b = matrix![1, 2];
+            assert!(!box_contains_box(&a, &b));
+        }
+
+        {
+            let a = matrix![2, 9];
+            let b = matrix![3, 10];
+            assert!(!box_contains_box(&a, &b));
         }
     }
 }
