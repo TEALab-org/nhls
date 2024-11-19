@@ -7,6 +7,7 @@ use rayon::prelude::*;
 use nalgebra::{matrix, vector};
 
 fn main() {
+    let name = "gen_1d.png";
     const GRID_DIMENSION: usize = 1;
 
     // Grid size
@@ -18,28 +19,7 @@ fn main() {
 
     let chunk_size = 100;
 
-    /*
-    // Step size t
-    let dt: f32 = 1.0;
-
-    // Step size x
-    let dx: f32 = 1.0;
-
-    // Heat transfer coefficient
-    let k: f32 = 0.5;
-
-
-    let stencil = Stencil::new([[-1], [0], [1]], |args: &[f32; 3]| {
-        let left = args[0];
-        let middle = args[1];
-        let right = args[2];
-        middle + (k * dt / (dx * dx)) * (left - 2.0 * middle + right)
-    });
-    */
-    let stencil = Stencil::new([[-1], [-2], [0], [3], [4], [1]], |args: &[f32; 6]| {
-        let c = 1.0 / 6.0;
-        args.iter().map(|x| c * x).sum()
-    });
+    let stencil = include!("gen_1d.stencil");
 
     // Create domains
     let buffer_size = box_buffer_size(&grid_bound);
@@ -80,5 +60,5 @@ fn main() {
         img.add_line(t, input_domain.buffer());
     }
 
-    img.write("test_image_01.png");
+    img.write(name);
 }
