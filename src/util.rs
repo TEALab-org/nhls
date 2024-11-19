@@ -120,8 +120,8 @@ pub fn linear_to_coord_in_box<const GRID_DIMENSION: usize>(
     index: usize,
     b: &Box<GRID_DIMENSION>,
 ) -> Coord<GRID_DIMENSION> {
-    let bound = (b.column(1) - b.column(0)).add_scalar(1);
-    debug_assert!(index <= real_buffer_size(&bound));
+    let bound: Coord<GRID_DIMENSION> = (b.column(1) - b.column(0)).add_scalar(1);
+    debug_assert!(index < box_buffer_size(b));
 
     let mut result = Coord::zero();
     let mut index_accumulator = index;

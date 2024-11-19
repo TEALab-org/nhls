@@ -11,6 +11,11 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
         &self.view_box
     }
 
+    pub fn set_view_box(&mut self, view_box: Box<GRID_DIMENSION>) {
+        debug_assert!(box_contains_box(&self.view_box, &view_box));
+        self.view_box = view_box;
+    }
+
     pub fn buffer(&self) -> &[f32] {
         self.buffer
     }
@@ -27,12 +32,6 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     pub fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f32 {
         debug_assert!(coord_in_box(world_coord, &self.view_box));
         let index = coord_to_linear_in_box(world_coord, &self.view_box);
-        /*
-        println!(
-            "view, c: {:?}, i: {}, r: {}",
-            world_coord, index, self.buffer[index]
-        );
-        */
         self.buffer[index]
     }
 
@@ -59,12 +58,13 @@ fn par_modify_access_impl<'a, const GRID_DIMENSION: usize>(
     view_box: &'a Box<GRID_DIMENSION>,
     chunk_size: usize,
 ) -> impl ParallelIterator<Item = DomainChunk<'a, GRID_DIMENSION>> + 'a {
-    buffer.par_chunks_mut(chunk_size).enumerate().map(
-        move |(i, buffer_chunk): (usize, &mut [f32])| {
+    buffer[0..box_buffer_size(view_box)]
+        .par_chunks_mut(chunk_size)
+        .enumerate()
+        .map(move |(i, buffer_chunk): (usize, &mut [f32])| {
             let offset = i * chunk_size;
             DomainChunk::new(offset, view_box, buffer_chunk)
-        },
-    )
+        })
 }
 
 pub struct DomainChunk<'a, const GRID_DIMENSION: usize> {
@@ -93,22 +93,3 @@ impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
             })
     }
 }
-
-/*
-// parallel stencil application
-// One owning domain gets chunked out
-
-pub struct DomainView<'a, const GRID_DIMENSION: usize> {
-    // view box
-    view_box: &'a Box<GRID_DIMENSION>,
-
-    // input buffer
-    buffer: &'a [f32],
-}
-
-// ah but we want to mutate and not
-pub struct DomainViewMut<'a, const GRID_DIMENSION: usize> {
-    view_box: &'a Box<GRID_DIMENSION>,
-    buffer: &'a mut [f32],
-}
-*/
