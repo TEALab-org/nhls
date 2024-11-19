@@ -117,7 +117,8 @@ where
         // Place offsets in real buffer
         let offsets = self.stencil.offsets();
         for n_i in 0..NEIGHBORHOOD_SIZE {
-            let index = periodic_coord(&offsets[n_i], &descriptor.bound);
+            let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
+            let index = periodic_coord(&rn_i, &descriptor.bound);
             let l = coord_to_linear_in_box(&index, &descriptor.bound);
             self.real_buffer[l] = self.stencil_weights[n_i];
         }
@@ -136,7 +137,8 @@ where
 
         // clean up real buffer
         for n_i in 0..NEIGHBORHOOD_SIZE {
-            let index = periodic_coord(&offsets[n_i], &descriptor.bound);
+            let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
+            let index = periodic_coord(&rn_i, &descriptor.bound);
             let l = coord_to_linear_in_box(&index, &descriptor.bound);
             self.real_buffer[l] = 0.0;
         }
@@ -271,6 +273,7 @@ mod unit_tests {
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 13, &mut plan_library);
         test_unit_stencil(&stencil, bound, 14, &mut plan_library);
+        test_unit_stencil(&stencil, bound, 5, &mut plan_library);
         test_unit_stencil(&stencil, matrix![0, 14; 0, 14; 0, 14], 5, &mut plan_library);
     }
 }

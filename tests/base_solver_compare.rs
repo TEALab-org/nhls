@@ -146,7 +146,7 @@ fn periodic_compare() {
         }
         for i in 0..n_r {
             // TODO THIS IS BROKE
-            //assert_approx_eq!(f32, output_a[i], output_b[i], epsilon = 0.001);
+            assert_approx_eq!(f32, output_a[i], output_b[i], epsilon = 0.0001);
         }
     }
 }
