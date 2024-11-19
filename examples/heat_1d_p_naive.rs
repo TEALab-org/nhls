@@ -16,9 +16,6 @@ fn main() {
 
     let n_steps_per_line = 16;
 
-    let chunk_size = 100;
-
-    /*
     // Step size t
     let dt: f32 = 1.0;
 
@@ -28,17 +25,13 @@ fn main() {
     // Heat transfer coefficient
     let k: f32 = 0.5;
 
+    let chunk_size = 100;
 
     let stencil = Stencil::new([[-1], [0], [1]], |args: &[f32; 3]| {
         let left = args[0];
         let middle = args[1];
         let right = args[2];
         middle + (k * dt / (dx * dx)) * (left - 2.0 * middle + right)
-    });
-    */
-    let stencil = Stencil::new([[-1], [-2], [0], [3], [4], [1]], |args: &[f32; 6]| {
-        let c = 1.0 / 6.0;
-        args.iter().map(|x| c * x).sum()
     });
 
     // Create domains
