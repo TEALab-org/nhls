@@ -1,6 +1,5 @@
-use nalgebra::{matrix, vector};
+use nalgebra::matrix;
 use nhls::domain::*;
-use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
 use rayon::prelude::*;

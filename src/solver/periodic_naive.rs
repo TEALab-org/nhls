@@ -1,8 +1,6 @@
 use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
-use crate::util::*;
-use fftw::array::*;
 
 pub fn box_solve<'a, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
@@ -14,24 +12,25 @@ pub fn box_solve<'a, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
     debug_assert_eq!(input.view_box(), output.view_box());
-    for t in 0..steps - 1 {
-        //println!("t: {}", t);
+    for _ in 0..steps - 1 {
         {
             let bc = PeriodicCheck::new(input);
-            par_stencil::box_apply(&bc, stencil, input, output, chunk_size);
+            par_stencil::apply(&bc, stencil, input, output, chunk_size);
         }
         std::mem::swap(input, output);
     }
     //println!("final t");
     let bc = PeriodicCheck::new(input);
-    par_stencil::box_apply(&bc, stencil, input, output, chunk_size);
+    par_stencil::apply(&bc, stencil, input, output, chunk_size);
 }
 
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+    use crate::util::*;
+    use fftw::array::AlignedVec;
     use float_cmp::assert_approx_eq;
-    use nalgebra::{matrix, vector};
+    use nalgebra::matrix;
 
     fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,

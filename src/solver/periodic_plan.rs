@@ -166,7 +166,7 @@ where
 mod unit_tests {
     use super::*;
     use float_cmp::assert_approx_eq;
-    use nalgebra::{matrix, vector};
+    use nalgebra::matrix;
 
     fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
@@ -179,7 +179,6 @@ mod unit_tests {
         let chunk_size = 1;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
         let rbs = box_buffer_size(&bound);
-        let cbs = box_complex_buffer_size(&bound);
 
         let mut input_x = fftw::array::AlignedVec::new(rbs);
         for x in input_x.as_slice_mut() {

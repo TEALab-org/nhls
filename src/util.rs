@@ -1,4 +1,3 @@
-use nalgebra::*;
 pub use num_traits::{Num, One, Zero};
 
 pub trait NumTrait = Num + Copy + Send + Sync;
@@ -151,11 +150,11 @@ pub fn coord_in_box<const GRID_DIMENSION: usize>(
     true
 }
 
-/// Check whether b is contained in a. 
+/// Check whether b is contained in a.
 /// Remeber, boxes are inclusive.
-pub fn box_contains_box<const GRID_DIMENSION: usize> (
+pub fn box_contains_box<const GRID_DIMENSION: usize>(
     a: &Box<GRID_DIMENSION>,
-    b: &Box<GRID_DIMENSION>
+    b: &Box<GRID_DIMENSION>,
 ) -> bool {
     for d in 0..GRID_DIMENSION {
         if b[(d, 0)] < a[(d, 0)] || b[(d, 1)] > a[(d, 1)] {

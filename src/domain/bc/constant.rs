@@ -14,13 +14,10 @@ impl<const GRID_DIMENSION: usize> ConstantCheck<GRID_DIMENSION> {
 
 impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION> for ConstantCheck<GRID_DIMENSION> {
     fn check(&self, coord: &Coord<GRID_DIMENSION>) -> Option<f32> {
-        for d in 0..GRID_DIMENSION {
-            let c = coord[d];
-            if c < self.bound[(d, 0)] || c > self.bound[(d, 1)] {
-                return Some(self.value);
-            }
+        if coord_in_box(coord, &self.bound) {
+            return None;
         }
-        None
+        Some(self.value)
     }
 }
 

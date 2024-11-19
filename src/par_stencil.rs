@@ -3,7 +3,7 @@ use crate::stencil::*;
 use crate::util::*;
 use rayon::prelude::*;
 
-pub fn box_apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+pub fn apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
     bc: &BC,
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &Domain<GRID_DIMENSION>,
@@ -13,6 +13,7 @@ pub fn box_apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
+    debug_assert!(box_contains_box(input.view_box(), output.view_box()));
     output
         .par_modify_access(chunk_size)
         .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
@@ -30,7 +31,7 @@ pub fn box_apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
 mod unit_test {
     use super::*;
     use float_cmp::assert_approx_eq;
-    use nalgebra::{matrix, vector};
+    use nalgebra::matrix;
 
     #[test]
     fn par_stencil_test_1d_simple() {
@@ -45,7 +46,7 @@ mod unit_test {
             let mut output_domain = Domain::new(bound, &mut output_buffer);
 
             let bc = PeriodicCheck::new(&input_domain);
-            box_apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
+            apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
             for x in &output_buffer {
                 assert_approx_eq!(f32, *x, 1.0);
             }
@@ -59,10 +60,49 @@ mod unit_test {
             let mut output_domain = Domain::new(bound, &mut output_buffer);
 
             let bc = PeriodicCheck::new(&input_domain);
-            box_apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
+            apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
             for x in &output_buffer {
                 assert_approx_eq!(f32, *x, 2.0);
             }
+        }
+    }
+
+    // Throw an error if we hit boundary
+    struct ErrorCheck {
+        bound: Box<1>,
+    }
+    impl BCCheck<1> for ErrorCheck {
+        fn check(&self, c: &Coord<1>) -> Option<f32> {
+            assert!(coord_in_box(c, &self.bound));
+            None
+        }
+    }
+
+    #[test]
+    fn par_stencil_trapezoid_test_1d_simple() {
+        let stencil = Stencil::new([[-1], [0], [1]], |args| {
+            let mut r = 0.0;
+            for a in args {
+                r += a / 3.0;
+            }
+            r
+        });
+
+        let input_bound = matrix![0, 10];
+        let output_bound = matrix![1, 9];
+
+        let mut input_buffer = vec![1.0; box_buffer_size(&input_bound)];
+        let mut output_buffer = vec![0.0; box_buffer_size(&output_bound)];
+
+        let input_domain = Domain::new(input_bound, &mut input_buffer);
+        let mut output_domain = Domain::new(output_bound, &mut output_buffer);
+
+        let bc = ErrorCheck { bound: input_bound };
+
+        apply(&bc, &stencil, &input_domain, &mut output_domain, 2);
+
+        for i in output_buffer {
+            assert_approx_eq!(f32, i, 1.0);
         }
     }
 }

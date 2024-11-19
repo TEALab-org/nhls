@@ -1,7 +1,6 @@
 use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
-use crate::util::*;
 
 pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
     bc: &BC,
@@ -14,20 +13,20 @@ pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORH
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    debug_assert!(box_contains_box(input.view_box(), output.view_box()));
+    debug_assert_eq!(input.view_box(), output.view_box());
     for _ in 0..steps - 1 {
-        par_stencil::box_apply(bc, stencil, input, output, chunk_size);
+        par_stencil::apply(bc, stencil, input, output, chunk_size);
         std::mem::swap(input, output);
     }
-    par_stencil::box_apply(bc, stencil, input, output, chunk_size);
+    par_stencil::apply(bc, stencil, input, output, chunk_size);
 }
-
 
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    use float_cmp::assert_approx_eq;
+    use crate::util::*;
     use fftw::array::AlignedVec;
+    use float_cmp::assert_approx_eq;
     use nalgebra::matrix;
 
     fn test_unit_stencil<
@@ -53,7 +52,7 @@ mod unit_tests {
         let mut input_domain = Domain::new(*bound, &mut input_buffer);
         let mut output_domain = Domain::new(*bound, &mut output_buffer);
 
-       box_apply(
+        box_apply(
             bc_lookup,
             stencil,
             &mut input_domain,
@@ -88,7 +87,6 @@ mod unit_tests {
         let stencil = Stencil::new(
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
             |args: &[f32; 5]| {
-                debug_assert_eq!(args.len(), 5);
                 let mut r = 0.0;
                 for a in args {
                     r += a / 5.0;

@@ -1,13 +1,11 @@
+use nalgebra::matrix;
 use nhls::domain::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
 use rayon::prelude::*;
 
-use nalgebra::{matrix, vector};
-
 fn main() {
-    let name = "gen_2d.png";
     const GRID_DIMENSION: usize = 2;
 
     // Grid size

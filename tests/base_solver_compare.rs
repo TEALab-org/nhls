@@ -6,7 +6,7 @@ use rayon::prelude::*;
 
 use fftw::array::*;
 use float_cmp::assert_approx_eq;
-use nalgebra::{matrix, vector};
+use nalgebra::matrix;
 
 #[test]
 fn thermal_1d_compare() {
