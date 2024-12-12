@@ -124,7 +124,7 @@ where
         }
 
         // Calculate convolution of stencil
-        let n_r = box_buffer_size(&descriptor.bound);
+        let n_r = descriptor.bound.buffer_size();
         let n_c = box_complex_buffer_size(&descriptor.bound);
         let fft_plan = self.fft_plan_library.get_plan(descriptor.bound);
         fft_plan

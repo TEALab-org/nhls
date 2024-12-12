@@ -1,10 +1,11 @@
 use crate::util::indexing::*;
 use crate::util::*;
 
-type Bounds<const DIMENSION: usize> = nalgebra::SMatrix<i32, { DIMENSION }, 2>;
+pub type Bounds<const DIMENSION: usize> = nalgebra::SMatrix<i32, { DIMENSION }, 2>;
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct AABB<const DIMENSION: usize> {
-    bounds: Bounds<DIMENSION>,
+    pub bounds: Bounds<DIMENSION>,
 }
 
 impl<const DIMENSION: usize> AABB<DIMENSION> {
@@ -74,6 +75,10 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
             }
         }
         true
+    }
+
+    pub fn add_bounds_diff(&self, diff: Bounds<DIMENSION>) -> Self {
+        Self::new(self.bounds + diff)
     }
 }
 
