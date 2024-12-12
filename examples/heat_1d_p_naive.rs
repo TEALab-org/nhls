@@ -35,7 +35,7 @@ fn main() {
     });
 
     // Create domains
-    let buffer_size = box_buffer_size(&grid_bound);
+    let buffer_size = grid_bound.buffer_size();
     let mut grid_input = vec![0.0; buffer_size];
     let mut input_domain = Domain::new(grid_bound, &mut grid_input);
 

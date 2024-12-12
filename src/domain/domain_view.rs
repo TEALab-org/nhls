@@ -25,7 +25,7 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     }
 
     pub fn new(view_box: AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
-        debug_assert_eq!(buffer.len(), box_buffer_size(&view_box));
+        debug_assert_eq!(buffer.len(), view_box.buffer_size());
         Domain { view_box, buffer }
     }
 

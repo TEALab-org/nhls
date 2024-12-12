@@ -46,7 +46,7 @@ pub fn trapezoid_apply<
     for t in 0..steps {
         println!("trapezoid t: {}", t);
         output_box += trapezoid_slopes;
-        debug_assert!(box_buffer_size(input.view_box()) >= box_buffer_size(&output_box));
+        debug_assert!(box_buffer_size(input.view_box()) >= output_box.buffer_size());
         output.set_view_box(output_box);
         println!("  output_box: {:?}", output_box);
 
@@ -138,8 +138,8 @@ mod unit_tests {
         {
             let sloped_sides = matrix![1, 1];
             let input_bound = matrix![10, 40];
-            let mut input_buffer = vec![1.0; box_buffer_size(&input_bound)];
-            let mut output_buffer = vec![1.0; box_buffer_size(&input_bound)];
+            let mut input_buffer = vec![1.0; input_bound.buffer_size()];
+            let mut output_buffer = vec![1.0; input_bound.buffer_size()];
             let mut input_domain = Domain::new(input_bound, &mut input_buffer);
             let mut output_domain = Domain::new(input_bound, &mut output_buffer);
             let bc = ConstantCheck::new(1.0, input_bound);

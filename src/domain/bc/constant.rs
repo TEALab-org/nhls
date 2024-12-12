@@ -30,7 +30,7 @@ mod unit_tests {
     #[test]
     fn constant_check_test() {
         let bound = matrix![0, 10];
-        let n_r = box_buffer_size(&bound);
+        let n_r = bound.buffer_size();
         let mut buffer = fftw::array::AlignedVec::new(n_r);
         for i in 0..n_r {
             buffer.as_slice_mut()[i] = i as f32;

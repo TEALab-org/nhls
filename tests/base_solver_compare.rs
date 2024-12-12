@@ -36,7 +36,7 @@ fn thermal_1d_compare() {
     });
 
     // Create domains
-    let buffer_size = box_buffer_size(&grid_bound);
+    let buffer_size = grid_bound.buffer_size();
     let mut grid_input = vec![0.0; buffer_size];
     let mut naive_input_domain = Domain::new(grid_bound, &mut grid_input);
 
@@ -111,7 +111,7 @@ fn periodic_compare() {
             args.iter().map(|x| c * x).sum()
         });
 
-        let n_r = box_buffer_size(&bound);
+        let n_r = bound.buffer_size();
         let mut input_a = AlignedVec::new(n_r);
         for i in 0..n_r {
             input_a[i] = i as f32;

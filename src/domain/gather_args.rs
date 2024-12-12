@@ -37,7 +37,7 @@ mod unit_tests {
     #[test]
     fn gather_args_test_const() {
         let bound = matrix![0, 9; 0, 9];
-        let n_r = box_buffer_size(&bound);
+        let n_r = bound.buffer_size();
         let mut buffer = fftw::array::AlignedVec::new(n_r);
         for i in 0..n_r {
             let coord = linear_to_coord_in_box(i, &bound);
@@ -65,7 +65,7 @@ mod unit_tests {
     #[test]
     fn gather_args_test_periodic() {
         let bound = matrix![0, 9; 0, 9];
-        let n_r = box_buffer_size(&bound);
+        let n_r = bound.buffer_size();
         let mut buffer = fftw::array::AlignedVec::new(n_r);
         for i in 0..n_r {
             let coord = linear_to_coord_in_box(i, &bound);

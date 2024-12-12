@@ -37,7 +37,7 @@ mod unit_test {
     fn par_stencil_test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
         let bound = matrix![0, 99];
-        let n_r = box_buffer_size(&bound);
+        let n_r = bound.buffer_size();
         {
             let mut input_buffer = vec![1.0; n_r];
             let input_domain = Domain::new(bound, &mut input_buffer);
@@ -91,8 +91,8 @@ mod unit_test {
         let input_bound = matrix![0, 10];
         let output_bound = matrix![1, 9];
 
-        let mut input_buffer = vec![1.0; box_buffer_size(&input_bound)];
-        let mut output_buffer = vec![0.0; box_buffer_size(&output_bound)];
+        let mut input_buffer = vec![1.0; input_bound.buffer_size()];
+        let mut output_buffer = vec![0.0; output_bound.buffer_size()];
 
         let input_domain = Domain::new(input_bound, &mut input_buffer);
         let mut output_domain = Domain::new(output_bound, &mut output_buffer);

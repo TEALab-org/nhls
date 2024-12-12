@@ -178,7 +178,7 @@ mod unit_tests {
     {
         let chunk_size = 1;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let rbs = box_buffer_size(&bound);
+        let rbs = bound.buffer_size();
 
         let mut input_x = fftw::array::AlignedVec::new(rbs);
         for x in input_x.as_slice_mut() {
