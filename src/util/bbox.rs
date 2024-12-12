@@ -93,7 +93,7 @@ mod unit_tests {
             let a = AABB::new(matrix![0, 5]);
             let real_size = (&dimensions);
             assert_eq!(real_size, 6);
-            let complex_size = box_complex_buffer_size(&dimensions);
+            let complex_size = dimensions.complex_buffer_size();
             assert_eq!(complex_size, (6 / 2) + 1);
         }
 
@@ -101,7 +101,7 @@ mod unit_tests {
             let dimensions = matrix![0, 5; 0, 7; 0, 9];
             let real_size = dimensions.buffer_size();
             assert_eq!(real_size, 6 * 8 * 10);
-            let complex_size = box_complex_buffer_size(&dimensions);
+            let complex_size = dimensions.complex_buffer_size();
             assert_eq!(complex_size, 6 * 8 * ((10 / 2) + 1));
         }
 
@@ -109,7 +109,7 @@ mod unit_tests {
             let dimensions = matrix![1, 6; 1, 8; 1, 10];
             let real_size = dimensions.buffer_size();
             assert_eq!(real_size, 6 * 8 * 10);
-            let complex_size = box_complex_buffer_size(&dimensions);
+            let complex_size = dimensions.complex_buffer_size();
             assert_eq!(complex_size, 6 * 8 * ((10 / 2) + 1));
         }
     }
