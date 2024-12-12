@@ -13,7 +13,7 @@ pub fn apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    debug_assert!(box_contains_box(input.view_box(), output.view_box()));
+    debug_assert!(input.view_box().contains_aabb(output.view_box()));
     output
         .par_modify_access(chunk_size)
         .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
@@ -36,7 +36,7 @@ mod unit_test {
     #[test]
     fn par_stencil_test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 99];
+        let bound = AABB::new(matrix![0, 99]);
         let n_r = bound.buffer_size();
         {
             let mut input_buffer = vec![1.0; n_r];
@@ -69,11 +69,11 @@ mod unit_test {
 
     // Throw an error if we hit boundary
     struct ErrorCheck {
-        bound: Box<1>,
+        bound: AABB<1>,
     }
     impl BCCheck<1> for ErrorCheck {
         fn check(&self, c: &Coord<1>) -> Option<f32> {
-            assert!(coord_in_box(c, &self.bound));
+            assert!(self.bound.contains(c));
             None
         }
     }
@@ -88,8 +88,8 @@ mod unit_test {
             r
         });
 
-        let input_bound = matrix![0, 10];
-        let output_bound = matrix![1, 9];
+        let input_bound = AABB::new(matrix![0, 10]);
+        let output_bound = AABB::new(matrix![1, 9]);
 
         let mut input_buffer = vec![1.0; input_bound.buffer_size()];
         let mut output_buffer = vec![0.0; output_bound.buffer_size()];
