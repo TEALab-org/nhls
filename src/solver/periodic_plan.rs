@@ -51,10 +51,10 @@ where
         stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) -> Self {
         // Zeroed out by construction
-        let max_real_size = box_buffer_size(max_bound);
+        let max_real_size = max_bound.buffer_size();
         let real_buffer = fftw::array::AlignedVec::new(max_real_size);
 
-        let max_complex_size = box_complex_buffer_size(max_bound);
+        let max_complex_size = max_bound.complex_buffer_size();
         let convolution_buffer = fftw::array::AlignedVec::new(max_complex_size);
         let complex_buffer = fftw::array::AlignedVec::new(max_complex_size);
         let stencil_weights = stencil.extract_weights();

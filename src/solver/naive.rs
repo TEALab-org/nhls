@@ -45,7 +45,7 @@ mod unit_tests {
     {
         let chunk_size = 3;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let n_r = box_buffer_size(bound);
+        let n_r = bound.buffer_size();
 
         let mut input_buffer = vec![1.0; n_r];
         let mut output_buffer = vec![2.0; n_r];

@@ -58,7 +58,7 @@ fn par_modify_access_impl<'a, const GRID_DIMENSION: usize>(
     view_box: &'a AABB<GRID_DIMENSION>,
     chunk_size: usize,
 ) -> impl ParallelIterator<Item = DomainChunk<'a, GRID_DIMENSION>> + 'a {
-    buffer[0..box_buffer_size(view_box)]
+    buffer[0..view_box.buffer_size()]
         .par_chunks_mut(chunk_size)
         .enumerate()
         .map(move |(i, buffer_chunk): (usize, &mut [f32])| {
