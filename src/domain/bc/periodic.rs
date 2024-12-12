@@ -26,7 +26,7 @@ impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION> for PeriodicCheck<'_, 
 /// Assumes that coords are no more than one box away!
 pub fn periodic_coord<const GRID_DIMENSION: usize>(
     index: &Coord<GRID_DIMENSION>,
-    bound: &Box<GRID_DIMENSION>,
+    bound: &AABB<GRID_DIMENSION>,
 ) -> Coord<GRID_DIMENSION> {
     let mut result = Coord::zero();
     for d in 0..GRID_DIMENSION {

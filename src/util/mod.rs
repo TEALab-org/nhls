@@ -7,7 +7,6 @@ pub mod indexing;
 pub use bbox::*;
 
 pub type Coord<const GRID_DIMENSION: usize> = nalgebra::SVector<i32, { GRID_DIMENSION }>;
-pub type Box<const GRID_DIMENSION: usize> = nalgebra::SMatrix<i32, { GRID_DIMENSION }, 2>;
 
 
 #[cfg(test)]

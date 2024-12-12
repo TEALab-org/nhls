@@ -7,10 +7,10 @@ use crate::util::*;
 // based on output region size and other parameters.
 pub fn trapezoid_input_region<const GRID_DIMENSION: usize>(
     steps: usize,
-    output_box: &Box<GRID_DIMENSION>,
-    sloped_sides: &Box<GRID_DIMENSION>,
-    stencil_slopes: &Box<GRID_DIMENSION>,
-) -> Box<GRID_DIMENSION> {
+    output_box: &AABB<GRID_DIMENSION>,
+    sloped_sides: &AABB<GRID_DIMENSION>,
+    stencil_slopes: &AABB<GRID_DIMENSION>,
+) -> AABB<GRID_DIMENSION> {
     let mut trapezoid_slopes = stencil_slopes.component_mul(sloped_sides);
     let negative_slopes = -1 * trapezoid_slopes.column(0);
     trapezoid_slopes.set_column(0, &negative_slopes);
@@ -28,8 +28,8 @@ pub fn trapezoid_apply<
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &mut Domain<'a, GRID_DIMENSION>,
     output: &mut Domain<'a, GRID_DIMENSION>,
-    sloped_sides: &Box<GRID_DIMENSION>,
-    stencil_slopes: &Box<GRID_DIMENSION>,
+    sloped_sides: &AABB<GRID_DIMENSION>,
+    stencil_slopes: &AABB<GRID_DIMENSION>,
     steps: usize,
     chunk_size: usize,
 ) where

@@ -34,7 +34,7 @@ mod unit_tests {
 
     fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        bound: &Box<GRID_DIMENSION>,
+        bound: &AABB<GRID_DIMENSION>,
         steps: usize,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,

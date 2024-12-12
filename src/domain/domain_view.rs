@@ -2,16 +2,16 @@ use crate::util::*;
 use rayon::prelude::*;
 
 pub struct Domain<'a, const GRID_DIMENSION: usize> {
-    view_box: Box<GRID_DIMENSION>,
+    view_box: AABB<GRID_DIMENSION>,
     buffer: &'a mut [f32],
 }
 
 impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
-    pub fn view_box(&self) -> &Box<GRID_DIMENSION> {
+    pub fn view_box(&self) -> &AABB<GRID_DIMENSION> {
         &self.view_box
     }
 
-    pub fn set_view_box(&mut self, view_box: Box<GRID_DIMENSION>) {
+    pub fn set_view_box(&mut self, view_box: AABB<GRID_DIMENSION>) {
         debug_assert!(box_contains_box(&self.view_box, &view_box));
         self.view_box = view_box;
     }
@@ -24,7 +24,7 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
         self.buffer
     }
 
-    pub fn new(view_box: Box<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
+    pub fn new(view_box: AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
         debug_assert_eq!(buffer.len(), box_buffer_size(&view_box));
         Domain { view_box, buffer }
     }
@@ -55,7 +55,7 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
 /// By putting their borrows into one function call first we work around it.
 fn par_modify_access_impl<'a, const GRID_DIMENSION: usize>(
     buffer: &'a mut [f32],
-    view_box: &'a Box<GRID_DIMENSION>,
+    view_box: &'a AABB<GRID_DIMENSION>,
     chunk_size: usize,
 ) -> impl ParallelIterator<Item = DomainChunk<'a, GRID_DIMENSION>> + 'a {
     buffer[0..box_buffer_size(view_box)]
@@ -69,12 +69,12 @@ fn par_modify_access_impl<'a, const GRID_DIMENSION: usize>(
 
 pub struct DomainChunk<'a, const GRID_DIMENSION: usize> {
     offset: usize,
-    view_box: &'a Box<GRID_DIMENSION>,
+    view_box: &'a AABB<GRID_DIMENSION>,
     buffer: &'a mut [f32],
 }
 
 impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
-    pub fn new(offset: usize, view_box: &'a Box<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
+    pub fn new(offset: usize, view_box: &'a AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
         DomainChunk {
             offset,
             view_box,

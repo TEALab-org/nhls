@@ -3,11 +3,11 @@ use crate::util::*;
 
 pub struct ConstantCheck<const GRID_DIMENSION: usize> {
     value: f32,
-    bound: Box<GRID_DIMENSION>,
+    bound: AABB<GRID_DIMENSION>,
 }
 
 impl<const GRID_DIMENSION: usize> ConstantCheck<GRID_DIMENSION> {
-    pub fn new(value: f32, bound: Box<GRID_DIMENSION>) -> Self {
+    pub fn new(value: f32, bound: AABB<GRID_DIMENSION>) -> Self {
         ConstantCheck { value, bound }
     }
 }

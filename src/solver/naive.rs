@@ -37,7 +37,7 @@ mod unit_tests {
     >(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bc_lookup: &BC,
-        bound: &Box<GRID_DIMENSION>,
+        bound: &AABB<GRID_DIMENSION>,
         steps: usize,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,

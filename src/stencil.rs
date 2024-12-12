@@ -52,7 +52,7 @@ where
         &self.offsets
     }
 
-    pub fn slopes(&self) -> Box<GRID_DIMENSION> {
+    pub fn slopes(&self) -> AABB<GRID_DIMENSION> {
         let mut result = Box::zero();
         for neighbor in self.offsets {
             for d in 0..GRID_DIMENSION {

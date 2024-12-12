@@ -13,12 +13,12 @@ use crate::util::*;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 struct PeriodicPlanDescriptor<const GRID_DIMENSION: usize> {
-    pub bound: Box<GRID_DIMENSION>,
+    pub bound: AABB<GRID_DIMENSION>,
     pub steps: usize,
 }
 
 impl<const GRID_DIMENSION: usize> PeriodicPlanDescriptor<GRID_DIMENSION> {
-    fn new(bound: Box<GRID_DIMENSION>, steps: usize) -> Self {
+    fn new(bound: AABB<GRID_DIMENSION>, steps: usize) -> Self {
         PeriodicPlanDescriptor { bound, steps }
     }
 }
@@ -47,7 +47,7 @@ where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
     pub fn new(
-        max_bound: &Box<GRID_DIMENSION>,
+        max_bound: &AABB<GRID_DIMENSION>,
         stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) -> Self {
         // Zeroed out by construction
@@ -170,7 +170,7 @@ mod unit_tests {
 
     fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        bound: Box<GRID_DIMENSION>,
+        bound: AABB<GRID_DIMENSION>,
         steps: usize,
         plan_library: &mut PeriodicPlanLibrary<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) where
