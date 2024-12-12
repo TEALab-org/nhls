@@ -91,8 +91,8 @@ where
         let fft_plan = self.fft_plan_library.get_plan(*input.view_box());
 
         // fftw bindings expect slices of specific size
-        let n_r = box_buffer_size(input.view_box());
-        let n_c = box_complex_buffer_size(input.view_box());
+        let n_r = input.view_box().buffer_size();
+        let n_c = input.view_box().complex_buffer_size();
         fft_plan
             .forward_plan
             .r2c(input.buffer_mut(), &mut self.complex_buffer[0..n_c])

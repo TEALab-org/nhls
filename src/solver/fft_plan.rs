@@ -21,7 +21,7 @@ pub struct FFTPlan {
 
 impl FFTPlan {
     pub fn new<const GRID_DIMENSION: usize>(bound: AABB<GRID_DIMENSION>) -> Self {
-        let size = (bound.column(1) - bound.column(0)).add_scalar(1);
+        let size = bound.exclusive_bounds();
         let plan_size = size.try_cast::<usize>().unwrap();
         let forward_plan =
             fftw::plan::R2CPlan32::aligned(plan_size.as_slice(), fftw::types::Flag::ESTIMATE)

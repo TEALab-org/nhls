@@ -3,7 +3,7 @@ use crate::util::*;
 
 pub type Bounds<const DIMENSION: usize> = nalgebra::SMatrix<i32, { DIMENSION }, 2>;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Hash, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct AABB<const DIMENSION: usize> {
     pub bounds: Bounds<DIMENSION>,
 }
