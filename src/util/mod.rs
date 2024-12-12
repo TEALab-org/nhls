@@ -164,14 +164,14 @@ mod unit_tests {
         {
             let bound = matrix![0, 9];
             let c = vector![8];
-            let li = coord_to_linear_in_box(&c, &bound);
+            let li = bound.coord_to_linear(&c);
             assert_eq!(c, linear_to_coord_in_box(li, &bound));
         }
 
         {
             let bound = matrix![0, 9; 0, 9];
             let c = vector![9, 8];
-            let li = coord_to_linear_in_box(&c, &bound);
+            let li = bound.coord_to_linear(&c);
             assert_eq!(c, linear_to_coord_in_box(li, &bound));
         }
     }
