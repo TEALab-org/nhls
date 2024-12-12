@@ -16,9 +16,9 @@ pub struct Stencil<
 > where
     Operation: StencilOperation<NumType, NEIGHBORHOOD_SIZE>,
 {
-    operation: Operation,
-    offsets: [Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE],
-    num_type: std::marker::PhantomData<NumType>,
+    pub operation: Operation,
+    pub offsets: [Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE],
+    pub num_type: std::marker::PhantomData<NumType>,
 }
 
 impl<NumType, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
