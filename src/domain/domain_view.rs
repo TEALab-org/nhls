@@ -12,7 +12,8 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     }
 
     pub fn set_view_box(&mut self, view_box: AABB<GRID_DIMENSION>) {
-        debug_assert!(box_contains_box(&self.view_box, &view_box));
+        debug_assert!(view_box.buffer_size() >= self.buffer.len());
+        // TODO: should we re-slice here?
         self.view_box = view_box;
     }
 
@@ -30,14 +31,14 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     }
 
     pub fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f32 {
-        debug_assert!(coord_in_box(world_coord, &self.view_box));
-        let index = coord_to_linear_in_box(world_coord, &self.view_box);
+        debug_assert!(self.view_box.contains(world_coord));
+        let index = self.view_box.coord_to_linear(world_coord);
         self.buffer[index]
     }
 
     pub fn modify(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f32) {
-        debug_assert!(coord_in_box(world_coord, &self.view_box));
-        let index = coord_to_linear_in_box(world_coord, &self.view_box);
+        debug_assert!(self.view_box.contains(world_coord));
+        let index = self.view_box.coord_to_linear(world_coord);
         self.buffer[index] = value;
     }
 
@@ -88,7 +89,7 @@ impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
             .enumerate()
             .map(|(i, v): (usize, &mut f32)| {
                 let linear_index = self.offset + i;
-                let coord = linear_to_coord_in_box(linear_index, self.view_box);
+                let coord = self.view_box.linear_to_coord(linear_index);
                 (coord, v)
             })
     }

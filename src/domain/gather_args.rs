@@ -40,7 +40,7 @@ mod unit_tests {
         let n_r = bound.buffer_size();
         let mut buffer = fftw::array::AlignedVec::new(n_r);
         for i in 0..n_r {
-            let coord = linear_to_coord_in_box(i, &bound);
+            let coord = bound.linear_to_coord(\1);
             buffer.as_slice_mut()[i] = (coord[0] + 3 * coord[1]) as f32;
         }
         let domain = Domain::new(bound, buffer.as_slice_mut());
@@ -68,7 +68,7 @@ mod unit_tests {
         let n_r = bound.buffer_size();
         let mut buffer = fftw::array::AlignedVec::new(n_r);
         for i in 0..n_r {
-            let coord = linear_to_coord_in_box(i, &bound);
+            let coord = bound.linear_to_coord(\1);
             buffer.as_slice_mut()[i] = (coord[0] + 3 * coord[1]) as f32;
             println!("i: {}, c: {:?}, r: {}", i, coord, buffer.as_slice_mut()[i]);
         }
