@@ -99,7 +99,7 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         result
     }
 }
-/*
+
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -109,14 +109,14 @@ mod unit_tests {
     fn buffer_size_test() {
         {
             let a = AABB::new(matrix![0, 5]);
-            let real_size = (&dimensions);
+            let real_size = a.buffer_size();
             assert_eq!(real_size, 6);
-            let complex_size = dimensions.complex_buffer_size();
+            let complex_size = a.complex_buffer_size();
             assert_eq!(complex_size, (6 / 2) + 1);
         }
 
         {
-            let dimensions = matrix![0, 5; 0, 7; 0, 9];
+            let dimensions = AABB::new(matrix![0, 5; 0, 7; 0, 9]);
             let real_size = dimensions.buffer_size();
             assert_eq!(real_size, 6 * 8 * 10);
             let complex_size = dimensions.complex_buffer_size();
@@ -124,7 +124,7 @@ mod unit_tests {
         }
 
         {
-            let dimensions = matrix![1, 6; 1, 8; 1, 10];
+            let dimensions = AABB::new(matrix![1, 6; 1, 8; 1, 10]);
             let real_size = dimensions.buffer_size();
             assert_eq!(real_size, 6 * 8 * 10);
             let complex_size = dimensions.complex_buffer_size();
@@ -134,40 +134,34 @@ mod unit_tests {
 
     #[test]
     fn coord_to_linear_in_box_test() {
-        assert_eq!(
-            coord_to_linear_in_box(&vector![5, 5, 5], &matrix![0, 9; 0, 9; 0, 9]),
-            linear_index(&vector![5, 5, 5], &vector![10, 10, 10])
-        );
-
-        assert_eq!(
-            coord_to_linear_in_box(&vector![5, 5, 5], &matrix![2, 8; 2, 8; 2, 8]),
-            linear_index(&vector![3, 3, 3], &vector![7, 7, 7])
-        );
+        let bb = AABB::new(matrix![0, 9; 0, 9; 0, 9]);
+        let lin_1 = bb.coord_to_linear(&vector![5, 5, 5]);
+        let lin_2 = coord_to_linear(&vector![5, 5, 5], &vector![10, 10, 10]);
+        assert_eq!(lin_1, lin_2);
     }
 
     #[test]
     fn linear_to_coord_in_box_test() {
-        assert_eq!(
-            linear_to_coord_in_box(5, &matrix![2, 8]),
-            linear_to_coord(7, &vector![10])
-        );
-
-}
+        let bb = AABB::new(matrix![2, 8]);
+        let c_1 = bb.linear_to_coord(5);
+        let c_2 = linear_to_coord(7, &vector![10]);
+        assert_eq!(c_1, c_2);
+    }
 
     #[test]
     fn in_box_comp_test() {
         {
-            let bound = matrix![0, 9];
+            let bound = AABB::new(matrix![0, 9]);
             let c = vector![8];
             let li = bound.coord_to_linear(&c);
-            assert_eq!(c, bound.linear_to_coord(\1));
+            assert_eq!(c, bound.linear_to_coord(li));
         }
 
         {
-            let bound = matrix![0, 9; 0, 9];
+            let bound = AABB::new(matrix![0, 9; 0, 9]);
             let c = vector![9, 8];
             let li = bound.coord_to_linear(&c);
-            assert_eq!(c, bound.linear_to_coord(\1));
+            assert_eq!(c, bound.linear_to_coord(li));
         }
     }
 
@@ -175,35 +169,32 @@ mod unit_tests {
     fn periodic_coord_test() {
         {
             let index = vector![0, 0];
-            let bound = matrix![0, 10; 0, 10];
+            let bound = AABB::new(matrix![0, 10; 0, 10]);
             assert_eq!(bound.periodic_coord(&index), vector![0, 0]);
         }
 
         {
             let index = vector![10, 10];
-            let bound = matrix![0, 10; 0, 10];
-            assert_eq!(periodic_coord(&index, &bound), vector![10, 10]);
+            let bound = AABB::new(matrix![0, 10; 0, 10]);
+            assert_eq!(bound.periodic_coord(&index), vector![10, 10]);
         }
 
         {
             let index = vector![-1, 0];
-            let bound = matrix![0, 10; 0, 10];
-            assert_eq!(periodic_coord(&index, &bound), vector![10, 0]);
+            let bound = AABB::new(matrix![0, 10; 0, 10]);
+            assert_eq!(bound.periodic_coord(&index), vector![10, 0]);
         }
 
         {
             let index = vector![0, -1];
-            let bound = matrix![0, 10; 0, 10];
-            assert_eq!(periodic_coord(&index, &bound), vector![0, 10]);
+            let bound = AABB::new(matrix![0, 10; 0, 10]);
+            assert_eq!(bound.periodic_coord(&index), vector![0, 10]);
         }
 
         {
             let index = vector![0, -1, -4, -19, 134];
-            let bound = matrix![0, 100; 0, 100;0, 100; 0, 100;0, 100];
-            assert_eq!(periodic_coord(&index, &bound), vector![0, 100, 97, 82, 33]);
+            let bound = AABB::new(matrix![0, 100; 0, 100;0, 100; 0, 100;0, 100]);
+            assert_eq!(bound.periodic_coord(&index), vector![0, 100, 97, 82, 33]);
         }
     }
-
-
 }
-*/

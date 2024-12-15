@@ -272,6 +272,11 @@ mod unit_tests {
         test_unit_stencil(&stencil, bound, 13, &mut plan_library);
         test_unit_stencil(&stencil, bound, 14, &mut plan_library);
         test_unit_stencil(&stencil, bound, 5, &mut plan_library);
-        test_unit_stencil(&stencil, AABB::new(matrix![0, 14; 0, 14; 0, 14]), 5, &mut plan_library);
+        test_unit_stencil(
+            &stencil,
+            AABB::new(matrix![0, 14; 0, 14; 0, 14]),
+            5,
+            &mut plan_library,
+        );
     }
 }
