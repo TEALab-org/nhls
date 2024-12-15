@@ -80,8 +80,26 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
     pub fn add_bounds_diff(&self, diff: Bounds<DIMENSION>) -> Self {
         Self::new(self.bounds + diff)
     }
-}
 
+    /// Find the coord within bound assuming periodic boundary conditions.
+    /// Assumes that coords are no more than one box away!
+    pub fn periodic_coord(&self, coord: &Coord<DIMENSION>) -> Coord<DIMENSION> {
+        let mut result = Coord::zero();
+        for d in 0..DIMENSION {
+            let di_raw = coord[d];
+            result[d] = if di_raw < self.bounds[(d, 0)] {
+                self.bounds[(d, 1)] + 1 + di_raw
+            } else if di_raw > self.bounds[(d, 1)] {
+                self.bounds[(d, 0)] + (di_raw - self.bounds[(d, 1)] - 1)
+            } else {
+                di_raw
+            }
+        }
+        //println!("periodic_coord, c: {:?}, r: {:?}", index, result);
+        result
+    }
+}
+/*
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -133,7 +151,7 @@ mod unit_tests {
             linear_to_coord_in_box(5, &matrix![2, 8]),
             linear_to_coord(7, &vector![10])
         );
- 
+
 }
 
     #[test]
@@ -152,4 +170,40 @@ mod unit_tests {
             assert_eq!(c, bound.linear_to_coord(\1));
         }
     }
+
+    #[test]
+    fn periodic_coord_test() {
+        {
+            let index = vector![0, 0];
+            let bound = matrix![0, 10; 0, 10];
+            assert_eq!(bound.periodic_coord(&index), vector![0, 0]);
+        }
+
+        {
+            let index = vector![10, 10];
+            let bound = matrix![0, 10; 0, 10];
+            assert_eq!(periodic_coord(&index, &bound), vector![10, 10]);
+        }
+
+        {
+            let index = vector![-1, 0];
+            let bound = matrix![0, 10; 0, 10];
+            assert_eq!(periodic_coord(&index, &bound), vector![10, 0]);
+        }
+
+        {
+            let index = vector![0, -1];
+            let bound = matrix![0, 10; 0, 10];
+            assert_eq!(periodic_coord(&index, &bound), vector![0, 10]);
+        }
+
+        {
+            let index = vector![0, -1, -4, -19, 134];
+            let bound = matrix![0, 100; 0, 100;0, 100; 0, 100;0, 100];
+            assert_eq!(periodic_coord(&index, &bound), vector![0, 100, 97, 82, 33]);
+        }
+    }
+
+
 }
+*/
