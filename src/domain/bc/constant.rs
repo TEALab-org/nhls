@@ -14,7 +14,7 @@ impl<const GRID_DIMENSION: usize> ConstantCheck<GRID_DIMENSION> {
 
 impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION> for ConstantCheck<GRID_DIMENSION> {
     fn check(&self, coord: &Coord<GRID_DIMENSION>) -> Option<f32> {
-        if coord_in_box(coord, &self.bound) {
+        if self.bound.contains(coord) {
             return None;
         }
         Some(self.value)
@@ -29,7 +29,7 @@ mod unit_tests {
 
     #[test]
     fn constant_check_test() {
-        let bound = matrix![0, 10];
+        let bound = AABB::new(matrix![0, 10]);
         let n_r = bound.buffer_size();
         let mut buffer = fftw::array::AlignedVec::new(n_r);
         for i in 0..n_r {

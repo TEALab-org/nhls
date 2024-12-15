@@ -1,4 +1,3 @@
-use crate::domain::periodic_coord;
 use crate::domain::Domain;
 use crate::par_slice;
 use crate::solver::fft_plan::*;
@@ -118,7 +117,7 @@ where
         let offsets = self.stencil.offsets();
         for n_i in 0..NEIGHBORHOOD_SIZE {
             let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
-            let index = periodic_coord(&rn_i, &descriptor.bound);
+            let index = &descriptor.bound.periodic_coord(&rn_i);
             let l = descriptor.bound.coord_to_linear(&index);
             self.real_buffer[l] = self.stencil_weights[n_i];
         }
@@ -138,7 +137,7 @@ where
         // clean up real buffer
         for n_i in 0..NEIGHBORHOOD_SIZE {
             let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
-            let index = periodic_coord(&rn_i, &descriptor.bound);
+            let index = &descriptor.bound.periodic_coord(&rn_i);
             let l = descriptor.bound.coord_to_linear(&index);
             self.real_buffer[l] = 0.0;
         }
@@ -200,17 +199,17 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let max_size = matrix![0, 99];
+        let max_size = AABB::new(matrix![0, 99]);
         let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
 
         test_unit_stencil(&stencil, max_size, 10, &mut plan_library);
-        test_unit_stencil(&stencil, matrix![0, 98], 20, &mut plan_library);
+        test_unit_stencil(&stencil, AABB::new(matrix![0, 98]), 20, &mut plan_library);
     }
 
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 49; 0, 49];
+        let bound = AABB::new(matrix![0, 49; 0, 49]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 31, &mut plan_library);
     }
@@ -228,7 +227,7 @@ mod unit_tests {
                 r
             },
         );
-        let bound = matrix![0, 49; 0, 49];
+        let bound = AABB::new(matrix![0, 49; 0, 49]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 9, &mut plan_library);
     }
@@ -243,7 +242,7 @@ mod unit_tests {
             }
             r
         });
-        let bound = matrix![0, 99];
+        let bound = AABB::new(matrix![0, 99]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 43, &mut plan_library);
     }
@@ -268,11 +267,11 @@ mod unit_tests {
                 r
             },
         );
-        let bound = matrix![0, 19; 0, 19; 0, 19];
+        let bound = AABB::new(matrix![0, 19; 0, 19; 0, 19]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 13, &mut plan_library);
         test_unit_stencil(&stencil, bound, 14, &mut plan_library);
         test_unit_stencil(&stencil, bound, 5, &mut plan_library);
-        test_unit_stencil(&stencil, matrix![0, 14; 0, 14; 0, 14], 5, &mut plan_library);
+        test_unit_stencil(&stencil, AABB::new(matrix![0, 14; 0, 14; 0, 14]), 5, &mut plan_library);
     }
 }
