@@ -63,14 +63,14 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 100];
+        let bound = AABB::new(matrix![0, 100]);
         test_unit_stencil(&stencil, &bound, 100);
     }
 
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 50; 0, 50];
+        let bound = AABB::new(matrix![0, 50; 0, 50]);
         test_unit_stencil(&stencil, &bound, 9);
     }
 
@@ -87,7 +87,7 @@ mod unit_tests {
                 r
             },
         );
-        let bound = matrix![0, 50;0,  50];
+        let bound = AABB::new(matrix![0, 50;0,  50]);
         test_unit_stencil(&stencil, &bound, 10);
     }
 
@@ -101,7 +101,7 @@ mod unit_tests {
             }
             r
         });
-        let bound = matrix![0, 100];
+        let bound = AABB::new(matrix![0, 100]);
         test_unit_stencil(&stencil, &bound, 10);
     }
 
@@ -125,14 +125,14 @@ mod unit_tests {
                 r
             },
         );
-        let bound = matrix![0, 20;0,  20;0,  20];
+        let bound = AABB::new(matrix![0, 20;0,  20;0,  20]);
         test_unit_stencil(&stencil, &bound, 5);
     }
 
     #[test]
     fn shifter() {
         let stencil = Stencil::new([[-1]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 9];
+        let bound = AABB::new(matrix![0, 9]);
         let mut input_buffer = AlignedVec::new(10);
         for i in 0..10 {
             input_buffer[i] = i as f32;

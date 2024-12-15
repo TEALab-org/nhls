@@ -69,7 +69,7 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let max_size = matrix![0, 99];
+        let max_size = AABB::new(matrix![0, 99]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 100);
     }
@@ -77,7 +77,7 @@ mod unit_tests {
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let max_size = matrix![0, 49; 0, 49];
+        let max_size = AABB::new(matrix![0, 49; 0, 49]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 9);
     }
@@ -94,7 +94,7 @@ mod unit_tests {
                 r
             },
         );
-        let max_size = matrix![0, 49; 0, 49];
+        let max_size = AABB::new(matrix![0, 49; 0, 49]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 10);
     }
@@ -109,7 +109,7 @@ mod unit_tests {
             }
             r
         });
-        let max_size = matrix![0, 99];
+        let max_size = AABB::new(matrix![0, 99]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 10);
     }
@@ -135,13 +135,13 @@ mod unit_tests {
             },
         );
         {
-            let max_size = matrix![0, 19; 0, 19; 0, 19];
+            let max_size = AABB::new(matrix![0, 19; 0, 19; 0, 19]);
             let lookup = ConstantCheck::new(1.0, max_size);
             test_unit_stencil(&stencil, &lookup, &max_size, 5);
         }
 
         {
-            let max_size = matrix![0, 10; 0, 8; 0, 19];
+            let max_size = AABB::new(matrix![0, 10; 0, 8; 0, 19]);
             let lookup = ConstantCheck::new(1.0, max_size);
             test_unit_stencil(&stencil, &lookup, &max_size, 5);
         }
@@ -150,7 +150,7 @@ mod unit_tests {
     #[test]
     fn shifter() {
         let stencil = Stencil::new([[-1]], |args: &[f32; 1]| args[0]);
-        let max_size = matrix![0, 9];
+        let max_size = AABB::new(matrix![0, 9]);
         let mut input_buffer = AlignedVec::new(10);
         for i in 0..10 {
             input_buffer[i] = i as f32;

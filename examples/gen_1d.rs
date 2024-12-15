@@ -11,7 +11,7 @@ fn main() {
     const GRID_DIMENSION: usize = 1;
 
     // Grid size
-    let grid_bound = matrix![0, 999];
+    let grid_bound = AABB::new(matrix![0, 999]);
 
     let n_lines = 1000;
 

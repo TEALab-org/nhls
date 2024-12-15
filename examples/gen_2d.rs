@@ -9,7 +9,7 @@ fn main() {
     const GRID_DIMENSION: usize = 2;
 
     // Grid size
-    let grid_bound = matrix![0, 999; 0, 999];
+    let grid_bound = AABB::new(matrix![0, 999; 0, 999]);
 
     let n_images = 40;
 
@@ -28,8 +28,8 @@ fn main() {
     let mut output_domain: Domain<2> = Domain::new(grid_bound, &mut grid_output);
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    let width_f = grid_bound[(0, 1)] as f32 + 1.0;
-    let height_f = grid_bound[(1, 1)] as f32 + 1.0;
+    let width_f = grid_bound.bounds[(0, 1)] as f32 + 1.0;
+    let height_f = grid_bound.bounds[(1, 1)] as f32 + 1.0;
     let sigma_sq: f32 = (width_f / 25.0) * (width_f / 25.0);
     input_domain
         .par_modify_access(100)

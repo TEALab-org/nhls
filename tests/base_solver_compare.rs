@@ -13,7 +13,7 @@ fn thermal_1d_compare() {
     const GRID_DIMENSION: usize = 1;
 
     // Grid size
-    let grid_bound = matrix![0, 999];
+    let grid_bound = AABB::new(matrix![0, 999]);
 
     let n_steps = 16;
 
@@ -105,7 +105,7 @@ fn periodic_compare() {
     {
         let steps = 1;
         let chunk_size = 3;
-        let bound = matrix![0, 99];
+        let bound = AABB::new(matrix![0, 99]);
         let stencil = Stencil::new([[-1], [-2], [0], [3], [4], [1]], |args: &[f32; 6]| {
             let c = 1.0 / 6.0;
             args.iter().map(|x| c * x).sum()

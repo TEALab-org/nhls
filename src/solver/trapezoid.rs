@@ -153,7 +153,7 @@ mod unit_tests {
                 steps,
                 chunk_size,
             );
-            assert_eq!(*output_domain.view_box(), matrix![15, 35]);
+            assert_eq!(*output_domain.view_box(), AABB::new(matrix![15, 35]));
         }
     }
 }
