@@ -76,8 +76,8 @@ where
         steps: usize,
         chunk_size: usize,
     ) {
-        debug_assert_eq!(input.view_box(), output.view_box());
-        let key = PeriodicPlanDescriptor::new(*input.view_box(), steps);
+        debug_assert_eq!(input.aabb(), output.aabb());
+        let key = PeriodicPlanDescriptor::new(*input.aabb(), steps);
         // Can't do clippy fix on this line,
         // creating the new convolution requires mutable self borrow,
         // should probably break that out a bit so we can borrow self members separately.
@@ -87,11 +87,11 @@ where
             self.convolution_map.insert(key, new_convolution);
         }
         let convolution = self.convolution_map.get(&key).unwrap();
-        let fft_plan = self.fft_plan_library.get_plan(*input.view_box());
+        let fft_plan = self.fft_plan_library.get_plan(*input.aabb());
 
         // fftw bindings expect slices of specific size
-        let n_r = input.view_box().buffer_size();
-        let n_c = input.view_box().complex_buffer_size();
+        let n_r = input.aabb().buffer_size();
+        let n_c = input.aabb().complex_buffer_size();
         fft_plan
             .forward_plan
             .r2c(input.buffer_mut(), &mut self.complex_buffer[0..n_c])

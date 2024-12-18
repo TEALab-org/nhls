@@ -11,7 +11,7 @@ pub fn box_solve<'a, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
 ) where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
-    debug_assert_eq!(input.view_box(), output.view_box());
+    debug_assert_eq!(input.aabb(), output.aabb());
     for _ in 0..steps - 1 {
         {
             let bc = PeriodicCheck::new(input);

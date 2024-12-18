@@ -13,7 +13,7 @@ pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORH
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    debug_assert_eq!(input.view_box(), output.view_box());
+    debug_assert_eq!(input.aabb(), output.aabb());
     for _ in 0..steps - 1 {
         par_stencil::apply(bc, stencil, input, output, chunk_size);
         std::mem::swap(input, output);

@@ -2,19 +2,19 @@ use crate::util::*;
 use rayon::prelude::*;
 
 pub struct Domain<'a, const GRID_DIMENSION: usize> {
-    view_box: AABB<GRID_DIMENSION>,
+    aabb: AABB<GRID_DIMENSION>,
     buffer: &'a mut [f32],
 }
 
 impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
-    pub fn view_box(&self) -> &AABB<GRID_DIMENSION> {
-        &self.view_box
+    pub fn aabb(&self) -> &AABB<GRID_DIMENSION> {
+        &self.aabb
     }
 
-    pub fn set_view_box(&mut self, view_box: AABB<GRID_DIMENSION>) {
-        debug_assert!(view_box.buffer_size() <= self.buffer.len());
+    pub fn set_aabb(&mut self, aabb: AABB<GRID_DIMENSION>) {
+        debug_assert!(aabb.buffer_size() <= self.buffer.len());
         // TODO: should we re-slice here?
-        self.view_box = view_box;
+        self.aabb = aabb;
     }
 
     pub fn buffer(&self) -> &[f32] {
@@ -25,20 +25,20 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
         self.buffer
     }
 
-    pub fn new(view_box: AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
-        debug_assert_eq!(buffer.len(), view_box.buffer_size());
-        Domain { view_box, buffer }
+    pub fn new(aabb: AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
+        debug_assert_eq!(buffer.len(), aabb.buffer_size());
+        Domain { aabb, buffer }
     }
 
     pub fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f32 {
-        debug_assert!(self.view_box.contains(world_coord));
-        let index = self.view_box.coord_to_linear(world_coord);
+        debug_assert!(self.aabb.contains(world_coord));
+        let index = self.aabb.coord_to_linear(world_coord);
         self.buffer[index]
     }
 
     pub fn modify(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f32) {
-        debug_assert!(self.view_box.contains(world_coord));
-        let index = self.view_box.coord_to_linear(world_coord);
+        debug_assert!(self.aabb.contains(world_coord));
+        let index = self.aabb.coord_to_linear(world_coord);
         self.buffer[index] = value;
     }
 
@@ -46,39 +46,39 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
         &mut self,
         chunk_size: usize,
     ) -> impl ParallelIterator<Item = DomainChunk<'_, GRID_DIMENSION>> {
-        par_modify_access_impl(self.buffer, &self.view_box, chunk_size)
+        par_modify_access_impl(self.buffer, &self.aabb, chunk_size)
     }
 }
 
 /// Why not just put this into Domain::par_modify_access?
-/// Rust compiler can't figure out how to borrow view_box and buffer
+/// Rust compiler can't figure out how to borrow aabb and buffer
 /// at the same time in this way.
 /// By putting their borrows into one function call first we work around it.
 fn par_modify_access_impl<'a, const GRID_DIMENSION: usize>(
     buffer: &'a mut [f32],
-    view_box: &'a AABB<GRID_DIMENSION>,
+    aabb: &'a AABB<GRID_DIMENSION>,
     chunk_size: usize,
 ) -> impl ParallelIterator<Item = DomainChunk<'a, GRID_DIMENSION>> + 'a {
-    buffer[0..view_box.buffer_size()]
+    buffer[0..aabb.buffer_size()]
         .par_chunks_mut(chunk_size)
         .enumerate()
         .map(move |(i, buffer_chunk): (usize, &mut [f32])| {
             let offset = i * chunk_size;
-            DomainChunk::new(offset, view_box, buffer_chunk)
+            DomainChunk::new(offset, aabb, buffer_chunk)
         })
 }
 
 pub struct DomainChunk<'a, const GRID_DIMENSION: usize> {
     offset: usize,
-    view_box: &'a AABB<GRID_DIMENSION>,
+    aabb: &'a AABB<GRID_DIMENSION>,
     buffer: &'a mut [f32],
 }
 
 impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
-    pub fn new(offset: usize, view_box: &'a AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
+    pub fn new(offset: usize, aabb: &'a AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
         DomainChunk {
             offset,
-            view_box,
+            aabb,
             buffer,
         }
     }
@@ -89,7 +89,7 @@ impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
             .enumerate()
             .map(|(i, v): (usize, &mut f32)| {
                 let linear_index = self.offset + i;
-                let coord = self.view_box.linear_to_coord(linear_index);
+                let coord = self.aabb.linear_to_coord(linear_index);
                 (coord, v)
             })
     }

@@ -36,18 +36,18 @@ pub fn trapezoid_apply<
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    assert_eq!(input.view_box(), output.view_box());
+    assert_eq!(input.aabb(), output.aabb());
 
     let mut trapezoid_slopes = stencil_slopes.component_mul(sloped_sides);
     let negative_slopes = -1 * trapezoid_slopes.column(1);
     trapezoid_slopes.set_column(1, &negative_slopes);
 
-    let mut output_box = *input.view_box();
+    let mut output_box = *input.aabb();
     for t in 0..steps {
         println!("trapezoid t: {}", t);
         output_box = output_box.add_bounds_diff(trapezoid_slopes);
-        debug_assert!(input.view_box().buffer_size() >= output_box.buffer_size());
-        output.set_view_box(output_box);
+        debug_assert!(input.aabb().buffer_size() >= output_box.buffer_size());
+        output.set_aabb(output_box);
         println!("  output_box: {:?}", output_box);
 
         par_stencil::apply(bc, stencil, input, output, chunk_size);
@@ -153,7 +153,7 @@ mod unit_tests {
                 steps,
                 chunk_size,
             );
-            assert_eq!(*output_domain.view_box(), AABB::new(matrix![15, 35]));
+            assert_eq!(*output_domain.aabb(), AABB::new(matrix![15, 35]));
         }
     }
 }

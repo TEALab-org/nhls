@@ -13,7 +13,7 @@ pub fn apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    debug_assert!(input.view_box().contains_aabb(output.view_box()));
+    debug_assert!(input.aabb().contains_aabb(output.aabb()));
     output
         .par_modify_access(chunk_size)
         .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
