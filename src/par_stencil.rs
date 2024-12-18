@@ -13,7 +13,7 @@ pub fn apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    debug_assert!(box_contains_box(input.view_box(), output.view_box()));
+    debug_assert!(input.aabb().contains_aabb(output.aabb()));
     output
         .par_modify_access(chunk_size)
         .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
@@ -36,8 +36,8 @@ mod unit_test {
     #[test]
     fn par_stencil_test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 99];
-        let n_r = box_buffer_size(&bound);
+        let bound = AABB::new(matrix![0, 99]);
+        let n_r = bound.buffer_size();
         {
             let mut input_buffer = vec![1.0; n_r];
             let input_domain = Domain::new(bound, &mut input_buffer);
@@ -69,11 +69,11 @@ mod unit_test {
 
     // Throw an error if we hit boundary
     struct ErrorCheck {
-        bound: Box<1>,
+        bounds: AABB<1>,
     }
     impl BCCheck<1> for ErrorCheck {
         fn check(&self, c: &Coord<1>) -> Option<f32> {
-            assert!(coord_in_box(c, &self.bound));
+            assert!(self.bounds.contains(c));
             None
         }
     }
@@ -88,16 +88,18 @@ mod unit_test {
             r
         });
 
-        let input_bound = matrix![0, 10];
-        let output_bound = matrix![1, 9];
+        let input_bound = AABB::new(matrix![0, 10]);
+        let output_bound = AABB::new(matrix![1, 9]);
 
-        let mut input_buffer = vec![1.0; box_buffer_size(&input_bound)];
-        let mut output_buffer = vec![0.0; box_buffer_size(&output_bound)];
+        let mut input_buffer = vec![1.0; input_bound.buffer_size()];
+        let mut output_buffer = vec![0.0; output_bound.buffer_size()];
 
         let input_domain = Domain::new(input_bound, &mut input_buffer);
         let mut output_domain = Domain::new(output_bound, &mut output_buffer);
 
-        let bc = ErrorCheck { bound: input_bound };
+        let bc = ErrorCheck {
+            bounds: input_bound,
+        };
 
         apply(&bc, &stencil, &input_domain, &mut output_domain, 2);
 

@@ -5,11 +5,11 @@ use crate::util::*;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct FFTPlanDescriptor<const GRID_DIMENSION: usize> {
-    pub bound: Box<GRID_DIMENSION>,
+    pub bound: AABB<GRID_DIMENSION>,
 }
 
 impl<const GRID_DIMENSION: usize> FFTPlanDescriptor<GRID_DIMENSION> {
-    pub fn new(bound: Box<GRID_DIMENSION>) -> Self {
+    pub fn new(bound: AABB<GRID_DIMENSION>) -> Self {
         FFTPlanDescriptor { bound }
     }
 }
@@ -20,8 +20,8 @@ pub struct FFTPlan {
 }
 
 impl FFTPlan {
-    pub fn new<const GRID_DIMENSION: usize>(bound: Box<GRID_DIMENSION>) -> Self {
-        let size = (bound.column(1) - bound.column(0)).add_scalar(1);
+    pub fn new<const GRID_DIMENSION: usize>(bound: AABB<GRID_DIMENSION>) -> Self {
+        let size = bound.exclusive_bounds();
         let plan_size = size.try_cast::<usize>().unwrap();
         let forward_plan =
             fftw::plan::R2CPlan32::aligned(plan_size.as_slice(), fftw::types::Flag::ESTIMATE)
@@ -48,7 +48,7 @@ impl<const GRID_DIMENSION: usize> FFTPlanLibrary<GRID_DIMENSION> {
         }
     }
 
-    pub fn get_plan(&mut self, bound: Box<GRID_DIMENSION>) -> &mut FFTPlan {
+    pub fn get_plan(&mut self, bound: AABB<GRID_DIMENSION>) -> &mut FFTPlan {
         let key = FFTPlanDescriptor::new(bound);
         self.plan_map.entry(key).or_insert(FFTPlan::new(bound))
     }

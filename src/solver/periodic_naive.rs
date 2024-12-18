@@ -11,7 +11,7 @@ pub fn box_solve<'a, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_
 ) where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
-    debug_assert_eq!(input.view_box(), output.view_box());
+    debug_assert_eq!(input.aabb(), output.aabb());
     for _ in 0..steps - 1 {
         {
             let bc = PeriodicCheck::new(input);
@@ -34,14 +34,14 @@ mod unit_tests {
 
     fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        bound: &Box<GRID_DIMENSION>,
+        bound: &AABB<GRID_DIMENSION>,
         steps: usize,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     {
         let chunk_size = 3;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let n_r = box_buffer_size(bound);
+        let n_r = bound.buffer_size();
 
         let mut input_buffer = vec![1.0; n_r];
         let mut output_buffer = vec![2.0; n_r];
@@ -63,14 +63,14 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 100];
+        let bound = AABB::new(matrix![0, 100]);
         test_unit_stencil(&stencil, &bound, 100);
     }
 
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 50; 0, 50];
+        let bound = AABB::new(matrix![0, 50; 0, 50]);
         test_unit_stencil(&stencil, &bound, 9);
     }
 
@@ -87,7 +87,7 @@ mod unit_tests {
                 r
             },
         );
-        let bound = matrix![0, 50;0,  50];
+        let bound = AABB::new(matrix![0, 50;0,  50]);
         test_unit_stencil(&stencil, &bound, 10);
     }
 
@@ -101,7 +101,7 @@ mod unit_tests {
             }
             r
         });
-        let bound = matrix![0, 100];
+        let bound = AABB::new(matrix![0, 100]);
         test_unit_stencil(&stencil, &bound, 10);
     }
 
@@ -125,14 +125,14 @@ mod unit_tests {
                 r
             },
         );
-        let bound = matrix![0, 20;0,  20;0,  20];
+        let bound = AABB::new(matrix![0, 20;0,  20;0,  20]);
         test_unit_stencil(&stencil, &bound, 5);
     }
 
     #[test]
     fn shifter() {
         let stencil = Stencil::new([[-1]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 9];
+        let bound = AABB::new(matrix![0, 9]);
         let mut input_buffer = AlignedVec::new(10);
         for i in 0..10 {
             input_buffer[i] = i as f32;

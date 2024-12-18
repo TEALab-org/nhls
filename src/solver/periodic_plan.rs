@@ -1,4 +1,3 @@
-use crate::domain::periodic_coord;
 use crate::domain::Domain;
 use crate::par_slice;
 use crate::solver::fft_plan::*;
@@ -13,12 +12,12 @@ use crate::util::*;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 struct PeriodicPlanDescriptor<const GRID_DIMENSION: usize> {
-    pub bound: Box<GRID_DIMENSION>,
+    pub bound: AABB<GRID_DIMENSION>,
     pub steps: usize,
 }
 
 impl<const GRID_DIMENSION: usize> PeriodicPlanDescriptor<GRID_DIMENSION> {
-    fn new(bound: Box<GRID_DIMENSION>, steps: usize) -> Self {
+    fn new(bound: AABB<GRID_DIMENSION>, steps: usize) -> Self {
         PeriodicPlanDescriptor { bound, steps }
     }
 }
@@ -47,14 +46,14 @@ where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
     pub fn new(
-        max_bound: &Box<GRID_DIMENSION>,
+        max_bound: &AABB<GRID_DIMENSION>,
         stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) -> Self {
         // Zeroed out by construction
-        let max_real_size = box_buffer_size(max_bound);
+        let max_real_size = max_bound.buffer_size();
         let real_buffer = fftw::array::AlignedVec::new(max_real_size);
 
-        let max_complex_size = box_complex_buffer_size(max_bound);
+        let max_complex_size = max_bound.complex_buffer_size();
         let convolution_buffer = fftw::array::AlignedVec::new(max_complex_size);
         let complex_buffer = fftw::array::AlignedVec::new(max_complex_size);
         let stencil_weights = stencil.extract_weights();
@@ -77,8 +76,8 @@ where
         steps: usize,
         chunk_size: usize,
     ) {
-        debug_assert_eq!(input.view_box(), output.view_box());
-        let key = PeriodicPlanDescriptor::new(*input.view_box(), steps);
+        debug_assert_eq!(input.aabb(), output.aabb());
+        let key = PeriodicPlanDescriptor::new(*input.aabb(), steps);
         // Can't do clippy fix on this line,
         // creating the new convolution requires mutable self borrow,
         // should probably break that out a bit so we can borrow self members separately.
@@ -88,11 +87,11 @@ where
             self.convolution_map.insert(key, new_convolution);
         }
         let convolution = self.convolution_map.get(&key).unwrap();
-        let fft_plan = self.fft_plan_library.get_plan(*input.view_box());
+        let fft_plan = self.fft_plan_library.get_plan(*input.aabb());
 
         // fftw bindings expect slices of specific size
-        let n_r = box_buffer_size(input.view_box());
-        let n_c = box_complex_buffer_size(input.view_box());
+        let n_r = input.aabb().buffer_size();
+        let n_c = input.aabb().complex_buffer_size();
         fft_plan
             .forward_plan
             .r2c(input.buffer_mut(), &mut self.complex_buffer[0..n_c])
@@ -118,14 +117,14 @@ where
         let offsets = self.stencil.offsets();
         for n_i in 0..NEIGHBORHOOD_SIZE {
             let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
-            let index = periodic_coord(&rn_i, &descriptor.bound);
-            let l = coord_to_linear_in_box(&index, &descriptor.bound);
+            let index = &descriptor.bound.periodic_coord(&rn_i);
+            let l = descriptor.bound.coord_to_linear(&index);
             self.real_buffer[l] = self.stencil_weights[n_i];
         }
 
         // Calculate convolution of stencil
-        let n_r = box_buffer_size(&descriptor.bound);
-        let n_c = box_complex_buffer_size(&descriptor.bound);
+        let n_r = descriptor.bound.buffer_size();
+        let n_c = descriptor.bound.complex_buffer_size();
         let fft_plan = self.fft_plan_library.get_plan(descriptor.bound);
         fft_plan
             .forward_plan
@@ -138,8 +137,8 @@ where
         // clean up real buffer
         for n_i in 0..NEIGHBORHOOD_SIZE {
             let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
-            let index = periodic_coord(&rn_i, &descriptor.bound);
-            let l = coord_to_linear_in_box(&index, &descriptor.bound);
+            let index = &descriptor.bound.periodic_coord(&rn_i);
+            let l = descriptor.bound.coord_to_linear(&index);
             self.real_buffer[l] = 0.0;
         }
 
@@ -170,7 +169,7 @@ mod unit_tests {
 
     fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        bound: Box<GRID_DIMENSION>,
+        bound: AABB<GRID_DIMENSION>,
         steps: usize,
         plan_library: &mut PeriodicPlanLibrary<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) where
@@ -178,7 +177,7 @@ mod unit_tests {
     {
         let chunk_size = 1;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let rbs = box_buffer_size(&bound);
+        let rbs = bound.buffer_size();
 
         let mut input_x = fftw::array::AlignedVec::new(rbs);
         for x in input_x.as_slice_mut() {
@@ -200,17 +199,17 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let max_size = matrix![0, 99];
+        let max_size = AABB::new(matrix![0, 99]);
         let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
 
         test_unit_stencil(&stencil, max_size, 10, &mut plan_library);
-        test_unit_stencil(&stencil, matrix![0, 98], 20, &mut plan_library);
+        test_unit_stencil(&stencil, AABB::new(matrix![0, 98]), 20, &mut plan_library);
     }
 
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let bound = matrix![0, 49; 0, 49];
+        let bound = AABB::new(matrix![0, 49; 0, 49]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 31, &mut plan_library);
     }
@@ -228,7 +227,7 @@ mod unit_tests {
                 r
             },
         );
-        let bound = matrix![0, 49; 0, 49];
+        let bound = AABB::new(matrix![0, 49; 0, 49]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 9, &mut plan_library);
     }
@@ -243,7 +242,7 @@ mod unit_tests {
             }
             r
         });
-        let bound = matrix![0, 99];
+        let bound = AABB::new(matrix![0, 99]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 43, &mut plan_library);
     }
@@ -268,11 +267,16 @@ mod unit_tests {
                 r
             },
         );
-        let bound = matrix![0, 19; 0, 19; 0, 19];
+        let bound = AABB::new(matrix![0, 19; 0, 19; 0, 19]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 13, &mut plan_library);
         test_unit_stencil(&stencil, bound, 14, &mut plan_library);
         test_unit_stencil(&stencil, bound, 5, &mut plan_library);
-        test_unit_stencil(&stencil, matrix![0, 14; 0, 14; 0, 14], 5, &mut plan_library);
+        test_unit_stencil(
+            &stencil,
+            AABB::new(matrix![0, 14; 0, 14; 0, 14]),
+            5,
+            &mut plan_library,
+        );
     }
 }

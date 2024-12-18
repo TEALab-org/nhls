@@ -13,7 +13,7 @@ pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORH
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    debug_assert_eq!(input.view_box(), output.view_box());
+    debug_assert_eq!(input.aabb(), output.aabb());
     for _ in 0..steps - 1 {
         par_stencil::apply(bc, stencil, input, output, chunk_size);
         std::mem::swap(input, output);
@@ -37,7 +37,7 @@ mod unit_tests {
     >(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bc_lookup: &BC,
-        bound: &Box<GRID_DIMENSION>,
+        bound: &AABB<GRID_DIMENSION>,
         steps: usize,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
@@ -45,7 +45,7 @@ mod unit_tests {
     {
         let chunk_size = 3;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let n_r = box_buffer_size(bound);
+        let n_r = bound.buffer_size();
 
         let mut input_buffer = vec![1.0; n_r];
         let mut output_buffer = vec![2.0; n_r];
@@ -69,7 +69,7 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let max_size = matrix![0, 99];
+        let max_size = AABB::new(matrix![0, 99]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 100);
     }
@@ -77,7 +77,7 @@ mod unit_tests {
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let max_size = matrix![0, 49; 0, 49];
+        let max_size = AABB::new(matrix![0, 49; 0, 49]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 9);
     }
@@ -94,7 +94,7 @@ mod unit_tests {
                 r
             },
         );
-        let max_size = matrix![0, 49; 0, 49];
+        let max_size = AABB::new(matrix![0, 49; 0, 49]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 10);
     }
@@ -109,7 +109,7 @@ mod unit_tests {
             }
             r
         });
-        let max_size = matrix![0, 99];
+        let max_size = AABB::new(matrix![0, 99]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 10);
     }
@@ -135,13 +135,13 @@ mod unit_tests {
             },
         );
         {
-            let max_size = matrix![0, 19; 0, 19; 0, 19];
+            let max_size = AABB::new(matrix![0, 19; 0, 19; 0, 19]);
             let lookup = ConstantCheck::new(1.0, max_size);
             test_unit_stencil(&stencil, &lookup, &max_size, 5);
         }
 
         {
-            let max_size = matrix![0, 10; 0, 8; 0, 19];
+            let max_size = AABB::new(matrix![0, 10; 0, 8; 0, 19]);
             let lookup = ConstantCheck::new(1.0, max_size);
             test_unit_stencil(&stencil, &lookup, &max_size, 5);
         }
@@ -150,7 +150,7 @@ mod unit_tests {
     #[test]
     fn shifter() {
         let stencil = Stencil::new([[-1]], |args: &[f32; 1]| args[0]);
-        let max_size = matrix![0, 9];
+        let max_size = AABB::new(matrix![0, 9]);
         let mut input_buffer = AlignedVec::new(10);
         for i in 0..10 {
             input_buffer[i] = i as f32;
@@ -172,7 +172,6 @@ mod unit_tests {
             steps,
             chunk_size,
         );
-        println!("output: {:?}", output_buffer.as_slice());
         for i in 0..3 {
             assert_approx_eq!(f32, output_buffer[i], -1.0);
         }

@@ -52,8 +52,8 @@ where
         &self.offsets
     }
 
-    pub fn slopes(&self) -> Box<GRID_DIMENSION> {
-        let mut result = Box::zero();
+    pub fn slopes(&self) -> Bounds<GRID_DIMENSION> {
+        let mut result = Bounds::zero();
         for neighbor in self.offsets {
             for d in 0..GRID_DIMENSION {
                 let neighbor_d = neighbor[d];

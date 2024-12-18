@@ -3,18 +3,18 @@ use crate::util::*;
 
 pub struct ConstantCheck<const GRID_DIMENSION: usize> {
     value: f32,
-    bound: Box<GRID_DIMENSION>,
+    bound: AABB<GRID_DIMENSION>,
 }
 
 impl<const GRID_DIMENSION: usize> ConstantCheck<GRID_DIMENSION> {
-    pub fn new(value: f32, bound: Box<GRID_DIMENSION>) -> Self {
+    pub fn new(value: f32, bound: AABB<GRID_DIMENSION>) -> Self {
         ConstantCheck { value, bound }
     }
 }
 
 impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION> for ConstantCheck<GRID_DIMENSION> {
     fn check(&self, coord: &Coord<GRID_DIMENSION>) -> Option<f32> {
-        if coord_in_box(coord, &self.bound) {
+        if self.bound.contains(coord) {
             return None;
         }
         Some(self.value)
@@ -29,8 +29,8 @@ mod unit_tests {
 
     #[test]
     fn constant_check_test() {
-        let bound = matrix![0, 10];
-        let n_r = box_buffer_size(&bound);
+        let bound = AABB::new(matrix![0, 10]);
+        let n_r = bound.buffer_size();
         let mut buffer = fftw::array::AlignedVec::new(n_r);
         for i in 0..n_r {
             buffer.as_slice_mut()[i] = i as f32;

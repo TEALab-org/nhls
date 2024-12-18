@@ -10,7 +10,7 @@ fn main() {
     const GRID_DIMENSION: usize = 1;
 
     // Grid size
-    let grid_bound = matrix![0, 999];
+    let grid_bound = AABB::new(matrix![0, 999]);
 
     let n_lines = 1000;
 
@@ -35,7 +35,7 @@ fn main() {
     });
 
     // Create domains
-    let buffer_size = box_buffer_size(&grid_bound);
+    let buffer_size = grid_bound.buffer_size();
     let mut grid_input = vec![0.0; buffer_size];
     let mut input_domain = Domain::new(grid_bound, &mut grid_input);
 

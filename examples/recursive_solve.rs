@@ -26,7 +26,6 @@ struct FFTOperation {
 struct Recursive
 */
 
-
 #[derive(Debug, Copy, Clone)]
 pub enum Boundary {
     SPACE,
@@ -63,7 +62,10 @@ pub fn space(i: usize) -> String {
 
 pub fn recursive_solve(args: FFTSolveArgs, p: FFTParams, level: usize, step: usize) {
     let sp = space(level);
-    println!("{}RS: l: {}, s: {}, args: {:?}, p: {:?}", sp, level, step, args, p);
+    println!(
+        "{}RS: l: {}, s: {}, args: {:?}, p: {:?}",
+        sp, level, step, args, p
+    );
 
     // Are we below cutoff?
     let x_size = args.x_end - args.x0;
@@ -73,7 +75,7 @@ pub fn recursive_solve(args: FFTSolveArgs, p: FFTParams, level: usize, step: usi
     }
 
     // Compute FFT Solve
-    // Should be even so 
+    // Should be even so
     let mut solve_size = {
         let mut solve_size = (p.ratio * x_size as f32) as usize;
         if solve_size % 2 != 0 {
@@ -90,7 +92,6 @@ pub fn recursive_solve(args: FFTSolveArgs, p: FFTParams, level: usize, step: usi
         solve_size = x_size - 2 * (p.sigma * delta_t);
     }
 
-
     // FFT Solve center
     println!(
         "{}*FFT Solve, dt: {}, t1: {}, solve_size: {}",
@@ -101,9 +102,7 @@ pub fn recursive_solve(args: FFTSolveArgs, p: FFTParams, level: usize, step: usi
     );
 
     // left recursion
-    if args.sloped[0] == 0 {
-
-    }
+    if args.sloped[0] == 0 {}
 
     let mut left_args = args;
     left_args.x_end = args.x0 + (p.sigma * delta_t);

@@ -13,7 +13,7 @@ fn thermal_1d_compare() {
     const GRID_DIMENSION: usize = 1;
 
     // Grid size
-    let grid_bound = matrix![0, 999];
+    let grid_bound = AABB::new(matrix![0, 999]);
 
     let n_steps = 16;
 
@@ -36,7 +36,7 @@ fn thermal_1d_compare() {
     });
 
     // Create domains
-    let buffer_size = box_buffer_size(&grid_bound);
+    let buffer_size = grid_bound.buffer_size();
     let mut grid_input = vec![0.0; buffer_size];
     let mut naive_input_domain = Domain::new(grid_bound, &mut grid_input);
 
@@ -105,13 +105,13 @@ fn periodic_compare() {
     {
         let steps = 1;
         let chunk_size = 3;
-        let bound = matrix![0, 99];
+        let bound = AABB::new(matrix![0, 99]);
         let stencil = Stencil::new([[-1], [-2], [0], [3], [4], [1]], |args: &[f32; 6]| {
             let c = 1.0 / 6.0;
             args.iter().map(|x| c * x).sum()
         });
 
-        let n_r = box_buffer_size(&bound);
+        let n_r = bound.buffer_size();
         let mut input_a = AlignedVec::new(n_r);
         for i in 0..n_r {
             input_a[i] = i as f32;
