@@ -57,7 +57,7 @@ pub fn linear_to_coord<const GRID_DIMENSION: usize>(
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    use nalgebra::{matrix, vector};
+    use nalgebra::vector;
 
     #[test]
     fn buffer_size_test() {
@@ -117,11 +117,6 @@ mod unit_tests {
             let index = 0;
             let bound = vector![10, 10, 8, 10];
             assert_eq!(linear_to_coord(index, &bound), vector![0, 0, 0, 0]);
-        }
-
-        {
-            let index = 0;
-            let bound = vector![10];
         }
     }
 }
