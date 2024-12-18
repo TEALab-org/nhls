@@ -50,11 +50,11 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
     }
 
     pub fn coord_to_linear(&self, coord: &Coord<DIMENSION>) -> usize {
-        coord_to_linear(coord, &self.exclusive_bounds())
+        coord_to_linear(&(coord - self.min()), &self.exclusive_bounds())
     }
 
     pub fn linear_to_coord(&self, index: usize) -> Coord<DIMENSION> {
-        linear_to_coord(index, &self.exclusive_bounds())
+        linear_to_coord(index, &self.exclusive_bounds()) + self.min()
     }
 
     pub fn contains(&self, coord: &Coord<DIMENSION>) -> bool {
@@ -95,8 +95,17 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
                 di_raw
             }
         }
-        //println!("periodic_coord, c: {:?}, r: {:?}", index, result);
         result
+    }
+
+    // TODO: can we return a view instead of allocating?
+    pub fn min(&self) -> Coord<DIMENSION> {
+        self.bounds.column(0).into()
+    }
+
+    // TODO: can we return a view instead of allocating?
+    pub fn max(&self) -> Coord<DIMENSION> {
+        self.bounds.column(1).into()
     }
 }
 
@@ -142,10 +151,16 @@ mod unit_tests {
 
     #[test]
     fn linear_to_coord_test() {
-        let bb = AABB::new(matrix![2, 8]);
-        let c_1 = bb.linear_to_coord(5);
-        let c_2 = linear_to_coord(5, &vector![7]);
-        assert_eq!(c_1, c_2);
+        {
+            let bb = AABB::new(matrix![2, 8]);
+            let c_1 = bb.linear_to_coord(5);
+            assert_eq!(c_1, vector![7]);
+        }
+
+        {
+            let a = AABB::new(matrix![1, 9]);
+            assert_eq!(a.linear_to_coord(0), vector![1]);
+        }
     }
 
     #[test]

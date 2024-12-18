@@ -12,7 +12,7 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     }
 
     pub fn set_view_box(&mut self, view_box: AABB<GRID_DIMENSION>) {
-        debug_assert!(view_box.buffer_size() >= self.buffer.len());
+        debug_assert!(view_box.buffer_size() <= self.buffer.len());
         // TODO: should we re-slice here?
         self.view_box = view_box;
     }

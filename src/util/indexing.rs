@@ -118,5 +118,10 @@ mod unit_tests {
             let bound = vector![10, 10, 8, 10];
             assert_eq!(linear_to_coord(index, &bound), vector![0, 0, 0, 0]);
         }
+
+        {
+            let index = 0;
+            let bound = vector![10];
+        }
     }
 }

@@ -13,8 +13,6 @@ pub fn apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    println!("input: {:?}", input.view_box());
-    println!("output: {:?}", output.view_box());
     debug_assert!(input.view_box().contains_aabb(output.view_box()));
     output
         .par_modify_access(chunk_size)
@@ -71,11 +69,11 @@ mod unit_test {
 
     // Throw an error if we hit boundary
     struct ErrorCheck {
-        bound: AABB<1>,
+        bounds: AABB<1>,
     }
     impl BCCheck<1> for ErrorCheck {
         fn check(&self, c: &Coord<1>) -> Option<f32> {
-            assert!(self.bound.contains(c));
+            assert!(self.bounds.contains(c));
             None
         }
     }
@@ -99,7 +97,9 @@ mod unit_test {
         let input_domain = Domain::new(input_bound, &mut input_buffer);
         let mut output_domain = Domain::new(output_bound, &mut output_buffer);
 
-        let bc = ErrorCheck { bound: input_bound };
+        let bc = ErrorCheck {
+            bounds: input_bound,
+        };
 
         apply(&bc, &stencil, &input_domain, &mut output_domain, 2);
 

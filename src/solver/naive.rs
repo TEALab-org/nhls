@@ -172,7 +172,6 @@ mod unit_tests {
             steps,
             chunk_size,
         );
-        println!("output: {:?}", output_buffer.as_slice());
         for i in 0..3 {
             assert_approx_eq!(f32, output_buffer[i], -1.0);
         }
