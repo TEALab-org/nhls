@@ -68,7 +68,7 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
 
     pub fn contains_aabb(&self, other: &Self) -> bool {
         for d in 0..DIMENSION {
-            if other.bounds[(d, 0)] <= self.bounds[(d, 0)]
+            if other.bounds[(d, 0)] < self.bounds[(d, 0)]
                 || other.bounds[(d, 1)] > self.bounds[(d, 1)]
             {
                 return false;
@@ -141,10 +141,10 @@ mod unit_tests {
     }
 
     #[test]
-    fn linear_to_coord_in_box_test() {
+    fn linear_to_coord_test() {
         let bb = AABB::new(matrix![2, 8]);
         let c_1 = bb.linear_to_coord(5);
-        let c_2 = linear_to_coord(7, &vector![10]);
+        let c_2 = linear_to_coord(5, &vector![7]);
         assert_eq!(c_1, c_2);
     }
 
@@ -195,6 +195,15 @@ mod unit_tests {
             let index = vector![0, -1, -4, -19, 134];
             let bound = AABB::new(matrix![0, 100; 0, 100;0, 100; 0, 100;0, 100]);
             assert_eq!(bound.periodic_coord(&index), vector![0, 100, 97, 82, 33]);
+        }
+    }
+
+    #[test]
+    fn contains_aabb_test() {
+        {
+            let a = AABB::new(matrix![0, 9]);
+            let b = AABB::new(matrix![0, 9]);
+            assert!(a.contains_aabb(&b));
         }
     }
 }
