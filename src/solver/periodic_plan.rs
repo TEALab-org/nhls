@@ -29,16 +29,16 @@ pub struct PeriodicPlanLibrary<
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
 > where
-    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
 {
     convolution_map:
-        HashMap<PeriodicPlanDescriptor<GRID_DIMENSION>, AlignedVec<c32>>,
+        HashMap<PeriodicPlanDescriptor<GRID_DIMENSION>, AlignedVec<c64>>,
     fft_plan_library: FFTPlanLibrary<GRID_DIMENSION>,
-    stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    real_buffer: AlignedVec<f32>,
-    complex_buffer: AlignedVec<c32>,
-    convolution_buffer: AlignedVec<c32>,
-    stencil_weights: [f32; NEIGHBORHOOD_SIZE],
+    stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    real_buffer: AlignedVec<f64>,
+    complex_buffer: AlignedVec<c64>,
+    convolution_buffer: AlignedVec<c64>,
+    stencil_weights: [f64; NEIGHBORHOOD_SIZE],
 }
 
 impl<
@@ -48,11 +48,11 @@ impl<
         const NEIGHBORHOOD_SIZE: usize,
     > PeriodicPlanLibrary<'a, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 where
-    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
 {
     pub fn new(
         max_bound: &AABB<GRID_DIMENSION>,
-        stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     ) -> Self {
         // Zeroed out by construction
         let max_real_size = max_bound.buffer_size();
@@ -110,14 +110,14 @@ where
             .backward_plan
             .c2r(&mut self.complex_buffer[0..n_c], output.buffer_mut())
             .unwrap();
-        par_slice::div(output.buffer_mut(), n_r as f32, chunk_size);
+        par_slice::div(output.buffer_mut(), n_r as f64, chunk_size);
     }
 
     fn new_convolution(
         &mut self,
         descriptor: &PeriodicPlanDescriptor<GRID_DIMENSION>,
         chunk_size: usize,
-    ) -> AlignedVec<c32> {
+    ) -> AlignedVec<c64> {
         // Place offsets in real buffer
         let offsets = self.stencil.offsets();
         for n_i in 0..NEIGHBORHOOD_SIZE {
@@ -158,7 +158,7 @@ where
         // overkill, could only set the values we know we touched,
         par_slice::set_value(
             &mut self.convolution_buffer[0..n_c],
-            c32::zero(),
+            c64::zero(),
             chunk_size,
         );
 
@@ -177,7 +177,7 @@ mod unit_tests {
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
-        stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bound: AABB<GRID_DIMENSION>,
         steps: usize,
         plan_library: &mut PeriodicPlanLibrary<
@@ -186,15 +186,15 @@ mod unit_tests {
             NEIGHBORHOOD_SIZE,
         >,
     ) where
-        Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+        Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     {
         let chunk_size = 1;
-        assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
+        assert_approx_eq!(f64, stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
         let rbs = bound.buffer_size();
 
         let mut input_x = fftw::array::AlignedVec::new(rbs);
         for x in input_x.as_slice_mut() {
-            *x = 1.0f32;
+            *x = 1.0f64;
         }
         let input_copy = input_x.clone();
         let mut input_domain = Domain::new(bound, input_x.as_slice_mut());
@@ -210,14 +210,14 @@ mod unit_tests {
             chunk_size,
         );
         for x in &result_buffer[0..rbs] {
-            assert_approx_eq!(f32, *x, 1.0);
+            assert_approx_eq!(f64, *x, 1.0);
         }
         assert_eq!(input_x.as_slice(), input_copy.as_slice());
     }
 
     #[test]
     fn test_1d_simple() {
-        let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
+        let stencil = Stencil::new([[0]], |args: &[f64; 1]| args[0]);
         let max_size = AABB::new(matrix![0, 99]);
         let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
 
@@ -232,7 +232,7 @@ mod unit_tests {
 
     #[test]
     fn test_2d_simple() {
-        let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
+        let stencil = Stencil::new([[0, 0]], |args: &[f64; 1]| args[0]);
         let bound = AABB::new(matrix![0, 49; 0, 49]);
         let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
         test_unit_stencil(&stencil, bound, 31, &mut plan_library);
@@ -242,7 +242,7 @@ mod unit_tests {
     fn test_2d_less_simple() {
         let stencil = Stencil::new(
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
-            |args: &[f32; 5]| {
+            |args: &[f64; 5]| {
                 debug_assert_eq!(args.len(), 5);
                 let mut r = 0.0;
                 for a in args {
@@ -258,7 +258,7 @@ mod unit_tests {
 
     #[test]
     fn test_1d_less_simple() {
-        let stencil = Stencil::new([[-1], [1], [0]], |args: &[f32; 3]| {
+        let stencil = Stencil::new([[-1], [1], [0]], |args: &[f64; 3]| {
             debug_assert_eq!(args.len(), 3);
             let mut r = 0.0;
             for a in args {
@@ -283,7 +283,7 @@ mod unit_tests {
                 [-1, 0, 4],
                 [0, 0, 0],
             ],
-            |args: &[f32; 7]| {
+            |args: &[f64; 7]| {
                 let mut r = 0.0;
                 for a in args {
                     r += a / 7.0;

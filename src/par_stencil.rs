@@ -10,12 +10,12 @@ pub fn apply<
     const NEIGHBORHOOD_SIZE: usize,
 >(
     bc: &BC,
-    stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &Domain<GRID_DIMENSION>,
     output: &mut Domain<GRID_DIMENSION>,
     chunk_size: usize,
 ) where
-    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     debug_assert!(input.aabb().contains_aabb(output.aabb()));
@@ -24,7 +24,7 @@ pub fn apply<
             d.coord_iter_mut().for_each(
                 |(world_coord, value_mut): (
                     Coord<GRID_DIMENSION>,
-                    &mut f32,
+                    &mut f64,
                 )| {
                     let args = gather_args(stencil, bc, input, &world_coord);
                     let result = stencil.apply(&args);
@@ -43,7 +43,7 @@ mod unit_test {
 
     #[test]
     fn par_stencil_test_1d_simple() {
-        let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
+        let stencil = Stencil::new([[0]], |args: &[f64; 1]| args[0]);
         let bound = AABB::new(matrix![0, 99]);
         let n_r = bound.buffer_size();
         {
@@ -56,7 +56,7 @@ mod unit_test {
             let bc = PeriodicCheck::new(&input_domain);
             apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
             for x in &output_buffer {
-                assert_approx_eq!(f32, *x, 1.0);
+                assert_approx_eq!(f64, *x, 1.0);
             }
         }
 
@@ -70,7 +70,7 @@ mod unit_test {
             let bc = PeriodicCheck::new(&input_domain);
             apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
             for x in &output_buffer {
-                assert_approx_eq!(f32, *x, 2.0);
+                assert_approx_eq!(f64, *x, 2.0);
             }
         }
     }
@@ -80,7 +80,7 @@ mod unit_test {
         bounds: AABB<1>,
     }
     impl BCCheck<1> for ErrorCheck {
-        fn check(&self, c: &Coord<1>) -> Option<f32> {
+        fn check(&self, c: &Coord<1>) -> Option<f64> {
             assert!(self.bounds.contains(c));
             None
         }
@@ -112,7 +112,7 @@ mod unit_test {
         apply(&bc, &stencil, &input_domain, &mut output_domain, 2);
 
         for i in output_buffer {
-            assert_approx_eq!(f32, i, 1.0);
+            assert_approx_eq!(f64, i, 1.0);
         }
     }
 }

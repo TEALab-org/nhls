@@ -37,7 +37,7 @@ pub enum Boundary {
 pub struct FFTParams {
     sigma: usize,
     cutoff: usize,
-    ratio: f32,
+    ratio: f64,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -82,7 +82,7 @@ pub fn recursive_solve(
     // Compute FFT Solve
     // Should be even so
     let mut solve_size = {
-        let mut solve_size = (p.ratio * x_size as f32) as usize;
+        let mut solve_size = (p.ratio * x_size as f64) as usize;
         if solve_size % 2 != 0 {
             solve_size -= 1
         }

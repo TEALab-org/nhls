@@ -15,17 +15,17 @@ fn thermal_1d_compare() {
     let n_steps = 16;
 
     // Step size t
-    let dt: f32 = 1.0;
+    let dt: f64 = 1.0;
 
     // Step size x
-    let dx: f32 = 1.0;
+    let dx: f64 = 1.0;
 
     // Heat transfer coefficient
-    let k: f32 = 0.5;
+    let k: f64 = 0.5;
 
     let chunk_size = 100;
 
-    let stencil = Stencil::new([[-1], [0], [1]], |args: &[f32; 3]| {
+    let stencil = Stencil::new([[-1], [0], [1]], |args: &[f64; 3]| {
         let left = args[0];
         let middle = args[1];
         let right = args[2];
@@ -46,10 +46,10 @@ fn thermal_1d_compare() {
     let mut fft_output_domain = Domain::new(grid_bound, &mut fft_output);
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    let n_f = buffer_size as f32;
-    let sigma_sq: f32 = (n_f / 25.0) * (n_f / 25.0);
+    let n_f = buffer_size as f64;
+    let sigma_sq: f64 = (n_f / 25.0) * (n_f / 25.0);
     let ic_gen = |world_coord: Coord<1>| {
-        let x = (world_coord[0] as f32) - (n_f / 2.0);
+        let x = (world_coord[0] as f64) - (n_f / 2.0);
         let exp = -x * x / (2.0 * sigma_sq);
         exp.exp()
     };
@@ -81,7 +81,7 @@ fn thermal_1d_compare() {
 
     for i in 0..buffer_size {
         // TODO THIS IS PRETTY BAD
-        assert_approx_eq!(f32, fft_output[i], grid_output[i], epsilon = 0.001);
+        assert_approx_eq!(f64, fft_output[i], grid_output[i], epsilon = 0.001);
     }
 }
 
@@ -93,7 +93,7 @@ fn periodic_compare() {
         let bound = AABB::new(matrix![0, 99]);
         let stencil = Stencil::new(
             [[-1], [-2], [0], [3], [4], [1]],
-            |args: &[f32; 6]| {
+            |args: &[f64; 6]| {
                 let c = 1.0 / 6.0;
                 args.iter().map(|x| c * x).sum()
             },
@@ -102,7 +102,7 @@ fn periodic_compare() {
         let n_r = bound.buffer_size();
         let mut input_a = AlignedVec::new(n_r);
         for i in 0..n_r {
-            input_a[i] = i as f32;
+            input_a[i] = i as f64;
         }
         let mut input_b = input_a.clone();
 
@@ -140,7 +140,12 @@ fn periodic_compare() {
         }
         for i in 0..n_r {
             // TODO THIS IS BROKE
-            assert_approx_eq!(f32, output_a[i], output_b[i], epsilon = 0.0001);
+            assert_approx_eq!(
+                f64,
+                output_a[i],
+                output_b[i],
+                epsilon = 0.0000000000001
+            );
         }
     }
 }

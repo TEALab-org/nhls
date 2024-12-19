@@ -10,13 +10,13 @@ pub fn box_apply<
     const NEIGHBORHOOD_SIZE: usize,
 >(
     bc: &BC,
-    stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &mut Domain<'a, GRID_DIMENSION>,
     output: &mut Domain<'a, GRID_DIMENSION>,
     steps: usize,
     chunk_size: usize,
 ) where
-    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     debug_assert_eq!(input.aabb(), output.aabb());
@@ -41,16 +41,16 @@ mod unit_tests {
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
-        stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bc_lookup: &BC,
         bound: &AABB<GRID_DIMENSION>,
         steps: usize,
     ) where
-        Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+        Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
         BC: BCCheck<GRID_DIMENSION>,
     {
         let chunk_size = 3;
-        assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
+        assert_approx_eq!(f64, stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
         let n_r = bound.buffer_size();
 
         let mut input_buffer = vec![1.0; n_r];
@@ -68,13 +68,13 @@ mod unit_tests {
         );
 
         for x in &output_buffer[0..n_r] {
-            assert_approx_eq!(f32, *x, 1.0);
+            assert_approx_eq!(f64, *x, 1.0);
         }
     }
 
     #[test]
     fn test_1d_simple() {
-        let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
+        let stencil = Stencil::new([[0]], |args: &[f64; 1]| args[0]);
         let max_size = AABB::new(matrix![0, 99]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 100);
@@ -82,7 +82,7 @@ mod unit_tests {
 
     #[test]
     fn test_2d_simple() {
-        let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
+        let stencil = Stencil::new([[0, 0]], |args: &[f64; 1]| args[0]);
         let max_size = AABB::new(matrix![0, 49; 0, 49]);
         let lookup = ConstantCheck::new(1.0, max_size);
         test_unit_stencil(&stencil, &lookup, &max_size, 9);
@@ -92,7 +92,7 @@ mod unit_tests {
     fn test_2d_less_simple() {
         let stencil = Stencil::new(
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
-            |args: &[f32; 5]| {
+            |args: &[f64; 5]| {
                 let mut r = 0.0;
                 for a in args {
                     r += a / 5.0;
@@ -107,7 +107,7 @@ mod unit_tests {
 
     #[test]
     fn test_1d_less_simple() {
-        let stencil = Stencil::new([[-1], [1], [0]], |args: &[f32; 3]| {
+        let stencil = Stencil::new([[-1], [1], [0]], |args: &[f64; 3]| {
             debug_assert_eq!(args.len(), 3);
             let mut r = 0.0;
             for a in args {
@@ -132,7 +132,7 @@ mod unit_tests {
                 [-1, 0, 4],
                 [0, 0, 0],
             ],
-            |args: &[f32; 7]| {
+            |args: &[f64; 7]| {
                 let mut r = 0.0;
                 for a in args {
                     r += a / 7.0;
@@ -155,11 +155,11 @@ mod unit_tests {
 
     #[test]
     fn shifter() {
-        let stencil = Stencil::new([[-1]], |args: &[f32; 1]| args[0]);
+        let stencil = Stencil::new([[-1]], |args: &[f64; 1]| args[0]);
         let max_size = AABB::new(matrix![0, 9]);
         let mut input_buffer = AlignedVec::new(10);
         for i in 0..10 {
-            input_buffer[i] = i as f32;
+            input_buffer[i] = i as f64;
         }
         let mut output_buffer = AlignedVec::new(10);
 
@@ -181,10 +181,10 @@ mod unit_tests {
             chunk_size,
         );
         for i in 0..3 {
-            assert_approx_eq!(f32, output_buffer[i], -1.0);
+            assert_approx_eq!(f64, output_buffer[i], -1.0);
         }
         for i in 3..10 {
-            assert_approx_eq!(f32, output_buffer[i], (i - 3) as f32);
+            assert_approx_eq!(f64, output_buffer[i], (i - 3) as f64);
         }
     }
 }

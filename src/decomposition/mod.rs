@@ -19,7 +19,7 @@ pub enum Boundary {
 pub struct FFTParams {
     sigma: i32,
     cutoff: i32,
-    ratio: f32,
+    ratio: f64,
 }
 
 #[derive(Debug)]

@@ -4,11 +4,11 @@ use crate::util::*;
 pub trait StencilOperation<NumType: NumTrait, const NEIGHBORHOOD_SIZE: usize> =
     Fn(&[NumType; NEIGHBORHOOD_SIZE]) -> NumType + Sync;
 
-pub type StencilF32<
+pub type StencilF64<
     Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
-> = Stencil<f32, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>;
+> = Stencil<f64, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>;
 
 /// Stencils are the combination of an operation and neighbors
 pub struct Stencil<
@@ -93,32 +93,32 @@ mod unit_tests {
     #[test]
     fn extract_weights() {
         {
-            let s = Stencil::new([[1]], |args: &[f32; 1]| 2.0 * args[0]);
+            let s = Stencil::new([[1]], |args: &[f64; 1]| 2.0 * args[0]);
             let w = s.extract_weights()[0];
-            assert_approx_eq!(f32, w, 2.0);
+            assert_approx_eq!(f64, w, 2.0);
         }
 
         {
-            let s = Stencil::new([[1], [2], [3]], |args: &[f32; 3]| {
+            let s = Stencil::new([[1], [2], [3]], |args: &[f64; 3]| {
                 2.0 * args[0] + 3.0 * args[1] + 5.0 * args[2]
             });
             let w = s.extract_weights();
-            assert_approx_eq!(f32, w[0], 2.0, ulps = 1);
-            assert_approx_eq!(f32, w[1], 3.0, ulps = 1);
-            assert_approx_eq!(f32, w[2], 5.0, ulps = 1);
+            assert_approx_eq!(f64, w[0], 2.0, ulps = 1);
+            assert_approx_eq!(f64, w[1], 3.0, ulps = 1);
+            assert_approx_eq!(f64, w[2], 5.0, ulps = 1);
         }
     }
 
     #[test]
     fn slopes() {
         {
-            let s = Stencil::new([[1]], |args: &[f32; 1]| 2.0 * args[0]);
+            let s = Stencil::new([[1]], |args: &[f64; 1]| 2.0 * args[0]);
             let w = s.slopes();
             assert_eq!(w, matrix![0, 1]);
         }
 
         {
-            let s = Stencil::new([[-1]], |args: &[f32; 1]| 2.0 * args[0]);
+            let s = Stencil::new([[-1]], |args: &[f64; 1]| 2.0 * args[0]);
             let w = s.slopes();
             assert_eq!(w, matrix![1, 0]);
         }
@@ -126,7 +126,7 @@ mod unit_tests {
         {
             let s = Stencil::new(
                 [[-1, 0], [0, 0], [1, 0], [0, 2], [0, -3]],
-                |args: &[f32; 5]| 2.0 * args[0] + args[1],
+                |args: &[f64; 5]| 2.0 * args[0] + args[1],
             );
             let w = s.slopes();
             assert_eq!(w, matrix![1, 1; 3, 2]);

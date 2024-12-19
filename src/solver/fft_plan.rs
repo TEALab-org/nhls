@@ -15,8 +15,8 @@ impl<const GRID_DIMENSION: usize> FFTPlanDescriptor<GRID_DIMENSION> {
 }
 
 pub struct FFTPlan {
-    pub forward_plan: fftw::plan::Plan<f32, c32, fftw::plan::Plan32>,
-    pub backward_plan: fftw::plan::Plan<c32, f32, fftw::plan::Plan32>,
+    pub forward_plan: fftw::plan::Plan<f64, c64, fftw::plan::Plan64>,
+    pub backward_plan: fftw::plan::Plan<c64, f64, fftw::plan::Plan64>,
 }
 
 impl FFTPlan {
@@ -25,12 +25,12 @@ impl FFTPlan {
     ) -> Self {
         let size = bound.exclusive_bounds();
         let plan_size = size.try_cast::<usize>().unwrap();
-        let forward_plan = fftw::plan::R2CPlan32::aligned(
+        let forward_plan = fftw::plan::R2CPlan64::aligned(
             plan_size.as_slice(),
             fftw::types::Flag::ESTIMATE,
         )
         .unwrap();
-        let backward_plan = fftw::plan::C2RPlan32::aligned(
+        let backward_plan = fftw::plan::C2RPlan64::aligned(
             plan_size.as_slice(),
             fftw::types::Flag::ESTIMATE,
         )

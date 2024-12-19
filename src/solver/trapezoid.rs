@@ -25,7 +25,7 @@ pub fn trapezoid_apply<
     const NEIGHBORHOOD_SIZE: usize,
 >(
     bc: &BC,
-    stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &mut Domain<'a, GRID_DIMENSION>,
     output: &mut Domain<'a, GRID_DIMENSION>,
     sloped_sides: &Bounds<GRID_DIMENSION>,
@@ -33,7 +33,7 @@ pub fn trapezoid_apply<
     steps: usize,
     chunk_size: usize,
 ) where
-    Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
+    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     assert_eq!(input.aabb(), output.aabb());
