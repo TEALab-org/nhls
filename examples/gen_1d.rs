@@ -4,7 +4,7 @@ use nhls::stencil::*;
 use nhls::util::*;
 use rayon::prelude::*;
 
-use nalgebra::{matrix, vector};
+use nalgebra::matrix;
 
 fn main() {
     let name = "gen_1d.png";
