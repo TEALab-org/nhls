@@ -15,7 +15,7 @@ impl<'a, const GRID_DIMENSION: usize> PeriodicCheck<'a, GRID_DIMENSION> {
 impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION>
     for PeriodicCheck<'_, GRID_DIMENSION>
 {
-    fn check(&self, world_coord: &Coord<GRID_DIMENSION>) -> Option<f32> {
+    fn check(&self, world_coord: &Coord<GRID_DIMENSION>) -> Option<f64> {
         let p_coord = &self.domain.aabb().periodic_coord(world_coord);
         if p_coord != world_coord {
             return Some(self.domain.view(&p_coord));
@@ -37,7 +37,7 @@ mod unit_tests {
             let n_r = aabb.buffer_size();
             let mut buffer = fftw::array::AlignedVec::new(n_r);
             for i in 0..n_r {
-                buffer.as_slice_mut()[i] = i as f32;
+                buffer.as_slice_mut()[i] = i as f64;
             }
             let domain = Domain::new(aabb, buffer.as_slice_mut());
             let bc = PeriodicCheck::new(&domain);
@@ -49,13 +49,13 @@ mod unit_tests {
             {
                 let v = bc.check(&vector![-1]);
                 assert!(v.is_some());
-                assert_approx_eq!(f32, v.unwrap(), 10.0);
+                assert_approx_eq!(f64, v.unwrap(), 10.0);
             }
 
             {
                 let v = bc.check(&vector![11]);
                 assert!(v.is_some());
-                assert_approx_eq!(f32, v.unwrap(), 0.0);
+                assert_approx_eq!(f64, v.unwrap(), 0.0);
             }
         }
     }
@@ -67,8 +67,8 @@ mod unit_tests {
         let mut buffer_a = fftw::array::AlignedVec::new(n_r);
         let mut buffer_b = fftw::array::AlignedVec::new(n_r);
         for i in 0..n_r {
-            buffer_a[i] = i as f32;
-            buffer_b[i] = (n_r - i) as f32;
+            buffer_a[i] = i as f64;
+            buffer_b[i] = (n_r - i) as f64;
         }
     }
 }

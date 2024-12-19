@@ -15,21 +15,21 @@ fn main() {
     let chunk_size = 1000;
 
     // Step size t
-    let dt: f32 = 1.0;
+    let dt: f64 = 1.0;
 
     // Step size x
-    let dx: f32 = 1.0;
+    let dx: f64 = 1.0;
 
     // Step size y
-    let dy: f32 = 1.0;
+    let dy: f64 = 1.0;
 
     // Heat transfer coefficient
-    let k_x: f32 = 0.2;
-    let k_y: f32 = 0.2;
+    let k_x: f64 = 0.2;
+    let k_y: f64 = 0.2;
 
     let stencil = Stencil::new(
         [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]],
-        |args: &[f32; 5]| {
+        |args: &[f64; 5]| {
             let middle = args[0];
             let left = args[1];
             let right = args[2];
@@ -51,12 +51,12 @@ fn main() {
     // Fill in with IC values (use normal dist for spike in the middle)
     // Write out initial frame
     let exclusive_bounds = grid_bound.exclusive_bounds();
-    let width_f = exclusive_bounds[0] as f32;
-    let height_f = exclusive_bounds[1] as f32;
-    let sigma_sq: f32 = (width_f / 25.0) * (width_f / 25.0);
+    let width_f = exclusive_bounds[0] as f64;
+    let height_f = exclusive_bounds[1] as f64;
+    let sigma_sq: f64 = (width_f / 25.0) * (width_f / 25.0);
     let ic_gen = |coord: Coord<2>| {
-        let x = (coord[0] as f32) - (width_f / 2.0);
-        let y = (coord[1] as f32) - (height_f / 2.0);
+        let x = (coord[0] as f64) - (width_f / 2.0);
+        let y = (coord[1] as f64) - (height_f / 2.0);
         let r = (x * x + y * y).sqrt();
         let exp = -r * r / (2.0 * sigma_sq);
         exp.exp()

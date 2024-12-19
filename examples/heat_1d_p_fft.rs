@@ -15,17 +15,17 @@ fn main() {
     let n_steps_per_line = 16;
 
     // Step size t
-    let dt: f32 = 1.0;
+    let dt: f64 = 1.0;
 
     // Step size x
-    let dx: f32 = 1.0;
+    let dx: f64 = 1.0;
 
     // Heat transfer coefficient
-    let k: f32 = 0.5;
+    let k: f64 = 0.5;
 
     let chunk_size = 100;
 
-    let stencil = Stencil::new([[-1], [0], [1]], |args: &[f32; 3]| {
+    let stencil = Stencil::new([[-1], [0], [1]], |args: &[f64; 3]| {
         let left = args[0];
         let middle = args[1];
         let right = args[2];
@@ -41,17 +41,17 @@ fn main() {
     let mut output_domain = Domain::new(grid_bound, &mut grid_output);
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    let n_f = buffer_size as f32;
-    let sigma_sq: f32 = (n_f / 25.0) * (n_f / 25.0);
+    let n_f = buffer_size as f64;
+    let sigma_sq: f64 = (n_f / 25.0) * (n_f / 25.0);
     input_domain.par_modify_access(100).for_each(
         |mut d: DomainChunk<'_, GRID_DIMENSION>| {
             d.coord_iter_mut().for_each(
                 |(world_coord, value_mut): (
                     Coord<GRID_DIMENSION>,
-                    &mut f32,
+                    &mut f64,
                 )| {
-                    let x = (world_coord[0] as f32) - (n_f / 2.0);
-                    //let f = ( 1.0 / (2.0 * std::f32::consts::PI * sigma_sq)).sqrt();
+                    let x = (world_coord[0] as f64) - (n_f / 2.0);
+                    //let f = ( 1.0 / (2.0 * std::f64::consts::PI * sigma_sq)).sqrt();
                     let exp = -x * x / (2.0 * sigma_sq);
                     *value_mut = exp.exp()
                 },

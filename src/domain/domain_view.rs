@@ -3,7 +3,7 @@ use rayon::prelude::*;
 
 pub struct Domain<'a, const GRID_DIMENSION: usize> {
     aabb: AABB<GRID_DIMENSION>,
-    buffer: &'a mut [f32],
+    buffer: &'a mut [f64],
 }
 
 impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
@@ -17,26 +17,26 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
         self.aabb = aabb;
     }
 
-    pub fn buffer(&self) -> &[f32] {
+    pub fn buffer(&self) -> &[f64] {
         self.buffer
     }
 
-    pub fn buffer_mut(&mut self) -> &mut [f32] {
+    pub fn buffer_mut(&mut self) -> &mut [f64] {
         self.buffer
     }
 
-    pub fn new(aabb: AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
+    pub fn new(aabb: AABB<GRID_DIMENSION>, buffer: &'a mut [f64]) -> Self {
         debug_assert_eq!(buffer.len(), aabb.buffer_size());
         Domain { aabb, buffer }
     }
 
-    pub fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f32 {
+    pub fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f64 {
         debug_assert!(self.aabb.contains(world_coord));
         let index = self.aabb.coord_to_linear(world_coord);
         self.buffer[index]
     }
 
-    pub fn modify(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f32) {
+    pub fn modify(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f64) {
         debug_assert!(self.aabb.contains(world_coord));
         let index = self.aabb.coord_to_linear(world_coord);
         self.buffer[index] = value;
@@ -50,7 +50,7 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     }
 
     pub fn par_set_values<
-        F: FnOnce(Coord<GRID_DIMENSION>) -> f32 + Send + Sync + Copy,
+        F: FnOnce(Coord<GRID_DIMENSION>) -> f64 + Send + Sync + Copy,
     >(
         &mut self,
         f: F,
@@ -61,7 +61,7 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
                 d.coord_iter_mut().for_each(
                     |(world_coord, value_mut): (
                         Coord<GRID_DIMENSION>,
-                        &mut f32,
+                        &mut f64,
                     )| {
                         *value_mut = f(world_coord);
                     },
@@ -76,14 +76,14 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
 /// at the same time in this way.
 /// By putting their borrows into one function call first we work around it.
 fn par_modify_access_impl<'a, const GRID_DIMENSION: usize>(
-    buffer: &'a mut [f32],
+    buffer: &'a mut [f64],
     aabb: &'a AABB<GRID_DIMENSION>,
     chunk_size: usize,
 ) -> impl ParallelIterator<Item = DomainChunk<'a, GRID_DIMENSION>> + 'a {
     buffer[0..aabb.buffer_size()]
         .par_chunks_mut(chunk_size)
         .enumerate()
-        .map(move |(i, buffer_chunk): (usize, &mut [f32])| {
+        .map(move |(i, buffer_chunk): (usize, &mut [f64])| {
             let offset = i * chunk_size;
             DomainChunk::new(offset, aabb, buffer_chunk)
         })
@@ -92,14 +92,14 @@ fn par_modify_access_impl<'a, const GRID_DIMENSION: usize>(
 pub struct DomainChunk<'a, const GRID_DIMENSION: usize> {
     offset: usize,
     aabb: &'a AABB<GRID_DIMENSION>,
-    buffer: &'a mut [f32],
+    buffer: &'a mut [f64],
 }
 
 impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
     pub fn new(
         offset: usize,
         aabb: &'a AABB<GRID_DIMENSION>,
-        buffer: &'a mut [f32],
+        buffer: &'a mut [f64],
     ) -> Self {
         DomainChunk {
             offset,
@@ -110,11 +110,11 @@ impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
 
     pub fn coord_iter_mut(
         &mut self,
-    ) -> impl Iterator<Item = (Coord<GRID_DIMENSION>, &mut f32)> {
+    ) -> impl Iterator<Item = (Coord<GRID_DIMENSION>, &mut f64)> {
         self.buffer
             .iter_mut()
             .enumerate()
-            .map(|(i, v): (usize, &mut f32)| {
+            .map(|(i, v): (usize, &mut f64)| {
                 let linear_index = self.offset + i;
                 let coord = self.aabb.linear_to_coord(linear_index);
                 (coord, v)

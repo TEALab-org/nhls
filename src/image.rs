@@ -14,7 +14,7 @@ impl Image1D {
         }
     }
 
-    pub fn add_line(&mut self, l: u32, v: &[f32]) {
+    pub fn add_line(&mut self, l: u32, v: &[f64]) {
         debug_assert!(l < self.img_buffer.height());
         debug_assert_eq!(v.len(), self.img_buffer.width() as usize);
         let gradient = colorous::TURBO;
