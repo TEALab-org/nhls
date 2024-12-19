@@ -1,6 +1,9 @@
-pub mod ap_1d;
+pub mod direct;
 pub mod fft_plan;
-pub mod naive;
-pub mod periodic_naive;
+pub mod periodic_direct;
 pub mod periodic_plan;
 pub mod trapezoid;
+
+pub use direct::*;
+pub use periodic_direct::*;
+pub use periodic_plan::*;

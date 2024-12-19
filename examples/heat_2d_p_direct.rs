@@ -62,22 +62,23 @@ fn main() {
         exp.exp()
     };
     input_domain.par_set_values(ic_gen, chunk_size);
-    image2d(&input_domain, "heat_2d_fft/frame_0000.png");
+    image2d(&input_domain, "heat_2d_direct/frame_0000.png");
 
-    // Apply periodic solver
-    let mut periodic_library =
-        nhls::solver::periodic_plan::PeriodicPlanLibrary::new(
-            &grid_bound,
-            &stencil,
-        );
+    // Create boundary condition
+    let bc = ConstantCheck::new(0.0, grid_bound);
+
+    // Apply direct solver
     for t in 1..n_images {
-        periodic_library.apply(
+        nhls::solver::direct::box_apply(
+            &bc,
+            &stencil,
             &mut input_domain,
             &mut output_domain,
             steps_per_image,
             chunk_size,
         );
+
         std::mem::swap(&mut input_domain, &mut output_domain);
-        image2d(&input_domain, &format!("heat_2d_fft/frame_{:04}.png", t));
+        image2d(&input_domain, &format!("heat_2d_direct/frame_{:04}.png", t));
     }
 }

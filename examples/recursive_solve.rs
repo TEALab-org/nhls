@@ -60,7 +60,12 @@ pub fn space(i: usize) -> String {
     result
 }
 
-pub fn recursive_solve(args: FFTSolveArgs, p: FFTParams, level: usize, step: usize) {
+pub fn recursive_solve(
+    args: FFTSolveArgs,
+    p: FFTParams,
+    level: usize,
+    step: usize,
+) {
     let sp = space(level);
     println!(
         "{}RS: l: {}, s: {}, args: {:?}, p: {:?}",

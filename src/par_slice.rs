@@ -5,7 +5,11 @@ use rayon::prelude::*;
 
 /// Sets each element to the same value.
 /// `chunk_size` is break the work into tasks for multi-threading.
-pub fn set_value<NumType: NumTrait>(a_slice: &mut [NumType], value: NumType, chunk_size: usize) {
+pub fn set_value<NumType: NumTrait>(
+    a_slice: &mut [NumType],
+    value: NumType,
+    chunk_size: usize,
+) {
     a_slice
         .par_chunks_mut(chunk_size)
         .for_each(|a_chunk: &mut [NumType]| {
@@ -42,7 +46,11 @@ pub fn multiply_by<NumType: NumTrait>(
 }
 
 /// Implements a = a / c over slice elements.
-pub fn div<NumType: NumTrait>(a_slice: &mut [NumType], c: NumType, chunk_size: usize) {
+pub fn div<NumType: NumTrait>(
+    a_slice: &mut [NumType],
+    c: NumType,
+    chunk_size: usize,
+) {
     a_slice.par_chunks_mut(chunk_size).for_each(|a_chunk| {
         for a in a_chunk.iter_mut() {
             *a = *a / c;
@@ -51,7 +59,11 @@ pub fn div<NumType: NumTrait>(a_slice: &mut [NumType], c: NumType, chunk_size: u
 }
 
 /// Implements a = b over slice elements.
-pub fn copy<NumType: NumTrait>(a_slice: &mut [NumType], b_slice: &[NumType], chunk_size: usize) {
+pub fn copy<NumType: NumTrait>(
+    a_slice: &mut [NumType],
+    b_slice: &[NumType],
+    chunk_size: usize,
+) {
     a_slice
         .par_chunks_mut(chunk_size)
         .zip(b_slice.par_chunks(chunk_size))

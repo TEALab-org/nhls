@@ -12,7 +12,9 @@ impl<'a, const GRID_DIMENSION: usize> PeriodicCheck<'a, GRID_DIMENSION> {
     }
 }
 
-impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION> for PeriodicCheck<'_, GRID_DIMENSION> {
+impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION>
+    for PeriodicCheck<'_, GRID_DIMENSION>
+{
     fn check(&self, world_coord: &Coord<GRID_DIMENSION>) -> Option<f32> {
         let p_coord = &self.domain.aabb().periodic_coord(world_coord);
         if p_coord != world_coord {

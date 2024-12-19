@@ -2,13 +2,10 @@ use nhls::domain::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
-use rayon::prelude::*;
 
 use nalgebra::matrix;
 
 fn main() {
-    const GRID_DIMENSION: usize = 1;
-
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
 
@@ -45,24 +42,18 @@ fn main() {
     // Fill in with IC values (use normal dist for spike in the middle)
     let n_f = buffer_size as f32;
     let sigma_sq: f32 = (n_f / 25.0) * (n_f / 25.0);
-    input_domain
-        .par_modify_access(100)
-        .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
-            d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (Coord<GRID_DIMENSION>, &mut f32)| {
-                    let x = (world_coord[0] as f32) - (n_f / 2.0);
-                    //let f = ( 1.0 / (2.0 * std::f32::consts::PI * sigma_sq)).sqrt();
-                    let exp = -x * x / (2.0 * sigma_sq);
-                    *value_mut = exp.exp()
-                },
-            )
-        });
+    let ic_gen = |world_coord: Coord<1>| {
+        let x = (world_coord[0] as f32) - (n_f / 2.0);
+        let exp = -x * x / (2.0 * sigma_sq);
+        exp.exp()
+    };
+    input_domain.par_set_values(ic_gen, chunk_size);
 
     // Make image
     let mut img = nhls::image::Image1D::new(grid_bound, n_lines as u32);
     img.add_line(0, input_domain.buffer());
     for t in 1..n_lines as u32 {
-        periodic_naive::box_solve(
+        direct_periodic_apply(
             &stencil,
             &mut input_domain,
             &mut output_domain,

@@ -3,7 +3,12 @@ use crate::stencil::*;
 use crate::util::*;
 use rayon::prelude::*;
 
-pub fn apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+pub fn apply<
+    BC,
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+>(
     bc: &BC,
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &Domain<GRID_DIMENSION>,
@@ -14,17 +19,20 @@ pub fn apply<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE
     BC: BCCheck<GRID_DIMENSION>,
 {
     debug_assert!(input.aabb().contains_aabb(output.aabb()));
-    output
-        .par_modify_access(chunk_size)
-        .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
+    output.par_modify_access(chunk_size).for_each(
+        |mut d: DomainChunk<'_, GRID_DIMENSION>| {
             d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (Coord<GRID_DIMENSION>, &mut f32)| {
+                |(world_coord, value_mut): (
+                    Coord<GRID_DIMENSION>,
+                    &mut f32,
+                )| {
                     let args = gather_args(stencil, bc, input, &world_coord);
                     let result = stencil.apply(&args);
                     *value_mut = result;
                 },
             )
-        })
+        },
+    )
 }
 
 #[cfg(test)]

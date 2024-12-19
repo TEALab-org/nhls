@@ -4,8 +4,11 @@ use crate::util::*;
 pub trait StencilOperation<NumType: NumTrait, const NEIGHBORHOOD_SIZE: usize> =
     Fn(&[NumType; NEIGHBORHOOD_SIZE]) -> NumType + Sync;
 
-pub type StencilF32<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize> =
-    Stencil<f32, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>;
+pub type StencilF32<
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+> = Stencil<f32, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>;
 
 /// Stencils are the combination of an operation and neighbors
 pub struct Stencil<
@@ -21,15 +24,24 @@ pub struct Stencil<
     pub num_type: std::marker::PhantomData<NumType>,
 }
 
-impl<NumType, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    Stencil<NumType, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+impl<
+        NumType,
+        Operation,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+    > Stencil<NumType, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 where
     Operation: StencilOperation<NumType, NEIGHBORHOOD_SIZE>,
     NumType: NumTrait,
 {
-    pub fn new(offsets: [[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE], operation: Operation) -> Self {
+    pub fn new(
+        offsets: [[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE],
+        operation: Operation,
+    ) -> Self {
         Stencil {
-            offsets: std::array::from_fn(|i| Coord::from_column_slice(&offsets[i])),
+            offsets: std::array::from_fn(|i| {
+                Coord::from_column_slice(&offsets[i])
+            }),
             operation,
             num_type: std::marker::PhantomData,
         }

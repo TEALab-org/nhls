@@ -34,12 +34,20 @@ pub fn image2d(domain: &Domain<2>, s: &str) {
     let aabb = domain.aabb();
     let exclusive_bounds = aabb.exclusive_bounds();
     let gradient = colorous::TURBO;
-    let mut img = image::RgbImage::new(exclusive_bounds[0] as u32, exclusive_bounds[1] as u32);
+    let mut img = image::RgbImage::new(
+        exclusive_bounds[0] as u32,
+        exclusive_bounds[1] as u32,
+    );
     for l in 0..exclusive_bounds[0] * exclusive_bounds[1] {
         let coord = domain.aabb().linear_to_coord(l as usize);
         let r = domain.view(&coord);
         let c = gradient.eval_continuous(r as f64);
-        img.put_pixel(coord[0] as u32, coord[1] as u32, image::Rgb(c.as_array()));
+        img.put_pixel(
+            coord[0] as u32,
+            coord[1] as u32,
+            image::Rgb(c.as_array()),
+        );
     }
+    println!("Saving image: {}", s);
     img.save(s).expect("Couldn't save image");
 }

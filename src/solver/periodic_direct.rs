@@ -2,8 +2,12 @@ use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
 
-pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
-    bc: &BC,
+pub fn direct_periodic_apply<
+    'a,
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+>(
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &mut Domain<'a, GRID_DIMENSION>,
     output: &mut Domain<'a, GRID_DIMENSION>,
@@ -11,14 +15,18 @@ pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORH
     chunk_size: usize,
 ) where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
-    BC: BCCheck<GRID_DIMENSION>,
 {
     debug_assert_eq!(input.aabb(), output.aabb());
     for _ in 0..steps - 1 {
-        par_stencil::apply(bc, stencil, input, output, chunk_size);
+        {
+            let bc = PeriodicCheck::new(input);
+            par_stencil::apply(&bc, stencil, input, output, chunk_size);
+        }
         std::mem::swap(input, output);
     }
-    par_stencil::apply(bc, stencil, input, output, chunk_size);
+    //println!("final t");
+    let bc = PeriodicCheck::new(input);
+    par_stencil::apply(&bc, stencil, input, output, chunk_size);
 }
 
 #[cfg(test)]
@@ -30,18 +38,15 @@ mod unit_tests {
     use nalgebra::matrix;
 
     fn test_unit_stencil<
-        BC,
         Operation,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        bc_lookup: &BC,
         bound: &AABB<GRID_DIMENSION>,
         steps: usize,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
-        BC: BCCheck<GRID_DIMENSION>,
     {
         let chunk_size = 3;
         assert_eq!(stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
@@ -51,9 +56,7 @@ mod unit_tests {
         let mut output_buffer = vec![2.0; n_r];
         let mut input_domain = Domain::new(*bound, &mut input_buffer);
         let mut output_domain = Domain::new(*bound, &mut output_buffer);
-
-        box_apply(
-            bc_lookup,
+        direct_periodic_apply(
             stencil,
             &mut input_domain,
             &mut output_domain,
@@ -69,17 +72,15 @@ mod unit_tests {
     #[test]
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f32; 1]| args[0]);
-        let max_size = AABB::new(matrix![0, 99]);
-        let lookup = ConstantCheck::new(1.0, max_size);
-        test_unit_stencil(&stencil, &lookup, &max_size, 100);
+        let bound = AABB::new(matrix![0, 100]);
+        test_unit_stencil(&stencil, &bound, 100);
     }
 
     #[test]
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f32; 1]| args[0]);
-        let max_size = AABB::new(matrix![0, 49; 0, 49]);
-        let lookup = ConstantCheck::new(1.0, max_size);
-        test_unit_stencil(&stencil, &lookup, &max_size, 9);
+        let bound = AABB::new(matrix![0, 50; 0, 50]);
+        test_unit_stencil(&stencil, &bound, 9);
     }
 
     #[test]
@@ -87,6 +88,7 @@ mod unit_tests {
         let stencil = Stencil::new(
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
             |args: &[f32; 5]| {
+                debug_assert_eq!(args.len(), 5);
                 let mut r = 0.0;
                 for a in args {
                     r += a / 5.0;
@@ -94,9 +96,8 @@ mod unit_tests {
                 r
             },
         );
-        let max_size = AABB::new(matrix![0, 49; 0, 49]);
-        let lookup = ConstantCheck::new(1.0, max_size);
-        test_unit_stencil(&stencil, &lookup, &max_size, 10);
+        let bound = AABB::new(matrix![0, 50;0,  50]);
+        test_unit_stencil(&stencil, &bound, 10);
     }
 
     #[test]
@@ -109,9 +110,8 @@ mod unit_tests {
             }
             r
         });
-        let max_size = AABB::new(matrix![0, 99]);
-        let lookup = ConstantCheck::new(1.0, max_size);
-        test_unit_stencil(&stencil, &lookup, &max_size, 10);
+        let bound = AABB::new(matrix![0, 100]);
+        test_unit_stencil(&stencil, &bound, 10);
     }
 
     #[test]
@@ -134,49 +134,34 @@ mod unit_tests {
                 r
             },
         );
-        {
-            let max_size = AABB::new(matrix![0, 19; 0, 19; 0, 19]);
-            let lookup = ConstantCheck::new(1.0, max_size);
-            test_unit_stencil(&stencil, &lookup, &max_size, 5);
-        }
-
-        {
-            let max_size = AABB::new(matrix![0, 10; 0, 8; 0, 19]);
-            let lookup = ConstantCheck::new(1.0, max_size);
-            test_unit_stencil(&stencil, &lookup, &max_size, 5);
-        }
+        let bound = AABB::new(matrix![0, 20;0,  20;0,  20]);
+        test_unit_stencil(&stencil, &bound, 5);
     }
 
     #[test]
     fn shifter() {
         let stencil = Stencil::new([[-1]], |args: &[f32; 1]| args[0]);
-        let max_size = AABB::new(matrix![0, 9]);
+        let bound = AABB::new(matrix![0, 9]);
         let mut input_buffer = AlignedVec::new(10);
         for i in 0..10 {
             input_buffer[i] = i as f32;
         }
+        let mut input_domain = Domain::new(bound, input_buffer.as_slice_mut());
+
         let mut output_buffer = AlignedVec::new(10);
-
-        let mut input_domain = Domain::new(max_size, input_buffer.as_slice_mut());
-        let mut output_domain = Domain::new(max_size, output_buffer.as_slice_mut());
-
-        let bc_lookup = ConstantCheck::new(-1.0, max_size);
+        let mut output_domain =
+            Domain::new(bound, output_buffer.as_slice_mut());
         let chunk_size = 1;
-        let steps = 3;
-
-        box_apply(
-            &bc_lookup,
+        let n = 1;
+        direct_periodic_apply(
             &stencil,
             &mut input_domain,
             &mut output_domain,
-            steps,
+            n,
             chunk_size,
         );
-        for i in 0..3 {
-            assert_approx_eq!(f32, output_buffer[i], -1.0);
-        }
-        for i in 3..10 {
-            assert_approx_eq!(f32, output_buffer[i], (i - 3) as f32);
+        for i in 0..10 {
+            assert_approx_eq!(f32, output_buffer[(i + n) % 10], i as f32);
         }
     }
 }
