@@ -2,7 +2,6 @@ use nhls::domain::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
-use rayon::prelude::*;
 
 use fftw::array::*;
 use float_cmp::assert_approx_eq;
@@ -10,8 +9,6 @@ use nalgebra::matrix;
 
 #[test]
 fn thermal_1d_compare() {
-    const GRID_DIMENSION: usize = 1;
-
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
 
@@ -38,10 +35,10 @@ fn thermal_1d_compare() {
     // Create domains
     let buffer_size = grid_bound.buffer_size();
     let mut grid_input = vec![0.0; buffer_size];
-    let mut naive_input_domain = Domain::new(grid_bound, &mut grid_input);
+    let mut direct_input_domain = Domain::new(grid_bound, &mut grid_input);
 
     let mut grid_output = vec![0.0; buffer_size];
-    let mut naive_output_domain = Domain::new(grid_bound, &mut grid_output);
+    let mut direct_output_domain = Domain::new(grid_bound, &mut grid_output);
 
     let mut fft_input = AlignedVec::new(buffer_size);
     let mut fft_output = AlignedVec::new(buffer_size);
@@ -51,43 +48,22 @@ fn thermal_1d_compare() {
     // Fill in with IC values (use normal dist for spike in the middle)
     let n_f = buffer_size as f32;
     let sigma_sq: f32 = (n_f / 25.0) * (n_f / 25.0);
-    naive_input_domain.par_modify_access(100).for_each(
-        |mut d: DomainChunk<'_, GRID_DIMENSION>| {
-            d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (
-                    Coord<GRID_DIMENSION>,
-                    &mut f32,
-                )| {
-                    let x = (world_coord[0] as f32) - (n_f / 2.0);
-                    //let f = ( 1.0 / (2.0 * std::f32::consts::PI * sigma_sq)).sqrt();
-                    let exp = -x * x / (2.0 * sigma_sq);
-                    *value_mut = exp.exp()
-                },
-            )
-        },
-    );
+    let ic_gen = |world_coord: Coord<1>| {
+        let x = (world_coord[0] as f32) - (n_f / 2.0);
+        let exp = -x * x / (2.0 * sigma_sq);
+        exp.exp()
+    };
 
-    fft_input_domain.par_modify_access(100).for_each(
-        |mut d: DomainChunk<'_, GRID_DIMENSION>| {
-            d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (
-                    Coord<GRID_DIMENSION>,
-                    &mut f32,
-                )| {
-                    let x = (world_coord[0] as f32) - (n_f / 2.0);
-                    //let f = ( 1.0 / (2.0 * std::f32::consts::PI * sigma_sq)).sqrt();
-                    let exp = -x * x / (2.0 * sigma_sq);
-                    *value_mut = exp.exp()
-                },
-            )
-        },
-    );
+    direct_input_domain.par_set_values(ic_gen, chunk_size);
+
+    fft_input_domain.par_set_values(ic_gen, chunk_size);
 
     let mut periodic_library =
         nhls::solver::periodic_plan::PeriodicPlanLibrary::new(
             &grid_bound,
             &stencil,
         );
+
     periodic_library.apply(
         &mut fft_input_domain,
         &mut fft_output_domain,
@@ -95,10 +71,10 @@ fn thermal_1d_compare() {
         chunk_size,
     );
 
-    periodic_naive::box_solve(
+    direct_periodic_apply(
         &stencil,
-        &mut naive_input_domain,
-        &mut naive_output_domain,
+        &mut direct_input_domain,
+        &mut direct_output_domain,
         n_steps,
         chunk_size,
     );
@@ -138,7 +114,7 @@ fn periodic_compare() {
         let mut domain_a_output = Domain::new(bound, output_a.as_slice_mut());
         let mut domain_b_output = Domain::new(bound, output_b.as_slice_mut());
 
-        periodic_naive::box_solve(
+        direct_periodic_apply(
             &stencil,
             &mut domain_a_input,
             &mut domain_a_output,

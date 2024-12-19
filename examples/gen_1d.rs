@@ -52,7 +52,7 @@ fn main() {
     let mut img = nhls::image::Image1D::new(grid_bound, n_lines as u32);
     img.add_line(0, input_domain.buffer());
     for t in 1..n_lines as u32 {
-        periodic_naive::box_solve(
+        direct_periodic_apply(
             &stencil,
             &mut input_domain,
             &mut output_domain,

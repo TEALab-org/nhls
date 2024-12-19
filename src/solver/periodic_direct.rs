@@ -2,7 +2,7 @@ use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
 
-pub fn box_solve<
+pub fn direct_periodic_apply<
     'a,
     Operation,
     const GRID_DIMENSION: usize,
@@ -56,7 +56,7 @@ mod unit_tests {
         let mut output_buffer = vec![2.0; n_r];
         let mut input_domain = Domain::new(*bound, &mut input_buffer);
         let mut output_domain = Domain::new(*bound, &mut output_buffer);
-        box_solve(
+        direct_periodic_apply(
             stencil,
             &mut input_domain,
             &mut output_domain,
@@ -153,7 +153,7 @@ mod unit_tests {
             Domain::new(bound, output_buffer.as_slice_mut());
         let chunk_size = 1;
         let n = 1;
-        box_solve(
+        direct_periodic_apply(
             &stencil,
             &mut input_domain,
             &mut output_domain,

@@ -52,7 +52,7 @@ fn main() {
     // Make image
     nhls::image::image2d(&input_domain, "gen_2d/frame_000.png");
     for t in 1..n_images as u32 {
-        periodic_naive::box_solve(
+        direct_periodic_apply(
             &stencil,
             &mut input_domain,
             &mut output_domain,

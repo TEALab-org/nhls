@@ -65,9 +65,7 @@ fn main() {
     image2d(&input_domain, "heat_2d_direct/frame_0000.png");
 
     // Create boundary condition
-    let bc = ConstantCheck::new( 
-        0.0,
-        grid_bound);
+    let bc = ConstantCheck::new(0.0, grid_bound);
 
     // Apply direct solver
     for t in 1..n_images {
@@ -77,7 +75,8 @@ fn main() {
             &mut input_domain,
             &mut output_domain,
             steps_per_image,
-            chunk_size);
+            chunk_size,
+        );
 
         std::mem::swap(&mut input_domain, &mut output_domain);
         image2d(&input_domain, &format!("heat_2d_direct/frame_{:04}.png", t));
