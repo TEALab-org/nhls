@@ -101,13 +101,62 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
     }
 
     // TODO: can we return a view instead of allocating?
+    /// Return min corner.
     pub fn min(&self) -> Coord<DIMENSION> {
         self.bounds.column(0).into()
     }
 
     // TODO: can we return a view instead of allocating?
+    /// Return max corner
     pub fn max(&self) -> Coord<DIMENSION> {
         self.bounds.column(1).into()
+    }
+
+    /// Check that max >= min
+    pub fn check_validity(&self) -> bool {
+        for d in 0..DIMENSION {
+            if self.bounds[(d, 0)] > self.bounds[(d, 1)] {
+                return false;
+            }
+        }
+        true
+    }
+
+    // TODO: file bug for this clippy issue
+    /// Return iterator over contained coords
+    /// in linear ordering.
+    #[allow(clippy::needless_lifetimes)]
+    pub fn coord_iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = Coord<DIMENSION>> + use<'a, DIMENSION> {
+        (0..self.buffer_size()).map(|i| self.linear_to_coord(i))
+    }
+
+    /// Given a bounding box within self,
+    /// return decomposition of remaining coordinate space.
+    /// Used for recursion during aperiodic algorithm.
+    /// Until generic_const_exprs is stabilized,
+    /// we need to return a nested array.
+    pub fn decomposition(
+        &self,
+        center: &AABB<DIMENSION>,
+    ) -> [[AABB<DIMENSION>; 2]; DIMENSION] {
+        let mut result = [[AABB::new(Bounds::zero()); 2]; DIMENSION];
+        let mut remaining_bounds = *self;
+        for d in 0..DIMENSION {
+            result[d][0] = remaining_bounds;
+            result[d][0].bounds[(d, 1)] = center.bounds[(d, 0)] - 1;
+            debug_assert!(result[d][0].check_validity());
+
+            result[d][1] = remaining_bounds;
+            result[d][1].bounds[(d, 0)] = center.bounds[(d, 1)] + 1;
+            debug_assert!(result[d][1].check_validity());
+
+            remaining_bounds.bounds[(d, 0)] = center.bounds[(d, 0)];
+            remaining_bounds.bounds[(d, 1)] = center.bounds[(d, 1)];
+        }
+
+        result
     }
 }
 
@@ -225,6 +274,69 @@ mod unit_tests {
             let a = AABB::new(matrix![0, 9]);
             let b = AABB::new(matrix![0, 9]);
             assert!(a.contains_aabb(&b));
+        }
+    }
+
+    #[test]
+    fn check_validity_test() {
+        {
+            let a = AABB::new(matrix![0, 9]);
+            assert!(a.check_validity());
+        }
+
+        {
+            let a = AABB::new(matrix![9, 0]);
+            assert!(!a.check_validity());
+        }
+
+        {
+            let a = AABB::new(matrix![0, 0]);
+            assert!(a.check_validity());
+        }
+    }
+
+    // Test that decomp + center = bounds exactly
+    // by checking every coordinate appears once.
+    fn test_decomp<const DIMENSION: usize>(
+        bounds: &AABB<DIMENSION>,
+        center: &AABB<DIMENSION>,
+    ) {
+        let mut coord_set = std::collections::HashSet::new();
+        coord_set.extend(center.coord_iter());
+
+        let d = bounds.decomposition(center);
+        for [b1, b2] in d {
+            for c in b1.coord_iter().chain(b2.coord_iter()) {
+                assert!(!coord_set.contains(&c));
+                coord_set.insert(c);
+            }
+        }
+
+        for c in bounds.coord_iter() {
+            assert!(coord_set.contains(&c));
+        }
+
+        println!("{}", coord_set.len());
+    }
+
+    #[test]
+    fn decomp_test() {
+        {
+            let outer = AABB::new(matrix![0, 9]);
+            let center = AABB::new(matrix![4, 6]);
+            test_decomp(&outer, &center);
+        }
+
+        {
+            let outer = AABB::new(matrix![0, 9; 0, 9]);
+            let center = AABB::new(matrix![4, 6; 4, 6]);
+            test_decomp(&outer, &center);
+        }
+
+        {
+            let outer = AABB::new(matrix![2, 20; 5, 19; 40, 60]);
+            let center = AABB::new(matrix![6, 14; 10, 13; 47, 53]);
+            test_decomp(&outer, &center);
         }
     }
 }

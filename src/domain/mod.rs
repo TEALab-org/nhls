@@ -8,7 +8,6 @@
 mod bc;
 mod domain_view;
 mod gather_args;
-pub mod view;
 
 pub use bc::*;
 pub use domain_view::*;
