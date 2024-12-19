@@ -25,17 +25,20 @@ fn main() {
     let mut input_domain: Domain<2> = Domain::new(grid_bound, &mut grid_input);
 
     let mut grid_output = vec![0.0; buffer_size];
-    let mut output_domain: Domain<2> = Domain::new(grid_bound, &mut grid_output);
+    let mut output_domain: Domain<2> =
+        Domain::new(grid_bound, &mut grid_output);
 
     // Fill in with IC values (use normal dist for spike in the middle)
     let width_f = grid_bound.bounds[(0, 1)] as f32 + 1.0;
     let height_f = grid_bound.bounds[(1, 1)] as f32 + 1.0;
     let sigma_sq: f32 = (width_f / 25.0) * (width_f / 25.0);
-    input_domain
-        .par_modify_access(100)
-        .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
+    input_domain.par_modify_access(100).for_each(
+        |mut d: DomainChunk<'_, GRID_DIMENSION>| {
             d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (Coord<GRID_DIMENSION>, &mut f32)| {
+                |(world_coord, value_mut): (
+                    Coord<GRID_DIMENSION>,
+                    &mut f32,
+                )| {
                     let x = (world_coord[0] as f32) - (width_f / 2.0);
                     let y = (world_coord[1] as f32) - (height_f / 2.0);
                     let r = (x * x + y * y).sqrt();
@@ -43,7 +46,8 @@ fn main() {
                     *value_mut = exp.exp()
                 },
             )
-        });
+        },
+    );
 
     // Make image
     nhls::image::image2d(&input_domain, "gen_2d/frame_000.png");
@@ -56,6 +60,9 @@ fn main() {
             chunk_size,
         );
         std::mem::swap(&mut input_domain, &mut output_domain);
-        nhls::image::image2d(&input_domain, &format!("gen_2d/frame_{:03}.png", t));
+        nhls::image::image2d(
+            &input_domain,
+            &format!("gen_2d/frame_{:03}.png", t),
+        );
     }
 }

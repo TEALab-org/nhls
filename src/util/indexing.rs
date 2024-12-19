@@ -1,6 +1,8 @@
 use crate::util::*;
 
-pub fn real_buffer_size<const DIMENSION: usize>(exclusive_bound: &Coord<DIMENSION>) -> usize {
+pub fn real_buffer_size<const DIMENSION: usize>(
+    exclusive_bound: &Coord<DIMENSION>,
+) -> usize {
     let mut accumulator = 1;
     for d in exclusive_bound {
         accumulator *= *d as usize;
@@ -8,7 +10,9 @@ pub fn real_buffer_size<const DIMENSION: usize>(exclusive_bound: &Coord<DIMENSIO
     accumulator
 }
 
-pub fn complex_buffer_size<const DIMENSION: usize>(exclusive_bound: &Coord<DIMENSION>) -> usize {
+pub fn complex_buffer_size<const DIMENSION: usize>(
+    exclusive_bound: &Coord<DIMENSION>,
+) -> usize {
     let mut accumulator = 1;
     let mut size_iter = exclusive_bound.iter().rev();
     accumulator *= *size_iter.next().unwrap() as usize / 2 + 1;
@@ -83,7 +87,10 @@ mod unit_tests {
         {
             let index = vector![5, 7, 11];
             let bound = vector![20, 20, 20];
-            assert_eq!(coord_to_linear(&index, &bound), 5 * 20 * 20 + 7 * 20 + 11);
+            assert_eq!(
+                coord_to_linear(&index, &bound),
+                5 * 20 * 20 + 7 * 20 + 11
+            );
         }
 
         {

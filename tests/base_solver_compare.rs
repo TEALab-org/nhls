@@ -51,34 +51,43 @@ fn thermal_1d_compare() {
     // Fill in with IC values (use normal dist for spike in the middle)
     let n_f = buffer_size as f32;
     let sigma_sq: f32 = (n_f / 25.0) * (n_f / 25.0);
-    naive_input_domain
-        .par_modify_access(100)
-        .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
+    naive_input_domain.par_modify_access(100).for_each(
+        |mut d: DomainChunk<'_, GRID_DIMENSION>| {
             d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (Coord<GRID_DIMENSION>, &mut f32)| {
+                |(world_coord, value_mut): (
+                    Coord<GRID_DIMENSION>,
+                    &mut f32,
+                )| {
                     let x = (world_coord[0] as f32) - (n_f / 2.0);
                     //let f = ( 1.0 / (2.0 * std::f32::consts::PI * sigma_sq)).sqrt();
                     let exp = -x * x / (2.0 * sigma_sq);
                     *value_mut = exp.exp()
                 },
             )
-        });
+        },
+    );
 
-    fft_input_domain
-        .par_modify_access(100)
-        .for_each(|mut d: DomainChunk<'_, GRID_DIMENSION>| {
+    fft_input_domain.par_modify_access(100).for_each(
+        |mut d: DomainChunk<'_, GRID_DIMENSION>| {
             d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (Coord<GRID_DIMENSION>, &mut f32)| {
+                |(world_coord, value_mut): (
+                    Coord<GRID_DIMENSION>,
+                    &mut f32,
+                )| {
                     let x = (world_coord[0] as f32) - (n_f / 2.0);
                     //let f = ( 1.0 / (2.0 * std::f32::consts::PI * sigma_sq)).sqrt();
                     let exp = -x * x / (2.0 * sigma_sq);
                     *value_mut = exp.exp()
                 },
             )
-        });
+        },
+    );
 
     let mut periodic_library =
-        nhls::solver::periodic_plan::PeriodicPlanLibrary::new(&grid_bound, &stencil);
+        nhls::solver::periodic_plan::PeriodicPlanLibrary::new(
+            &grid_bound,
+            &stencil,
+        );
     periodic_library.apply(
         &mut fft_input_domain,
         &mut fft_output_domain,
@@ -106,10 +115,13 @@ fn periodic_compare() {
         let steps = 1;
         let chunk_size = 3;
         let bound = AABB::new(matrix![0, 99]);
-        let stencil = Stencil::new([[-1], [-2], [0], [3], [4], [1]], |args: &[f32; 6]| {
-            let c = 1.0 / 6.0;
-            args.iter().map(|x| c * x).sum()
-        });
+        let stencil = Stencil::new(
+            [[-1], [-2], [0], [3], [4], [1]],
+            |args: &[f32; 6]| {
+                let c = 1.0 / 6.0;
+                args.iter().map(|x| c * x).sum()
+            },
+        );
 
         let n_r = bound.buffer_size();
         let mut input_a = AlignedVec::new(n_r);
@@ -133,8 +145,14 @@ fn periodic_compare() {
             steps,
             chunk_size,
         );
-        let mut plan_library = periodic_plan::PeriodicPlanLibrary::new(&bound, &stencil);
-        plan_library.apply(&mut domain_b_input, &mut domain_b_output, steps, chunk_size);
+        let mut plan_library =
+            periodic_plan::PeriodicPlanLibrary::new(&bound, &stencil);
+        plan_library.apply(
+            &mut domain_b_input,
+            &mut domain_b_output,
+            steps,
+            chunk_size,
+        );
 
         for i in 0..n_r {
             println!(

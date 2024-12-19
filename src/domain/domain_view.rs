@@ -48,6 +48,27 @@ impl<'a, const GRID_DIMENSION: usize> Domain<'a, GRID_DIMENSION> {
     ) -> impl ParallelIterator<Item = DomainChunk<'_, GRID_DIMENSION>> {
         par_modify_access_impl(self.buffer, &self.aabb, chunk_size)
     }
+
+    pub fn par_set_values<
+        F: FnOnce(Coord<GRID_DIMENSION>) -> f32 + Send + Sync + Copy,
+    >(
+        &mut self,
+        f: F,
+        chunk_size: usize,
+    ) {
+        self.par_modify_access(chunk_size).for_each(
+            |mut d: DomainChunk<'_, GRID_DIMENSION>| {
+                d.coord_iter_mut().for_each(
+                    |(world_coord, value_mut): (
+                        Coord<GRID_DIMENSION>,
+                        &mut f32,
+                    )| {
+                        *value_mut = f(world_coord);
+                    },
+                )
+            },
+        );
+    }
 }
 
 /// Why not just put this into Domain::par_modify_access?
@@ -75,7 +96,11 @@ pub struct DomainChunk<'a, const GRID_DIMENSION: usize> {
 }
 
 impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
-    pub fn new(offset: usize, aabb: &'a AABB<GRID_DIMENSION>, buffer: &'a mut [f32]) -> Self {
+    pub fn new(
+        offset: usize,
+        aabb: &'a AABB<GRID_DIMENSION>,
+        buffer: &'a mut [f32],
+    ) -> Self {
         DomainChunk {
             offset,
             aabb,
@@ -83,7 +108,9 @@ impl<'a, const GRID_DIMENSION: usize> DomainChunk<'a, GRID_DIMENSION> {
         }
     }
 
-    pub fn coord_iter_mut(&mut self) -> impl Iterator<Item = (Coord<GRID_DIMENSION>, &mut f32)> {
+    pub fn coord_iter_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (Coord<GRID_DIMENSION>, &mut f32)> {
         self.buffer
             .iter_mut()
             .enumerate()

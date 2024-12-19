@@ -12,7 +12,9 @@ impl<const GRID_DIMENSION: usize> ConstantCheck<GRID_DIMENSION> {
     }
 }
 
-impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION> for ConstantCheck<GRID_DIMENSION> {
+impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION>
+    for ConstantCheck<GRID_DIMENSION>
+{
     fn check(&self, coord: &Coord<GRID_DIMENSION>) -> Option<f32> {
         if self.bound.contains(coord) {
             return None;

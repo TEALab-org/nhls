@@ -58,7 +58,8 @@ fn main() {
 
     // Make image
     let gradient = colorous::TURBO;
-    let mut test_img = image::RgbImage::new(N as u32, (final_t / steps_per_image) as u32);
+    let mut test_img =
+        image::RgbImage::new(N as u32, (final_t / steps_per_image) as u32);
     for t in 0..final_t as u32 {
         //println!("t: {}", t);
         for x in 1..N - 1 {

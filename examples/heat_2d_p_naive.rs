@@ -134,7 +134,14 @@ fn main() {
         println!("t: {}", t);
         for l in 0..width * height {
             let (i, j) = linear_to_coord(width, height, l);
-            let r = apply_2d_stencil_periodic(&s, &grid_input, i, j, width as i32, height as i32);
+            let r = apply_2d_stencil_periodic(
+                &s,
+                &grid_input,
+                i,
+                j,
+                width as i32,
+                height as i32,
+            );
             grid_output[l] = r;
         }
         std::mem::swap(&mut grid_output, &mut grid_input);

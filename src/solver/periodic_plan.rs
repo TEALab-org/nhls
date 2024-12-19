@@ -31,7 +31,8 @@ pub struct PeriodicPlanLibrary<
 > where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
-    convolution_map: HashMap<PeriodicPlanDescriptor<GRID_DIMENSION>, AlignedVec<c32>>,
+    convolution_map:
+        HashMap<PeriodicPlanDescriptor<GRID_DIMENSION>, AlignedVec<c32>>,
     fft_plan_library: FFTPlanLibrary<GRID_DIMENSION>,
     stencil: &'a StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     real_buffer: AlignedVec<f32>,
@@ -40,8 +41,12 @@ pub struct PeriodicPlanLibrary<
     stencil_weights: [f32; NEIGHBORHOOD_SIZE],
 }
 
-impl<'a, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    PeriodicPlanLibrary<'a, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+impl<
+        'a,
+        Operation,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+    > PeriodicPlanLibrary<'a, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 where
     Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
 {
@@ -167,11 +172,19 @@ mod unit_tests {
     use float_cmp::assert_approx_eq;
     use nalgebra::matrix;
 
-    fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+    fn test_unit_stencil<
+        Operation,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+    >(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bound: AABB<GRID_DIMENSION>,
         steps: usize,
-        plan_library: &mut PeriodicPlanLibrary<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        plan_library: &mut PeriodicPlanLibrary<
+            Operation,
+            GRID_DIMENSION,
+            NEIGHBORHOOD_SIZE,
+        >,
     ) where
         Operation: StencilOperation<f32, NEIGHBORHOOD_SIZE>,
     {
@@ -187,9 +200,15 @@ mod unit_tests {
         let mut input_domain = Domain::new(bound, input_x.as_slice_mut());
 
         let mut result_buffer = fftw::array::AlignedVec::new(rbs);
-        let mut output_domain = Domain::new(bound, result_buffer.as_slice_mut());
+        let mut output_domain =
+            Domain::new(bound, result_buffer.as_slice_mut());
 
-        plan_library.apply(&mut input_domain, &mut output_domain, steps, chunk_size);
+        plan_library.apply(
+            &mut input_domain,
+            &mut output_domain,
+            steps,
+            chunk_size,
+        );
         for x in &result_buffer[0..rbs] {
             assert_approx_eq!(f32, *x, 1.0);
         }
@@ -203,7 +222,12 @@ mod unit_tests {
         let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
 
         test_unit_stencil(&stencil, max_size, 10, &mut plan_library);
-        test_unit_stencil(&stencil, AABB::new(matrix![0, 98]), 20, &mut plan_library);
+        test_unit_stencil(
+            &stencil,
+            AABB::new(matrix![0, 98]),
+            20,
+            &mut plan_library,
+        );
     }
 
     #[test]

@@ -2,7 +2,13 @@ use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
 
-pub fn box_apply<'a, BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+pub fn box_apply<
+    'a,
+    BC,
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+>(
     bc: &BC,
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &mut Domain<'a, GRID_DIMENSION>,
@@ -157,8 +163,10 @@ mod unit_tests {
         }
         let mut output_buffer = AlignedVec::new(10);
 
-        let mut input_domain = Domain::new(max_size, input_buffer.as_slice_mut());
-        let mut output_domain = Domain::new(max_size, output_buffer.as_slice_mut());
+        let mut input_domain =
+            Domain::new(max_size, input_buffer.as_slice_mut());
+        let mut output_domain =
+            Domain::new(max_size, output_buffer.as_slice_mut());
 
         let bc_lookup = ConstantCheck::new(-1.0, max_size);
         let chunk_size = 1;

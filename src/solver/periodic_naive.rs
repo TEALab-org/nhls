@@ -2,7 +2,12 @@ use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
 
-pub fn box_solve<'a, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+pub fn box_solve<
+    'a,
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+>(
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &mut Domain<'a, GRID_DIMENSION>,
     output: &mut Domain<'a, GRID_DIMENSION>,
@@ -32,7 +37,11 @@ mod unit_tests {
     use float_cmp::assert_approx_eq;
     use nalgebra::matrix;
 
-    fn test_unit_stencil<Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+    fn test_unit_stencil<
+        Operation,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+    >(
         stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bound: &AABB<GRID_DIMENSION>,
         steps: usize,
@@ -140,7 +149,8 @@ mod unit_tests {
         let mut input_domain = Domain::new(bound, input_buffer.as_slice_mut());
 
         let mut output_buffer = AlignedVec::new(10);
-        let mut output_domain = Domain::new(bound, output_buffer.as_slice_mut());
+        let mut output_domain =
+            Domain::new(bound, output_buffer.as_slice_mut());
         let chunk_size = 1;
         let n = 1;
         box_solve(

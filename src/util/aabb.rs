@@ -1,7 +1,8 @@
 use crate::util::indexing::*;
 use crate::util::*;
 
-pub type Bounds<const DIMENSION: usize> = nalgebra::SMatrix<i32, { DIMENSION }, 2>;
+pub type Bounds<const DIMENSION: usize> =
+    nalgebra::SMatrix<i32, { DIMENSION }, 2>;
 
 #[derive(Hash, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct AABB<const DIMENSION: usize> {
@@ -59,7 +60,8 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
 
     pub fn contains(&self, coord: &Coord<DIMENSION>) -> bool {
         for d in 0..DIMENSION {
-            if coord[d] < self.bounds[(d, 0)] || coord[d] > self.bounds[(d, 1)] {
+            if coord[d] < self.bounds[(d, 0)] || coord[d] > self.bounds[(d, 1)]
+            {
                 return false;
             }
         }
@@ -208,8 +210,12 @@ mod unit_tests {
 
         {
             let index = vector![0, -1, -4, -19, 134];
-            let bound = AABB::new(matrix![0, 100; 0, 100;0, 100; 0, 100;0, 100]);
-            assert_eq!(bound.periodic_coord(&index), vector![0, 100, 97, 82, 33]);
+            let bound =
+                AABB::new(matrix![0, 100; 0, 100;0, 100; 0, 100;0, 100]);
+            assert_eq!(
+                bound.periodic_coord(&index),
+                vector![0, 100, 97, 82, 33]
+            );
         }
     }
 

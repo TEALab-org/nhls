@@ -5,5 +5,7 @@ pub trait NumTrait = Num + Copy + Send + Sync;
 mod aabb;
 pub mod indexing;
 pub use aabb::*;
+pub use nalgebra::{matrix, vector};
 
-pub type Coord<const GRID_DIMENSION: usize> = nalgebra::SVector<i32, { GRID_DIMENSION }>;
+pub type Coord<const GRID_DIMENSION: usize> =
+    nalgebra::SVector<i32, { GRID_DIMENSION }>;

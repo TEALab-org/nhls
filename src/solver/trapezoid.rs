@@ -72,7 +72,13 @@ mod unit_tests {
             let sloped_sides = matrix![1, 1];
             let stencil_slopes = matrix![1, 1];
             assert_eq!(
-                trapezoid_input_region(steps, &output_box, &sloped_sides, &stencil_slopes).bounds,
+                trapezoid_input_region(
+                    steps,
+                    &output_box,
+                    &sloped_sides,
+                    &stencil_slopes
+                )
+                .bounds,
                 matrix![5, 25]
             );
         }
@@ -83,7 +89,13 @@ mod unit_tests {
             let sloped_sides = matrix![0, 1];
             let stencil_slopes = matrix![1, 1];
             assert_eq!(
-                trapezoid_input_region(steps, &output_box, &sloped_sides, &stencil_slopes).bounds,
+                trapezoid_input_region(
+                    steps,
+                    &output_box,
+                    &sloped_sides,
+                    &stencil_slopes
+                )
+                .bounds,
                 matrix![10, 25]
             );
         }
@@ -94,7 +106,13 @@ mod unit_tests {
             let sloped_sides = matrix![1, 0];
             let stencil_slopes = matrix![1, 1];
             assert_eq!(
-                trapezoid_input_region(steps, &output_box, &sloped_sides, &stencil_slopes).bounds,
+                trapezoid_input_region(
+                    steps,
+                    &output_box,
+                    &sloped_sides,
+                    &stencil_slopes
+                )
+                .bounds,
                 matrix![5, 20]
             );
         }
@@ -105,7 +123,13 @@ mod unit_tests {
             let sloped_sides = matrix![1, 1];
             let stencil_slopes = matrix![1, 2];
             assert_eq!(
-                trapezoid_input_region(steps, &output_box, &sloped_sides, &stencil_slopes).bounds,
+                trapezoid_input_region(
+                    steps,
+                    &output_box,
+                    &sloped_sides,
+                    &stencil_slopes
+                )
+                .bounds,
                 matrix![5, 30]
             );
         }
@@ -116,7 +140,13 @@ mod unit_tests {
             let sloped_sides = matrix![1, 1; 1, 1; 1, 1];
             let stencil_slopes = matrix![1, 2; 2, 1; 2, 3];
             assert_eq!(
-                trapezoid_input_region(steps, &output_box, &sloped_sides, &stencil_slopes).bounds,
+                trapezoid_input_region(
+                    steps,
+                    &output_box,
+                    &sloped_sides,
+                    &stencil_slopes
+                )
+                .bounds,
                 matrix![5, 30; 0, 25; 0, 35]
             );
         }
@@ -141,7 +171,8 @@ mod unit_tests {
             let mut input_buffer = vec![1.0; input_bound.buffer_size()];
             let mut output_buffer = vec![1.0; input_bound.buffer_size()];
             let mut input_domain = Domain::new(input_bound, &mut input_buffer);
-            let mut output_domain = Domain::new(input_bound, &mut output_buffer);
+            let mut output_domain =
+                Domain::new(input_bound, &mut output_buffer);
             let bc = ConstantCheck::new(1.0, input_bound);
             trapezoid_apply(
                 &bc,

@@ -2,7 +2,12 @@ use crate::domain::*;
 use crate::stencil::*;
 use crate::util::*;
 
-pub fn gather_args<BC, Operation, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>(
+pub fn gather_args<
+    BC,
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+>(
     stencil: &StencilF32<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     bc: &BC,
     input: &Domain<GRID_DIMENSION>,
@@ -70,7 +75,12 @@ mod unit_tests {
         for i in 0..n_r {
             let coord = bound.linear_to_coord(i);
             buffer.as_slice_mut()[i] = (coord[0] + 3 * coord[1]) as f32;
-            println!("i: {}, c: {:?}, r: {}", i, coord, buffer.as_slice_mut()[i]);
+            println!(
+                "i: {}, c: {:?}, r: {}",
+                i,
+                coord,
+                buffer.as_slice_mut()[i]
+            );
         }
         let domain = Domain::new(bound, buffer.as_slice_mut());
         let bc = PeriodicCheck::new(&domain);
