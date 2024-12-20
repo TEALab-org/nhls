@@ -1,63 +1,64 @@
 use crate::util::indexing::*;
 use crate::util::*;
 
+/// Raw type used for AABB,
+/// an n by 2 matrix, where
+/// column 0 is the min corner
+/// and column 1 is the max corner
 pub type Bounds<const DIMENSION: usize> =
     nalgebra::SMatrix<i32, { DIMENSION }, 2>;
 
+/// Axis Aligned Bounding Box (AABB) for coordinate types.
+/// Each instance is inclusive of both corners.
+/// This class is responsible for alot of indexing operations,
+/// where we map between a linear buffer and coordinates.
 #[derive(Hash, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct AABB<const DIMENSION: usize> {
     pub bounds: Bounds<DIMENSION>,
 }
 
 impl<const DIMENSION: usize> AABB<DIMENSION> {
+    /// Create AABB from raw bounds.
     pub fn new(bounds: Bounds<DIMENSION>) -> Self {
         AABB { bounds }
     }
 
+    /// Create AABB from corners.
     pub fn from_mm(min: Coord<DIMENSION>, max: Coord<DIMENSION>) -> Self {
-        for d in 0..DIMENSION {
-            debug_assert!(min[d] <= max[d])
-        }
-
-        AABB {
+        let result = AABB {
             bounds: Bounds::from_columns(&[min, max]),
-        }
+        };
+        debug_assert!(result.check_validity());
+        result
     }
 
-    /// Moving min to the origin, what is the size in each direction, exclusive, 0..exclusive_max
+    /// Moving min to the origin, returns the exclusie size in each direction
+    /// i.e. [0, 9]  would have exclusive size of 10.
     pub fn exclusive_bounds(&self) -> Coord<DIMENSION> {
         (self.bounds.column(1) - self.bounds.column(0)).add_scalar(1)
     }
 
+    /// Return the number of coordinates contained in the instance.
     pub fn buffer_size(&self) -> usize {
         real_buffer_size(&self.exclusive_bounds())
     }
 
+    /// Return the number of complex numbers needed for a FFTW buffer.
     pub fn complex_buffer_size(&self) -> usize {
         complex_buffer_size(&self.exclusive_bounds())
     }
 
-    pub fn linear_index(&self, coord: &Coord<DIMENSION>) -> usize {
-        let mut accumulator = 0;
-        for d in 0..DIMENSION {
-            debug_assert!(coord[d] >= 0);
-            let mut dim_accumulator = coord[d] as usize;
-            for dn in (d + 1)..DIMENSION {
-                dim_accumulator *= self.bounds[dn] as usize;
-            }
-            accumulator += dim_accumulator;
-        }
-        accumulator
-    }
-
+    /// Return the linear index for a coord in the instance
     pub fn coord_to_linear(&self, coord: &Coord<DIMENSION>) -> usize {
         coord_to_linear(&(coord - self.min()), &self.exclusive_bounds())
     }
 
+    /// Return the coordinate in the instance for a given linear index.
     pub fn linear_to_coord(&self, index: usize) -> Coord<DIMENSION> {
         linear_to_coord(index, &self.exclusive_bounds()) + self.min()
     }
 
+    /// Check whether the instance contains a coordinate.
     pub fn contains(&self, coord: &Coord<DIMENSION>) -> bool {
         for d in 0..DIMENSION {
             if coord[d] < self.bounds[(d, 0)] || coord[d] > self.bounds[(d, 1)]
@@ -68,6 +69,7 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         true
     }
 
+    /// Check whether another AABB is contained in the instance.
     pub fn contains_aabb(&self, other: &Self) -> bool {
         for d in 0..DIMENSION {
             if other.bounds[(d, 0)] < self.bounds[(d, 0)]
@@ -79,6 +81,7 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         true
     }
 
+    /// Element wise add the bounds diff.
     pub fn add_bounds_diff(&self, diff: Bounds<DIMENSION>) -> Self {
         Self::new(self.bounds + diff)
     }
