@@ -18,7 +18,7 @@ impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION>
     fn check(&self, world_coord: &Coord<GRID_DIMENSION>) -> Option<f64> {
         let p_coord = &self.domain.aabb().periodic_coord(world_coord);
         if p_coord != world_coord {
-            return Some(self.domain.view(&p_coord));
+            return Some(self.domain.view(p_coord));
         }
         None
     }
