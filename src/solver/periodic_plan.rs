@@ -123,7 +123,7 @@ where
         for n_i in 0..NEIGHBORHOOD_SIZE {
             let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
             let index = &descriptor.bound.periodic_coord(&rn_i);
-            let l = descriptor.bound.coord_to_linear(&index);
+            let l = descriptor.bound.coord_to_linear(index);
             self.real_buffer[l] = self.stencil_weights[n_i];
         }
 
@@ -143,7 +143,7 @@ where
         for n_i in 0..NEIGHBORHOOD_SIZE {
             let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
             let index = &descriptor.bound.periodic_coord(&rn_i);
-            let l = descriptor.bound.coord_to_linear(&index);
+            let l = descriptor.bound.coord_to_linear(index);
             self.real_buffer[l] = 0.0;
         }
 

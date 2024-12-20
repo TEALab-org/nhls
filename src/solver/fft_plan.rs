@@ -48,6 +48,12 @@ pub struct FFTPlanLibrary<const GRID_DIMENSION: usize> {
         std::collections::HashMap<FFTPlanDescriptor<GRID_DIMENSION>, FFTPlan>,
 }
 
+impl<const GRID_DIMENSION: usize> Default for FFTPlanLibrary<GRID_DIMENSION> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const GRID_DIMENSION: usize> FFTPlanLibrary<GRID_DIMENSION> {
     pub fn new() -> Self {
         FFTPlanLibrary {

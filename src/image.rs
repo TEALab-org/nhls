@@ -20,7 +20,7 @@ impl Image1D {
         let gradient = colorous::TURBO;
         for x in 0..self.img_buffer.width() {
             let r = v[x as usize];
-            let c = gradient.eval_continuous(r as f64);
+            let c = gradient.eval_continuous(r);
             self.img_buffer.put_pixel(x, l, image::Rgb(c.as_array()));
         }
     }
@@ -41,7 +41,7 @@ pub fn image2d(domain: &Domain<2>, s: &str) {
     for l in 0..exclusive_bounds[0] * exclusive_bounds[1] {
         let coord = domain.aabb().linear_to_coord(l as usize);
         let r = domain.view(&coord);
-        let c = gradient.eval_continuous(r as f64);
+        let c = gradient.eval_continuous(r);
         img.put_pixel(
             coord[0] as u32,
             coord[1] as u32,
