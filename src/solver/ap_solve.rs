@@ -134,7 +134,7 @@ where
                     self.chunk_size,
                 );
 
-                // copy output 
+                // copy output
                 debug_assert_eq!(output_domain.aabb(), &output_aabb);
                 output.par_set_subdomain(&output_domain, self.chunk_size);
             }

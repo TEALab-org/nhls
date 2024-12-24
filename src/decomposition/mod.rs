@@ -20,7 +20,8 @@ pub fn try_fftsolve<const DIMENSION: usize>(
         return None;
     }
 
-    let (steps, solve_region) = bounds.shrink(params.ratio, params.slopes, max_steps);
+    let (steps, solve_region) =
+        bounds.shrink(params.ratio, params.slopes, max_steps);
 
     Some(FFTSolve {
         solve_region,
@@ -29,7 +30,8 @@ pub fn try_fftsolve<const DIMENSION: usize>(
 }
 
 /// This needs to match logic from AABB::decomposition
-pub fn decomposition_slopes<const DIMENSION: usize>() -> [[Bounds<DIMENSION>; 2]; DIMENSION] {
+pub fn decomposition_slopes<const DIMENSION: usize>(
+) -> [[Bounds<DIMENSION>; 2]; DIMENSION] {
     let lower = 0;
     let upper = 1;
 
@@ -41,7 +43,7 @@ pub fn decomposition_slopes<const DIMENSION: usize>() -> [[Bounds<DIMENSION>; 2]
         result[d][upper][(d, upper)] = 0;
 
         for d0 in d + 1..DIMENSION {
-            result[d][lower][(d0,lower)] = 0;
+            result[d][lower][(d0, lower)] = 0;
             result[d][lower][(d0, upper)] = 0;
             result[d][upper][(d0, lower)] = 0;
             result[d][upper][(d0, upper)] = 0;
@@ -76,7 +78,7 @@ mod unit_tests {
             let expected = [
                 [matrix![0, 1; 0,0; 0,0], matrix![1, 0; 0, 0; 0, 0]],
                 [matrix![1, 1; 0, 1; 0,0], matrix![1, 1; 1, 0; 0,0]],
-                [matrix![1, 1; 1, 1; 0, 1], matrix![1, 1; 1, 1; 1, 0]]
+                [matrix![1, 1; 1, 1; 0, 1], matrix![1, 1; 1, 1; 1, 0]],
             ];
             assert_eq!(d3, expected);
         }
