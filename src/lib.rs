@@ -12,3 +12,4 @@ pub mod par_stencil;
 pub mod solver;
 pub mod stencil;
 pub mod util;
+pub mod image_1d_example;
