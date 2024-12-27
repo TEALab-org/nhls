@@ -1,27 +1,12 @@
 use nhls::domain::*;
 use nhls::image_1d_example::*;
 use nhls::solver::*;
-use nhls::stencil::*;
 use nhls::util::*;
 
 fn main() {
     let (args, output_image_path) = Args::cli_parse("heat_1d_p_direct");
 
-    // Step size t
-    let dt: f64 = 1.0;
-
-    // Step size x
-    let dx: f64 = 1.0;
-
-    // Heat transfer coefficient
-    let k: f64 = 0.5;
-
-    let stencil = Stencil::new([[-1], [0], [1]], |args: &[f64; 3]| {
-        let left = args[0];
-        let middle = args[1];
-        let right = args[2];
-        middle + (k * dt / (dx * dx)) * (left - 2.0 * middle + right)
-    });
+    let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
 
     // Create domains
     let grid_bound = args.grid_bounds();
