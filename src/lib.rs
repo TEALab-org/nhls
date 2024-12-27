@@ -7,6 +7,7 @@
 pub mod decomposition;
 pub mod domain;
 pub mod image;
+pub mod image_1d_example;
 pub mod par_slice;
 pub mod par_stencil;
 pub mod solver;

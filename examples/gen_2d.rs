@@ -2,7 +2,6 @@ use nhls::domain::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
-
 mod util;
 
 fn main() {
