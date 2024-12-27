@@ -1,7 +1,6 @@
 use fftw::array::AlignedVec;
 use nhls::domain::*;
 use nhls::image::*;
-use nhls::stencil::*;
 use nhls::util::*;
 
 mod util;
@@ -18,32 +17,7 @@ fn main() {
 
     let chunk_size = 1000;
 
-    // Step size t
-    let dt: f64 = 1.0;
-
-    // Step size x
-    let dx: f64 = 1.0;
-
-    // Step size y
-    let dy: f64 = 1.0;
-
-    // Heat transfer coefficient
-    let k_x: f64 = 0.2;
-    let k_y: f64 = 0.2;
-
-    let stencil = Stencil::new(
-        [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]],
-        |args: &[f64; 5]| {
-            let middle = args[0];
-            let left = args[1];
-            let right = args[2];
-            let bottom = args[3];
-            let top = args[4];
-            middle
-                + (k_x * dt / (dx * dx)) * (left - 2.0 * middle + right)
-                + (k_y * dt / (dy * dy)) * (top - 2.0 * middle + bottom)
-        },
-    );
+    let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
 
     // Create domains
     let buffer_size = grid_bound.buffer_size();
