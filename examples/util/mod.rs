@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use clap::Parser;
 
 /// Simple program to greet a person
@@ -12,7 +13,8 @@ pub struct Args {
 impl Args {
     pub fn cli_parse(name: &str) -> Self {
         println!("EXAMPLE: {}", name);
-        println!("GIT: {}", env!("GIT_DESCRIBE"));
+        println!("GIT DESCRIBE: {}", env!("GIT_DESCRIBE"));
+        println!("GIT HASH: {}", env!("GIT_HASH"));
         let args = Args::parse();
 
         let output_dir = args.output_dir.to_str().unwrap();
@@ -22,6 +24,7 @@ impl Args {
         args
     }
 
+    #[allow(dead_code)]
     pub fn frame_name(&self, i: u32) -> std::path::PathBuf {
         let mut result = self.output_dir.to_path_buf();
         result.push(format!("frame_{:04}.png", i));
