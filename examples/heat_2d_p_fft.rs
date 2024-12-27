@@ -4,7 +4,11 @@ use nhls::image::*;
 use nhls::stencil::*;
 use nhls::util::*;
 
+mod util;
+
 fn main() {
+    let args = util::Args::cli_parse("heat_2d_p_direct");
+
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999; 0, 999]);
 
@@ -62,7 +66,7 @@ fn main() {
         exp.exp()
     };
     input_domain.par_set_values(ic_gen, chunk_size);
-    image2d(&input_domain, "heat_2d_fft/frame_0000.png");
+    image2d(&input_domain, &args.frame_name(0));
 
     // Apply periodic solver
     let mut periodic_library =
@@ -78,6 +82,6 @@ fn main() {
             chunk_size,
         );
         std::mem::swap(&mut input_domain, &mut output_domain);
-        image2d(&input_domain, &format!("heat_2d_fft/frame_{:04}.png", t));
+        image2d(&input_domain, &args.frame_name(t));
     }
 }

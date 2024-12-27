@@ -3,9 +3,13 @@ use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
 
-use nalgebra::matrix;
+mod util;
 
 fn main() {
+    let args = util::Args::cli_parse("heat_1d_p_direct");
+    let mut output_image_path = args.output_dir.clone();
+    output_image_path.push("heat_1d_p_direct.png");
+
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
 
@@ -64,5 +68,5 @@ fn main() {
         img.add_line(t, input_domain.buffer());
     }
 
-    img.write("test_image_01.png");
+    img.write(&output_image_path);
 }

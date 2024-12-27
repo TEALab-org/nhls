@@ -2,13 +2,13 @@ use nhls::domain::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
-use rayon::prelude::*;
 
-use nalgebra::matrix;
+mod util;
 
 fn main() {
-    let name = "gen_1d.png";
-    const GRID_DIMENSION: usize = 1;
+    let args = util::Args::cli_parse("gen_1d");
+    let mut output_image_path = args.output_dir.clone();
+    output_image_path.push("gen_1d.png");
 
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
@@ -32,21 +32,13 @@ fn main() {
     // Fill in with IC values (use normal dist for spike in the middle)
     let n_f = buffer_size as f64;
     let sigma_sq: f64 = (n_f / 25.0) * (n_f / 25.0);
-    input_domain.par_modify_access(100).for_each(
-        |mut d: DomainChunk<'_, GRID_DIMENSION>| {
-            d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (
-                    Coord<GRID_DIMENSION>,
-                    &mut f64,
-                )| {
-                    let x = (world_coord[0] as f64) - (n_f / 2.0);
-                    //let f = ( 1.0 / (2.0 * std::f64::consts::PI * sigma_sq)).sqrt();
-                    let exp = -x * x / (2.0 * sigma_sq);
-                    *value_mut = exp.exp()
-                },
-            )
-        },
-    );
+    let ic_gen = |coord: Coord<1>| {
+        let x = (coord[0] as f64) - (n_f / 2.0);
+        //let f = ( 1.0 / (2.0 * std::f64::consts::PI * sigma_sq)).sqrt();
+        let exp = -x * x / (2.0 * sigma_sq);
+        exp.exp()
+    };
+    input_domain.par_set_values(ic_gen, chunk_size);
 
     // Make image
     let mut img = nhls::image::Image1D::new(grid_bound, n_lines as u32);
@@ -63,5 +55,5 @@ fn main() {
         img.add_line(t, input_domain.buffer());
     }
 
-    img.write(name);
+    img.write(&output_image_path);
 }

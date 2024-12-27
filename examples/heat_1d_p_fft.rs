@@ -1,11 +1,14 @@
-use nalgebra::matrix;
+use fftw::array::AlignedVec;
 use nhls::domain::*;
 use nhls::stencil::*;
 use nhls::util::*;
-use rayon::prelude::*;
+
+mod util;
 
 fn main() {
-    const GRID_DIMENSION: usize = 1;
+    let args = util::Args::cli_parse("heat_1d_p_fft");
+    let mut output_image_path = args.output_dir.clone();
+    output_image_path.push("heat_1d_p_fft.png");
 
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
@@ -34,30 +37,21 @@ fn main() {
 
     // Create domains
     let buffer_size = grid_bound.buffer_size();
-    let mut grid_input = vec![0.0; buffer_size];
+    let mut grid_input = AlignedVec::new(buffer_size);
     let mut input_domain = Domain::new(grid_bound, &mut grid_input);
 
-    let mut grid_output = vec![0.0; buffer_size];
+    let mut grid_output = AlignedVec::new(buffer_size);
     let mut output_domain = Domain::new(grid_bound, &mut grid_output);
 
     // Fill in with IC values (use normal dist for spike in the middle)
     let n_f = buffer_size as f64;
     let sigma_sq: f64 = (n_f / 25.0) * (n_f / 25.0);
-    input_domain.par_modify_access(100).for_each(
-        |mut d: DomainChunk<'_, GRID_DIMENSION>| {
-            d.coord_iter_mut().for_each(
-                |(world_coord, value_mut): (
-                    Coord<GRID_DIMENSION>,
-                    &mut f64,
-                )| {
-                    let x = (world_coord[0] as f64) - (n_f / 2.0);
-                    //let f = ( 1.0 / (2.0 * std::f64::consts::PI * sigma_sq)).sqrt();
-                    let exp = -x * x / (2.0 * sigma_sq);
-                    *value_mut = exp.exp()
-                },
-            )
-        },
-    );
+    let ic_gen = |world_coord: Coord<1>| {
+        let x = (world_coord[0] as f64) - (n_f / 2.0);
+        let exp = -x * x / (2.0 * sigma_sq);
+        exp.exp()
+    };
+    input_domain.par_set_values(ic_gen, chunk_size);
 
     // Make image
     let mut img = nhls::image::Image1D::new(grid_bound, n_lines as u32);
@@ -78,5 +72,5 @@ fn main() {
         img.add_line(t, input_domain.buffer());
     }
 
-    img.write("test_image_02.png");
+    img.write(&output_image_path);
 }

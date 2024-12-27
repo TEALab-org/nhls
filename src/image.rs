@@ -25,12 +25,12 @@ impl Image1D {
         }
     }
 
-    pub fn write(self, s: &str) {
+    pub fn write<F: AsRef<std::path::Path>>(self, s: &F) {
         self.img_buffer.save(s).expect("Couldn't save image");
     }
 }
 
-pub fn image2d(domain: &Domain<2>, s: &str) {
+pub fn image2d<F: AsRef<std::path::Path>>(domain: &Domain<2>, s: &F) {
     let aabb = domain.aabb();
     let exclusive_bounds = aabb.exclusive_bounds();
     let gradient = colorous::TURBO;
@@ -48,6 +48,5 @@ pub fn image2d(domain: &Domain<2>, s: &str) {
             image::Rgb(c.as_array()),
         );
     }
-    println!("Saving image: {}", s);
     img.save(s).expect("Couldn't save image");
 }
