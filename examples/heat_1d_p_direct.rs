@@ -1,8 +1,8 @@
 use nhls::domain::*;
+use nhls::image_1d_example::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
-use nhls::image_1d_example::*;
 
 fn main() {
     let (args, output_image_path) = Args::cli_parse("heat_1d_p_direct");

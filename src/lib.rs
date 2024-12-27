@@ -7,9 +7,9 @@
 pub mod decomposition;
 pub mod domain;
 pub mod image;
+pub mod image_1d_example;
 pub mod par_slice;
 pub mod par_stencil;
 pub mod solver;
 pub mod stencil;
 pub mod util;
-pub mod image_1d_example;
