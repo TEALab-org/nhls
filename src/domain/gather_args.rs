@@ -7,10 +7,11 @@ pub fn gather_args<
     Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
+    DomainType: DomainView<GRID_DIMENSION>,
 >(
     stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     bc: &BC,
-    input: &Domain<GRID_DIMENSION>,
+    input: &DomainType,
     world_coord: &Coord<GRID_DIMENSION>,
 ) -> [f64; NEIGHBORHOOD_SIZE]
 where
@@ -23,12 +24,6 @@ where
         result[i] = bc
             .check(&n_world_coord)
             .unwrap_or_else(|| input.view(&n_world_coord));
-        /*
-        println!(
-            "wc: {:?}, ni: {:?}, nwc: {:?}, r: {}\n",
-            world_coord, n_i, n_world_coord, result[i]
-        );
-        */
     }
     result
 }
@@ -42,13 +37,11 @@ mod unit_tests {
     #[test]
     fn gather_args_test_const() {
         let bound = AABB::new(matrix![0, 9; 0, 9]);
-        let n_r = bound.buffer_size();
-        let mut buffer = fftw::array::AlignedVec::new(n_r);
-        for i in 0..n_r {
-            let coord = bound.linear_to_coord(i);
-            buffer.as_slice_mut()[i] = (coord[0] + 3 * coord[1]) as f64;
-        }
-        let domain = Domain::new(bound, buffer.as_slice_mut());
+        let mut domain = OwnedDomain::new(bound);
+        domain.par_set_values(
+            |coord: Coord<2>| (coord[0] + 3 * coord[1]) as f64,
+            1,
+        );
         let bc = ConstantCheck::new(-4.0, bound);
         let stencil = Stencil::new(
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
@@ -82,7 +75,8 @@ mod unit_tests {
                 buffer.as_slice_mut()[i]
             );
         }
-        let domain = Domain::new(bound, buffer.as_slice_mut());
+        let mut domain = OwnedDomain::new(bound);
+        domain.par_set_values(|coord| (coord[0] + 3 * coord[1]) as f64, 1);
         let bc = PeriodicCheck::new(&domain);
         let stencil = Stencil::new(
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],

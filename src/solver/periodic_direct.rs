@@ -3,14 +3,14 @@ use crate::par_stencil;
 use crate::stencil::*;
 
 pub fn direct_periodic_apply<
-    'a,
     Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
+    DomainType: DomainView<GRID_DIMENSION> + Sync,
 >(
     stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    input: &mut Domain<'a, GRID_DIMENSION>,
-    output: &mut Domain<'a, GRID_DIMENSION>,
+    input: &mut DomainType,
+    output: &mut DomainType,
     steps: usize,
     chunk_size: usize,
 ) where
@@ -24,7 +24,7 @@ pub fn direct_periodic_apply<
         }
         std::mem::swap(input, output);
     }
-    //println!("final t");
+
     let bc = PeriodicCheck::new(input);
     par_stencil::apply(&bc, stencil, input, output, chunk_size);
 }
@@ -50,12 +50,10 @@ mod unit_tests {
     {
         let chunk_size = 3;
         assert_approx_eq!(f64, stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let n_r = bound.buffer_size();
 
-        let mut input_buffer = vec![1.0; n_r];
-        let mut output_buffer = vec![2.0; n_r];
-        let mut input_domain = Domain::new(*bound, &mut input_buffer);
-        let mut output_domain = Domain::new(*bound, &mut output_buffer);
+        let mut input_domain = OwnedDomain::new(*bound);
+        let mut output_domain = OwnedDomain::new(*bound);
+        input_domain.par_set_values(|_| 1.0, chunk_size);
         direct_periodic_apply(
             stencil,
             &mut input_domain,
@@ -64,7 +62,7 @@ mod unit_tests {
             chunk_size,
         );
 
-        for x in &output_buffer[0..n_r] {
+        for x in output_domain.buffer() {
             assert_approx_eq!(f64, *x, 1.0);
         }
     }
@@ -140,18 +138,18 @@ mod unit_tests {
 
     #[test]
     fn shifter() {
+        let chunk_size = 1;
         let stencil = Stencil::new([[-1]], |args: &[f64; 1]| args[0]);
         let bound = AABB::new(matrix![0, 9]);
         let mut input_buffer = AlignedVec::new(10);
         for i in 0..10 {
             input_buffer[i] = i as f64;
         }
-        let mut input_domain = Domain::new(bound, input_buffer.as_slice_mut());
+        let mut input_domain = OwnedDomain::new(bound);
+        let mut output_domain = OwnedDomain::new(bound);
+        input_domain
+            .par_set_values(|coord: Coord<1>| coord[0] as f64, chunk_size);
 
-        let mut output_buffer = AlignedVec::new(10);
-        let mut output_domain =
-            Domain::new(bound, output_buffer.as_slice_mut());
-        let chunk_size = 1;
         let n = 1;
         direct_periodic_apply(
             &stencil,
@@ -161,7 +159,11 @@ mod unit_tests {
             chunk_size,
         );
         for i in 0..10 {
-            assert_approx_eq!(f64, output_buffer[(i + n) % 10], i as f64);
+            assert_approx_eq!(
+                f64,
+                output_domain.buffer()[(i + n) % 10],
+                i as f64
+            );
         }
     }
 }

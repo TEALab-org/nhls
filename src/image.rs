@@ -1,4 +1,4 @@
-use crate::domain::Domain;
+use crate::domain::*;
 use crate::util::*;
 
 pub struct Image1D {
@@ -30,7 +30,10 @@ impl Image1D {
     }
 }
 
-pub fn image2d<F: AsRef<std::path::Path>>(domain: &Domain<2>, s: &F) {
+pub fn image2d<F: AsRef<std::path::Path>, DomainType: DomainView<2>>(
+    domain: &DomainType,
+    s: &F,
+) {
     let aabb = domain.aabb();
     let exclusive_bounds = aabb.exclusive_bounds();
     let gradient = colorous::TURBO;

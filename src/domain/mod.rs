@@ -6,9 +6,9 @@
 //! and translate from world coordinates into view coordinates.
 
 mod bc;
-mod domain_view;
 mod gather_args;
+mod view;
 
 pub use bc::*;
-pub use domain_view::*;
 pub use gather_args::*;
+pub use view::*;

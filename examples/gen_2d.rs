@@ -19,13 +19,8 @@ fn main() {
     let chunk_size = 1000;
 
     // Create domains
-    let buffer_size = grid_bound.buffer_size();
-    let mut grid_input = vec![0.0; buffer_size];
-    let mut input_domain: Domain<2> = Domain::new(grid_bound, &mut grid_input);
-
-    let mut grid_output = vec![0.0; buffer_size];
-    let mut output_domain: Domain<2> =
-        Domain::new(grid_bound, &mut grid_output);
+    let mut input_domain = OwnedDomain::new(grid_bound);
+    let mut output_domain = OwnedDomain::new(grid_bound);
 
     // Fill in with IC values (use normal dist for spike in the middle)
     let width_f = grid_bound.bounds[(0, 1)] as f64 + 1.0;

@@ -9,12 +9,8 @@ fn main() {
 
     // Create domains
     let grid_bound = args.grid_bounds();
-    let buffer_size = grid_bound.buffer_size();
-    let mut grid_input = vec![0.0; buffer_size];
-    let mut input_domain = Domain::new(grid_bound, &mut grid_input);
-
-    let mut grid_output = vec![0.0; buffer_size];
-    let mut output_domain = Domain::new(grid_bound, &mut grid_output);
+    let mut input_domain = OwnedDomain::new(grid_bound);
+    let mut output_domain = OwnedDomain::new(grid_bound);
 
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);

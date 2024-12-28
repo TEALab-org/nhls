@@ -8,11 +8,12 @@ pub fn apply<
     Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
+    DomainType: DomainView<GRID_DIMENSION> + Sync,
 >(
     bc: &BC,
     stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    input: &Domain<GRID_DIMENSION>,
-    output: &mut Domain<GRID_DIMENSION>,
+    input: &DomainType,
+    output: &mut DomainType,
     chunk_size: usize,
 ) where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
@@ -45,31 +46,27 @@ mod unit_test {
     fn par_stencil_test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f64; 1]| args[0]);
         let bound = AABB::new(matrix![0, 99]);
-        let n_r = bound.buffer_size();
+        let chunk_size = 1;
         {
-            let mut input_buffer = vec![1.0; n_r];
-            let input_domain = Domain::new(bound, &mut input_buffer);
-
-            let mut output_buffer = vec![2.0; n_r];
-            let mut output_domain = Domain::new(bound, &mut output_buffer);
+            let mut input_domain = OwnedDomain::new(bound);
+            let mut output_domain = OwnedDomain::new(bound);
+            input_domain.par_set_values(|_| 1.0, chunk_size);
 
             let bc = PeriodicCheck::new(&input_domain);
-            apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
-            for x in &output_buffer {
+            apply(&bc, &stencil, &input_domain, &mut output_domain, chunk_size);
+            for x in output_domain.buffer() {
                 assert_approx_eq!(f64, *x, 1.0);
             }
         }
 
         {
-            let mut input_buffer = vec![2.0; n_r];
-            let input_domain = Domain::new(bound, &mut input_buffer);
-
-            let mut output_buffer = vec![1.0; n_r];
-            let mut output_domain = Domain::new(bound, &mut output_buffer);
+            let mut input_domain = OwnedDomain::new(bound);
+            let mut output_domain = OwnedDomain::new(bound);
+            input_domain.par_set_values(|_| 2.0, chunk_size);
 
             let bc = PeriodicCheck::new(&input_domain);
             apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
-            for x in &output_buffer {
+            for x in output_domain.buffer() {
                 assert_approx_eq!(f64, *x, 2.0);
             }
         }
@@ -88,6 +85,7 @@ mod unit_test {
 
     #[test]
     fn par_stencil_trapezoid_test_1d_simple() {
+        let chunk_size = 2;
         let stencil = Stencil::new([[-1], [0], [1]], |args| {
             let mut r = 0.0;
             for a in args {
@@ -99,11 +97,9 @@ mod unit_test {
         let input_bound = AABB::new(matrix![0, 10]);
         let output_bound = AABB::new(matrix![1, 9]);
 
-        let mut input_buffer = vec![1.0; input_bound.buffer_size()];
-        let mut output_buffer = vec![0.0; output_bound.buffer_size()];
-
-        let input_domain = Domain::new(input_bound, &mut input_buffer);
-        let mut output_domain = Domain::new(output_bound, &mut output_buffer);
+        let mut input_domain = OwnedDomain::new(input_bound);
+        let mut output_domain = OwnedDomain::new(output_bound);
+        input_domain.par_set_values(|_| 1.0, chunk_size);
 
         let bc = ErrorCheck {
             bounds: input_bound,
@@ -111,8 +107,8 @@ mod unit_test {
 
         apply(&bc, &stencil, &input_domain, &mut output_domain, 2);
 
-        for i in output_buffer {
-            assert_approx_eq!(f64, i, 1.0);
+        for i in output_domain.buffer() {
+            assert_approx_eq!(f64, *i, 1.0);
         }
     }
 }
