@@ -18,16 +18,16 @@ pub fn trapezoid_input_region<const GRID_DIMENSION: usize>(
 }
 
 pub fn trapezoid_apply<
-    'a,
     BC,
     Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
+    DomainType: DomainView<GRID_DIMENSION> + Sync,
 >(
     bc: &BC,
     stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    input: &mut Domain<'a, GRID_DIMENSION>,
-    output: &mut Domain<'a, GRID_DIMENSION>,
+    input: &mut DomainType,
+    output: &mut DomainType,
     sloped_sides: &Bounds<GRID_DIMENSION>,
     stencil_slopes: &Bounds<GRID_DIMENSION>,
     steps: usize,
@@ -168,11 +168,11 @@ mod unit_tests {
         {
             let sloped_sides = matrix![1, 1];
             let input_bound = AABB::new(matrix![10, 40]);
-            let mut input_buffer = vec![1.0; input_bound.buffer_size()];
-            let mut output_buffer = vec![1.0; input_bound.buffer_size()];
-            let mut input_domain = Domain::new(input_bound, &mut input_buffer);
-            let mut output_domain =
-                Domain::new(input_bound, &mut output_buffer);
+            let mut input_domain = OwnedDomain::new(input_bound);
+            let mut output_domain = OwnedDomain::new(input_bound);
+
+            input_domain.par_set_values(|_| 1.0, chunk_size);
+
             let bc = ConstantCheck::new(1.0, input_bound);
             trapezoid_apply(
                 &bc,

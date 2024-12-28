@@ -10,15 +10,12 @@ fn main() {
 
     // Create domains
     let grid_bound = args.grid_bounds();
-    let buffer_size = grid_bound.buffer_size();
-    let mut grid_input = vec![0.0; buffer_size];
-    let mut input_domain = Domain::new(grid_bound, &mut grid_input);
+    let mut input_domain = OwnedDomain::new(grid_bound);
 
-    let mut grid_output = vec![0.0; buffer_size];
-    let mut output_domain = Domain::new(grid_bound, &mut grid_output);
+    let mut output_domain = OwnedDomain::new(grid_bound);
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    let n_f = buffer_size as f64;
+    let n_f = grid_bound.buffer_size() as f64;
     let sigma_sq: f64 = (n_f / 25.0) * (n_f / 25.0);
     let ic_gen = |world_coord: Coord<1>| {
         let x = (world_coord[0] as f64) - (n_f / 2.0);

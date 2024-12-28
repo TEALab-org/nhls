@@ -1,19 +1,30 @@
-use crate::domain::bc::BCCheck;
-use crate::domain::Domain;
+use crate::domain::*;
 use crate::util::*;
 
-pub struct PeriodicCheck<'a, const GRID_DIMENSION: usize> {
-    domain: &'a Domain<'a, GRID_DIMENSION>,
+pub struct PeriodicCheck<
+    'a,
+    const GRID_DIMENSION: usize,
+    DomainType: DomainView<GRID_DIMENSION>,
+> {
+    domain: &'a DomainType,
 }
 
-impl<'a, const GRID_DIMENSION: usize> PeriodicCheck<'a, GRID_DIMENSION> {
-    pub fn new(domain: &'a Domain<'a, GRID_DIMENSION>) -> Self {
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        DomainType: DomainView<GRID_DIMENSION>,
+    > PeriodicCheck<'a, GRID_DIMENSION, DomainType>
+{
+    pub fn new(domain: &'a DomainType) -> Self {
         PeriodicCheck { domain }
     }
 }
 
-impl<const GRID_DIMENSION: usize> BCCheck<GRID_DIMENSION>
-    for PeriodicCheck<'_, GRID_DIMENSION>
+impl<
+        const GRID_DIMENSION: usize,
+        DomainType: DomainView<GRID_DIMENSION> + Sync,
+    > BCCheck<GRID_DIMENSION>
+    for PeriodicCheck<'_, GRID_DIMENSION, DomainType>
 {
     fn check(&self, world_coord: &Coord<GRID_DIMENSION>) -> Option<f64> {
         let p_coord = &self.domain.aabb().periodic_coord(world_coord);
@@ -34,14 +45,11 @@ mod unit_tests {
     fn periodic_check_test() {
         {
             let aabb = AABB::new(matrix![0, 10]);
-            let n_r = aabb.buffer_size();
-            let mut buffer = fftw::array::AlignedVec::new(n_r);
-            for i in 0..n_r {
-                buffer.as_slice_mut()[i] = i as f64;
-            }
-            let domain = Domain::new(aabb, buffer.as_slice_mut());
+
+            let mut domain = OwnedDomain::new(aabb);
+            domain.par_set_values(|coord| coord[0] as f64, 1);
             let bc = PeriodicCheck::new(&domain);
-            for i in 0..n_r {
+            for (i, _) in domain.buffer().iter().enumerate() {
                 let v = bc.check(&vector![i as i32]);
                 assert_eq!(v, None);
             }
@@ -70,5 +78,6 @@ mod unit_tests {
             buffer_a[i] = i as f64;
             buffer_b[i] = (n_r - i) as f64;
         }
+        // TODO: Not sure what I wanted to do here, but clearly didn't finish
     }
 }

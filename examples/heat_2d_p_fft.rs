@@ -1,4 +1,3 @@
-use fftw::array::AlignedVec;
 use nhls::domain::*;
 use nhls::image::*;
 use nhls::util::*;
@@ -20,11 +19,8 @@ fn main() {
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
 
     // Create domains
-    let buffer_size = grid_bound.buffer_size();
-    let mut input_buffer = AlignedVec::new(buffer_size);
-    let mut output_buffer = AlignedVec::new(buffer_size);
-    let mut input_domain = Domain::new(grid_bound, &mut input_buffer);
-    let mut output_domain = Domain::new(grid_bound, &mut output_buffer);
+    let mut input_domain = OwnedDomain::new(grid_bound);
+    let mut output_domain = OwnedDomain::new(grid_bound);
 
     // Fill in with IC values (use normal dist for spike in the middle)
     // Write out initial frame

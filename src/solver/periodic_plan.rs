@@ -1,4 +1,4 @@
-use crate::domain::Domain;
+use crate::domain::*;
 use crate::par_slice;
 use crate::solver::fft_plan::*;
 use crate::stencil::*;
@@ -74,10 +74,10 @@ where
         }
     }
 
-    pub fn apply(
+    pub fn apply<DomainType: DomainView<GRID_DIMENSION>>(
         &mut self,
-        input: &mut Domain<GRID_DIMENSION>,
-        output: &mut Domain<GRID_DIMENSION>,
+        input: &mut DomainType,
+        output: &mut DomainType,
         steps: usize,
         chunk_size: usize,
     ) {
@@ -99,7 +99,7 @@ where
         let n_c = input.aabb().complex_buffer_size();
         fft_plan
             .forward_plan
-            .r2c(input.buffer_mut(), &mut self.complex_buffer[0..n_c])
+            .r2c(input.buffer_mut().1, &mut self.complex_buffer[0..n_c])
             .unwrap();
         par_slice::multiply_by(
             &mut self.complex_buffer[0..n_c],
@@ -108,9 +108,9 @@ where
         );
         fft_plan
             .backward_plan
-            .c2r(&mut self.complex_buffer[0..n_c], output.buffer_mut())
+            .c2r(&mut self.complex_buffer[0..n_c], output.buffer_mut().1)
             .unwrap();
-        par_slice::div(output.buffer_mut(), n_r as f64, chunk_size);
+        par_slice::div(output.buffer_mut().1, n_r as f64, chunk_size);
     }
 
     fn new_convolution(
@@ -188,20 +188,13 @@ mod unit_tests {
     ) where
         Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     {
-        let chunk_size = 1;
+        let chunk_size = 3;
         assert_approx_eq!(f64, stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
-        let rbs = bound.buffer_size();
 
-        let mut input_x = fftw::array::AlignedVec::new(rbs);
-        for x in input_x.as_slice_mut() {
-            *x = 1.0f64;
-        }
-        let input_copy = input_x.clone();
-        let mut input_domain = Domain::new(bound, input_x.as_slice_mut());
+        let mut input_domain = OwnedDomain::new(bound);
+        let mut output_domain = OwnedDomain::new(bound);
 
-        let mut result_buffer = fftw::array::AlignedVec::new(rbs);
-        let mut output_domain =
-            Domain::new(bound, result_buffer.as_slice_mut());
+        input_domain.par_set_values(|_| 1.0, chunk_size);
 
         plan_library.apply(
             &mut input_domain,
@@ -209,10 +202,9 @@ mod unit_tests {
             steps,
             chunk_size,
         );
-        for x in &result_buffer[0..rbs] {
+        for x in output_domain.buffer() {
             assert_approx_eq!(f64, *x, 1.0);
         }
-        assert_eq!(input_x.as_slice(), input_copy.as_slice());
     }
 
     #[test]
