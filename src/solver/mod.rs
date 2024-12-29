@@ -9,3 +9,4 @@ pub use direct::*;
 pub use periodic_direct::*;
 pub use periodic_plan::*;
 pub use trapezoid::*;
+pub use ap_solve::*;
