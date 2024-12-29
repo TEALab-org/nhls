@@ -1,22 +1,16 @@
 use nhls::domain::*;
+use nhls::image_2d_example::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
-mod util;
 
 fn main() {
-    let args = util::Args::cli_parse("gen_2d");
+    let args = Args::cli_parse("gen_2d");
 
     // Grid size
-    let grid_bound = AABB::new(matrix![0, 999; 0, 999]);
-
-    let n_images = 40;
-
-    let n_steps_per_image = 9;
+    let grid_bound = args.grid_bounds();
 
     let stencil = include!("gen_2d.stencil");
-
-    let chunk_size = 1000;
 
     // Create domains
     let mut input_domain = OwnedDomain::new(grid_bound);
@@ -33,17 +27,17 @@ fn main() {
         let exp = -r * r / (2.0 * sigma_sq);
         exp.exp()
     };
-    input_domain.par_set_values(ic_gen, chunk_size);
+    input_domain.par_set_values(ic_gen, args.chunk_size);
 
     // Make image
     nhls::image::image2d(&input_domain, &args.frame_name(0));
-    for t in 1..n_images as u32 {
+    for t in 1..args.images {
         direct_periodic_apply(
             &stencil,
             &mut input_domain,
             &mut output_domain,
-            n_steps_per_image,
-            chunk_size,
+            args.steps_per_image,
+            args.chunk_size,
         );
         std::mem::swap(&mut input_domain, &mut output_domain);
         nhls::image::image2d(&input_domain, &args.frame_name(t));
