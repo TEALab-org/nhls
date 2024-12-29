@@ -1,20 +1,13 @@
 use nhls::domain::*;
 use nhls::image::*;
+use nhls::image_2d_example::*;
 use nhls::util::*;
 
-mod util;
-
 fn main() {
-    let args = util::Args::cli_parse("heat_2d_p_direct");
+    let args = Args::cli_parse("heat_2d_p_direct");
 
     // Grid size
-    let grid_bound = AABB::new(matrix![0, 999; 0, 999]);
-
-    let steps_per_image = 64;
-
-    let n_images = 200;
-
-    let chunk_size = 1000;
+    let grid_bound = args.grid_bounds();
 
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
 
@@ -35,7 +28,7 @@ fn main() {
         let exp = -r * r / (2.0 * sigma_sq);
         exp.exp()
     };
-    input_domain.par_set_values(ic_gen, chunk_size);
+    input_domain.par_set_values(ic_gen, args.chunk_size);
     image2d(&input_domain, &args.frame_name(0));
 
     // Apply periodic solver
@@ -44,12 +37,12 @@ fn main() {
             &grid_bound,
             &stencil,
         );
-    for t in 1..n_images {
+    for t in 1..args.images {
         periodic_library.apply(
             &mut input_domain,
             &mut output_domain,
-            steps_per_image,
-            chunk_size,
+            args.steps_per_image,
+            args.chunk_size,
         );
         std::mem::swap(&mut input_domain, &mut output_domain);
         image2d(&input_domain, &args.frame_name(t));
