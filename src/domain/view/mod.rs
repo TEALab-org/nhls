@@ -9,7 +9,7 @@ pub use slice::*;
 use crate::util::*;
 use rayon::prelude::*;
 
-pub trait DomainView<const GRID_DIMENSION: usize> {
+pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
     fn aabb(&self) -> &AABB<GRID_DIMENSION>;
 
     fn set_aabb(&mut self, aabb: AABB<GRID_DIMENSION>);

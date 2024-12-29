@@ -20,11 +20,8 @@ impl<
     }
 }
 
-impl<
-        const GRID_DIMENSION: usize,
-        DomainType: DomainView<GRID_DIMENSION> + Sync,
-    > BCCheck<GRID_DIMENSION>
-    for PeriodicCheck<'_, GRID_DIMENSION, DomainType>
+impl<const GRID_DIMENSION: usize, DomainType: DomainView<GRID_DIMENSION>>
+    BCCheck<GRID_DIMENSION> for PeriodicCheck<'_, GRID_DIMENSION, DomainType>
 {
     fn check(&self, world_coord: &Coord<GRID_DIMENSION>) -> Option<f64> {
         let p_coord = &self.domain.aabb().periodic_coord(world_coord);

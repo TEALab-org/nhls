@@ -8,7 +8,7 @@ pub fn apply<
     Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
-    DomainType: DomainView<GRID_DIMENSION> + Sync,
+    DomainType: DomainView<GRID_DIMENSION>,
 >(
     bc: &BC,
     stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
