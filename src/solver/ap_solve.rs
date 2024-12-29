@@ -3,7 +3,6 @@ use crate::domain::*;
 use crate::solver::*;
 use crate::stencil::*;
 use crate::util::*;
-use fftw::array::*;
 
 pub struct APSolver<
     'a,
@@ -63,10 +62,11 @@ where
         }
     }
 
-    pub fn rec_solve(
-        &mut self,
-        input: &mut Domain<'a, GRID_DIMENSION>,
-        output: &mut Domain<'a, GRID_DIMENSION>,
+    pub fn rec_solve<
+    DomainType: DomainView<GRID_DIMENSION> + Sync>
+        (&mut self,
+        input: &mut DomainType,
+        output: &mut DomainType,
         steps: usize,
     ) {
         let maybe_fft_solve =
@@ -111,14 +111,10 @@ where
                 );
 
                 // Make sub domain
-                let mut input_buffer =
-                    AlignedVec::new(input_aabb.buffer_size());
-                let mut output_buffer =
-                    AlignedVec::new(input_aabb.buffer_size());
                 let mut input_domain =
-                    Domain::new(input_aabb, &mut input_buffer);
+                    OwnedDomain::new(input_aabb);
                 let mut output_domain =
-                    Domain::new(input_aabb, &mut output_buffer);
+                    OwnedDomain::new(input_aabb);
 
                 // copy input
                 input_domain.par_from_superset(input, self.chunk_size);
