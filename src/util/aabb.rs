@@ -161,6 +161,43 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
 
         result
     }
+
+    /// Return the min of exclusive_bounds()
+    pub fn min_size_len(&self) -> i32 {
+        self.exclusive_bounds().min()
+    }
+
+    /// Using stencil slopes, find the number of steps and resulting AABB
+    /// that approximatley shrinks the original bound by some ratio.
+    /// This one is hard to explain, maybe a sign it needs to be
+    /// broken up, or moved somewhere else?
+    pub fn shrink(
+        &self,
+        ratio: f64,
+        slopes: Bounds<DIMENSION>,
+        max_steps: Option<usize>,
+    ) -> (usize, AABB<DIMENSION>) {
+        debug_assert!(ratio < 1.0);
+        let inclusive_sides = self.bounds.column(1) - self.bounds.column(0);
+        let (min_side_d, min_side_len) = inclusive_sides.argmin();
+        let scaled_side_len = ((min_side_len as f64) * ratio) as i32;
+        let diff = min_side_len - scaled_side_len;
+        let min_side_slope = slopes[(min_side_d, 0)] + slopes[(min_side_d, 1)];
+
+        // Round down?
+        let mut steps = diff / min_side_slope;
+        if let Some(max) = max_steps {
+            if steps > max as i32 {
+                steps = max as i32;
+            }
+        }
+
+        // Okay now we can construct center
+        let new_min = self.bounds.column(0) + steps * slopes.column(0);
+        let new_max = self.bounds.column(1) - steps * slopes.column(1);
+
+        (steps as usize, AABB::from_mm(new_min, new_max))
+    }
 }
 
 #[cfg(test)]
@@ -340,6 +377,53 @@ mod unit_tests {
             let outer = AABB::new(matrix![2, 20; 5, 19; 40, 60]);
             let center = AABB::new(matrix![6, 14; 10, 13; 47, 53]);
             test_decomp(&outer, &center);
+        }
+    }
+
+    #[test]
+    fn min_size_len() {
+        {
+            let b = AABB::new(matrix![0, 5]);
+            assert_eq!(b.min_size_len(), 6);
+        }
+
+        {
+            let b = AABB::new(matrix![0, 5; 1, 3]);
+            assert_eq!(b.min_size_len(), 3);
+        }
+
+        {
+            let b = AABB::new(matrix![23, 45; 63, 1234; 123, 543; 22, 3454;]);
+            assert_eq!(b.min_size_len(), 23);
+        }
+    }
+
+    #[test]
+    fn shrink_test() {
+        {
+            let b = AABB::new(matrix![0, 9]);
+            let slopes = matrix![1, 1];
+            let ratio = 0.5;
+            let c = b.shrink(ratio, slopes, None);
+            assert_eq!(c, (2, AABB::new(matrix![2, 7])));
+        }
+        {
+            let b = AABB::new(matrix![0, 100; 0, 100; 0, 40;]);
+            let slopes = matrix![6, 5; 4, 3; 2, 1];
+            let ratio = 0.5;
+            let c = b.shrink(ratio, slopes, None);
+            assert_eq!(c, (6, AABB::new(matrix![36, 70; 24, 82; 12, 34])));
+        }
+        {
+            let b = AABB::new(matrix![0, 100; 0, 100; 0, 40;]);
+            let slopes = matrix![6, 5; 4, 3; 2, 1];
+            let ratio = 0.5;
+            let max_steps = 4;
+            let c = b.shrink(ratio, slopes, Some(max_steps));
+            assert_eq!(
+                c,
+                (max_steps, AABB::new(matrix![24, 80; 16, 88; 8, 36]))
+            );
         }
     }
 }
