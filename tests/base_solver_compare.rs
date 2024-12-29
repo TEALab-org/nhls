@@ -148,14 +148,8 @@ fn heat_1d_ap_compare() {
     // Create AP Solver
     let cutoff = 40;
     let ratio = 0.5;
-    let mut solver = APSolver::new(
-        &bc,
-        &stencil,
-        cutoff,
-        ratio,
-        &grid_bound,
-        chunk_size,
-    );
+    let mut solver =
+        APSolver::new(&bc, &stencil, cutoff, ratio, &grid_bound, chunk_size);
 
     solver.loop_solve(&mut fft_input_domain, &mut fft_output_domain, n_steps);
 

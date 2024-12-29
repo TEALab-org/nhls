@@ -63,7 +63,7 @@ where
     }
 
     /// Performs outermost loop of AP algorithm
-    /// Here we find the next root FFT solve, 
+    /// Here we find the next root FFT solve,
     /// which may not get us to the desired number of steps,
     /// we we have to keep finding root FFT Solves and applying
     /// the recursion until the desired steps are reached.
@@ -96,12 +96,8 @@ where
             let iter_steps = fft_solve.steps;
 
             // Output domain now has FFT solve
-            self.periodic_lib.apply(
-                input,
-                output,
-                iter_steps,
-                self.chunk_size,
-            );
+            self.periodic_lib
+                .apply(input, output, iter_steps, self.chunk_size);
 
             // For each degree make domain
             let sub_domain_bounds =
@@ -147,9 +143,7 @@ where
 
             remaining_steps -= iter_steps;
             std::mem::swap(input, output);
-
         }
         std::mem::swap(input, output);
-
     }
 }
