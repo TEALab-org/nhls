@@ -23,9 +23,11 @@ pub fn try_fftsolve<const DIMENSION: usize>(
     let (steps, solve_region) =
         bounds.shrink(params.ratio, params.slopes, max_steps);
 
+    println!("Found fft solve, steps: {}, region: {:?}", steps, solve_region);
+
     Some(FFTSolve {
         solve_region,
-        steps: steps as usize,
+        steps,
     })
 }
 

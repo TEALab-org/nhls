@@ -8,11 +8,11 @@ use float_cmp::assert_approx_eq;
 use nalgebra::matrix;
 
 #[test]
-fn heat_1d_compare() {
+fn heat_1d_p_compare() {
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
 
-    let n_steps = 16;
+    let n_steps = 400;
 
     let chunk_size = 100;
 
@@ -120,5 +120,60 @@ fn periodic_compare() {
                 epsilon = 0.0000000000001
             );
         }
+    }
+}
+
+#[test]
+fn heat_1d_ap_compare() {
+    // Grid size
+    let grid_bound = AABB::new(matrix![0, 999]);
+
+    let n_steps = 400;
+
+    let chunk_size = 100;
+
+    let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
+
+    // Create domains
+    let buffer_size = grid_bound.buffer_size();
+    let mut direct_input_domain = OwnedDomain::new(grid_bound);
+    let mut direct_output_domain = OwnedDomain::new(grid_bound);
+
+    let mut fft_input_domain = OwnedDomain::new(grid_bound);
+    let mut fft_output_domain = OwnedDomain::new(grid_bound);
+
+    // Create BC
+    let bc = ConstantCheck::new(1.0, grid_bound);
+
+    // Create AP Solver
+    let cutoff = 40;
+    let ratio = 0.5;
+    let mut solver = APSolver::new(
+        &bc,
+        &stencil,
+        cutoff,
+        ratio,
+        &grid_bound,
+        chunk_size,
+    );
+
+    solver.loop_solve(&mut fft_input_domain, &mut fft_output_domain, n_steps);
+
+    box_apply(
+        &bc,
+        &stencil,
+        &mut direct_input_domain,
+        &mut direct_output_domain,
+        n_steps,
+        chunk_size,
+    );
+
+    for i in 0..buffer_size {
+        assert_approx_eq!(
+            f64,
+            fft_output_domain.buffer()[i],
+            direct_output_domain.buffer()[i],
+            epsilon = 0.00000000000001
+        );
     }
 }

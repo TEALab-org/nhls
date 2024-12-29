@@ -31,7 +31,7 @@ fn main() {
     let mut img = nhls::image::Image1D::new(grid_bound, args.lines as u32);
     img.add_line(0, input_domain.buffer());
     for t in 1..args.lines as u32 {
-        solver.rec_solve(&mut input_domain, &mut output_domain, args.steps_per_line);
+        solver.loop_solve(&mut input_domain, &mut output_domain, args.steps_per_line);
         std::mem::swap(&mut input_domain, &mut output_domain);
         img.add_line(t, input_domain.buffer());
     }

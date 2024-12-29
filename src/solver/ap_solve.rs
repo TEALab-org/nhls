@@ -62,78 +62,94 @@ where
         }
     }
 
-    pub fn rec_solve<
-    DomainType: DomainView<GRID_DIMENSION> + Sync>
-        (&mut self,
+    /// Performs outermost loop of AP algorithm
+    /// Here we find the next root FFT solve, 
+    /// which may not get us to the desired number of steps,
+    /// we we have to keep finding root FFT Solves and applying
+    /// the recursion until the desired steps are reached.
+    ///
+    /// NOTE: incomplete implementation
+    pub fn loop_solve<DomainType: DomainView<GRID_DIMENSION> + Sync>(
+        &mut self,
         input: &mut DomainType,
         output: &mut DomainType,
         steps: usize,
     ) {
-        let maybe_fft_solve =
-            try_fftsolve(input.aabb(), &self.params, Some(steps));
-        if maybe_fft_solve.is_none() {
-            box_apply(
-                self.bc,
-                self.stencil,
-                input,
-                output,
-                steps,
-                self.chunk_size,
-            );
-            return;
-        }
-
-        let fft_solve = maybe_fft_solve.unwrap();
-
-        // Output domain now has FFT solve
-        self.periodic_lib.apply(
-            input,
-            output,
-            fft_solve.steps,
-            self.chunk_size,
-        );
-
-        // For each degree make domain
-        let sub_domain_bounds =
-            input.aabb().decomposition(&fft_solve.solve_region);
-        let sub_domain_sloped_sides = decomposition_slopes::<GRID_DIMENSION>();
-
-        for d in 0..GRID_DIMENSION {
-            for r in 0..2 {
-                // get bounds
-                let output_aabb = sub_domain_bounds[d][r];
-                let sloped_sides = sub_domain_sloped_sides[d][r];
-                let input_aabb = trapezoid_input_region(
-                    steps,
-                    &output_aabb,
-                    &sloped_sides,
-                    &self.slopes,
-                );
-
-                // Make sub domain
-                let mut input_domain =
-                    OwnedDomain::new(input_aabb);
-                let mut output_domain =
-                    OwnedDomain::new(input_aabb);
-
-                // copy input
-                input_domain.par_from_superset(input, self.chunk_size);
-
-                trapezoid_apply(
+        // TODO: we just frustrum solve each of the reguins, no recusion
+        let mut remaining_steps = steps;
+        while remaining_steps != 0 {
+            let maybe_fft_solve =
+                try_fftsolve(input.aabb(), &self.params, Some(remaining_steps));
+            if maybe_fft_solve.is_none() {
+                box_apply(
                     self.bc,
                     self.stencil,
-                    &mut input_domain,
-                    &mut output_domain,
-                    &sloped_sides,
-                    &self.slopes,
-                    steps,
+                    input,
+                    output,
+                    remaining_steps,
                     self.chunk_size,
                 );
-
-                // copy output
-                debug_assert_eq!(output_domain.aabb(), &output_aabb);
-                output.par_set_subdomain(&output_domain, self.chunk_size);
+                return;
             }
+
+            let fft_solve = maybe_fft_solve.unwrap();
+            let iter_steps = fft_solve.steps;
+
+            // Output domain now has FFT solve
+            self.periodic_lib.apply(
+                input,
+                output,
+                iter_steps,
+                self.chunk_size,
+            );
+
+            // For each degree make domain
+            let sub_domain_bounds =
+                input.aabb().decomposition(&fft_solve.solve_region);
+            let sub_domain_sloped_sides =
+                decomposition_slopes::<GRID_DIMENSION>();
+
+            for d in 0..GRID_DIMENSION {
+                for r in 0..2 {
+                    // get bounds
+                    let output_aabb = sub_domain_bounds[d][r];
+                    let sloped_sides = sub_domain_sloped_sides[d][r];
+                    let input_aabb = trapezoid_input_region(
+                        iter_steps,
+                        &output_aabb,
+                        &sloped_sides,
+                        &self.slopes,
+                    );
+
+                    // Make sub domain
+                    let mut input_domain = OwnedDomain::new(input_aabb);
+                    let mut output_domain = OwnedDomain::new(input_aabb);
+
+                    // copy input
+                    input_domain.par_from_superset(input, self.chunk_size);
+
+                    trapezoid_apply(
+                        self.bc,
+                        self.stencil,
+                        &mut input_domain,
+                        &mut output_domain,
+                        &sloped_sides,
+                        &self.slopes,
+                        iter_steps,
+                        self.chunk_size,
+                    );
+
+                    // copy output
+                    debug_assert_eq!(output_domain.aabb(), &output_aabb);
+                    output.par_set_subdomain(&output_domain, self.chunk_size);
+                }
+            }
+
+            remaining_steps -= iter_steps;
+            std::mem::swap(input, output);
+
         }
+        std::mem::swap(input, output);
+
     }
 }

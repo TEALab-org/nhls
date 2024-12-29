@@ -68,12 +68,6 @@ mod unit_tests {
         for i in 0..n_r {
             let coord = bound.linear_to_coord(i);
             buffer.as_slice_mut()[i] = (coord[0] + 3 * coord[1]) as f64;
-            println!(
-                "i: {}, c: {:?}, r: {}",
-                i,
-                coord,
-                buffer.as_slice_mut()[i]
-            );
         }
         let mut domain = OwnedDomain::new(bound);
         domain.par_set_values(|coord| (coord[0] + 3 * coord[1]) as f64, 1);
@@ -90,7 +84,6 @@ mod unit_tests {
             (8 + 3 * 9) as f64,
             (9 + 3 * 9) as f64,
         ];
-        println!("r: {:?}, e: {:?}", r, e);
         for n in 0..r.len() {
             assert_approx_eq!(f64, r[n], e[n]);
         }
