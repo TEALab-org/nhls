@@ -43,16 +43,11 @@ pub fn trapezoid_apply<
     trapezoid_slopes.set_column(1, &negative_slopes);
 
     let mut output_box = *input.aabb();
-    for t in 0..steps {
-        println!("trapezoid t: {}", t);
+    for _ in 0..steps {
         output_box = output_box.add_bounds_diff(trapezoid_slopes);
         debug_assert!(input.aabb().buffer_size() >= output_box.buffer_size());
         output.set_aabb(output_box);
-        println!("  output_box: {:?}", output_box);
-
         par_stencil::apply(bc, stencil, input, output, chunk_size);
-        println!("  done with apply");
-
         std::mem::swap(input, output);
     }
     std::mem::swap(input, output);
