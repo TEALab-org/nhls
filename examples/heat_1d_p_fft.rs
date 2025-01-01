@@ -10,7 +10,6 @@ fn main() {
     // Create domains
     let grid_bound = args.grid_bounds();
     let mut input_domain = OwnedDomain::new(grid_bound);
-
     let mut output_domain = OwnedDomain::new(grid_bound);
 
     // Fill in with IC values (use normal dist for spike in the middle)
@@ -23,14 +22,19 @@ fn main() {
     };
     input_domain.par_set_values(ic_gen, args.chunk_size);
 
-    // Make image
-    let mut img = nhls::image::Image1D::new(grid_bound, args.lines as u32);
     let mut periodic_library =
         nhls::solver::periodic_plan::PeriodicPlanLibrary::new(
             &grid_bound,
             &stencil,
         );
-    img.add_line(0, input_domain.buffer());
+
+    let mut img = None;
+    if args.write_image {
+        let mut i = nhls::image::Image1D::new(grid_bound, args.lines as u32);
+        i.add_line(0, input_domain.buffer());
+        img = Some(i);
+    }
+
     for t in 1..args.lines as u32 {
         periodic_library.apply(
             &mut input_domain,
@@ -39,8 +43,11 @@ fn main() {
             args.chunk_size,
         );
         std::mem::swap(&mut input_domain, &mut output_domain);
-        img.add_line(t, input_domain.buffer());
+        if let Some(i) = img.as_mut() {
+            i.add_line(t, input_domain.buffer());
+        }
     }
-
-    img.write(&output_image_path);
+    if let Some(i) = img {
+        i.write(&output_image_path);
+    }
 }

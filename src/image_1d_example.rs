@@ -27,6 +27,14 @@ pub struct Args {
     /// Domain size
     #[arg(short, long, default_value = "1000")]
     pub domain_size: usize,
+
+    /// Write out image, WARNING: we do not check image size, so be reasonable.
+    #[arg(short, long)]
+    pub write_image: bool,
+
+    /// The number of threads to use.
+    #[arg(short, long, default_value = "8")]
+    pub threads: usize,
 }
 
 impl Args {
@@ -42,6 +50,13 @@ impl Args {
 
         let mut output_image_path = args.output_dir.clone();
         output_image_path.push(format!("{}.png", name));
+
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(args.threads)
+            .build_global()
+            .unwrap();
+        fftw::threading::init_threads_f64().unwrap();
+        fftw::threading::plan_with_nthreads_f64(args.threads);
 
         (args, output_image_path)
     }

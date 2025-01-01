@@ -29,7 +29,9 @@ fn main() {
         exp.exp()
     };
     input_domain.par_set_values(ic_gen, args.chunk_size);
-    image2d(&input_domain, &args.frame_name(0));
+    if args.write_images {
+        image2d(&input_domain, &args.frame_name(0));
+    }
 
     // Create boundary condition
     // TODO WHAT is this doing in periodic, shouldn't we use periodic direct solve?
@@ -47,6 +49,8 @@ fn main() {
         );
 
         std::mem::swap(&mut input_domain, &mut output_domain);
-        image2d(&input_domain, &args.frame_name(t));
+        if args.write_images {
+            image2d(&input_domain, &args.frame_name(t));
+        }
     }
 }
