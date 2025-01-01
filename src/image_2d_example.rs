@@ -34,7 +34,7 @@ pub struct Args {
 
     /// The number of threads to use.
     #[arg(short, long, default_value = "8")]
-    pub threads: usize
+    pub threads: usize,
 }
 
 impl Args {
