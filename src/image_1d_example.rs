@@ -27,6 +27,10 @@ pub struct Args {
     /// Domain size
     #[arg(short, long, default_value = "1000")]
     pub domain_size: usize,
+
+    /// Write out image, WARNING: we do not check image size, so be reasonable.
+    #[arg(short, long)]
+    pub write_image: bool,
 }
 
 impl Args {

@@ -476,7 +476,7 @@ dependencies = [
 [[package]]
 name = "fftw"
 version = "0.8.0"
-source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-v0.8.1#ba98096fae4cc55e37f3deba19a5a696af551692"
+source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-0.0.1#24116d2e890cb3597d5002aa75feaa003011c566"
 dependencies = [
  "bitflags 2.6.0",
  "fftw-sys",
@@ -484,13 +484,15 @@ dependencies = [
  "ndarray",
  "num-complex",
  "num-traits",
+ "rayon",
+ "sync-ptr",
  "thiserror",
 ]
 
 [[package]]
 name = "fftw-src"
 version = "0.8.0"
-source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-v0.8.1#ba98096fae4cc55e37f3deba19a5a696af551692"
+source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-0.0.1#24116d2e890cb3597d5002aa75feaa003011c566"
 dependencies = [
  "anyhow",
  "cc",
@@ -502,7 +504,7 @@ dependencies = [
 [[package]]
 name = "fftw-sys"
 version = "0.8.0"
-source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-v0.8.1#ba98096fae4cc55e37f3deba19a5a696af551692"
+source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-0.0.1#24116d2e890cb3597d5002aa75feaa003011c566"
 dependencies = [
  "fftw-src",
  "libc",
@@ -1414,6 +1416,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "sync-ptr"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df0928969361c40d9ca9d3f12828adf628107fdbe31e8e17324923a90837249b"
 
 [[package]]
 name = "system-deps"

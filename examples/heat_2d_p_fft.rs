@@ -6,12 +6,13 @@ use nhls::util::*;
 fn main() {
     let args = Args::cli_parse("heat_2d_p_direct");
 
-    // Grid size
-    let grid_bound = args.grid_bounds();
+    fftw::threading::init_threads_f64().unwrap();
+    fftw::threading::plan_with_nthreads_f64(8);
 
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
 
     // Create domains
+    let grid_bound = args.grid_bounds();
     let mut input_domain = OwnedDomain::new(grid_bound);
     let mut output_domain = OwnedDomain::new(grid_bound);
 
@@ -29,7 +30,9 @@ fn main() {
         exp.exp()
     };
     input_domain.par_set_values(ic_gen, args.chunk_size);
-    image2d(&input_domain, &args.frame_name(0));
+    if args.write_images {
+        image2d(&input_domain, &args.frame_name(0));
+    }
 
     // Apply periodic solver
     let mut periodic_library =
@@ -45,6 +48,8 @@ fn main() {
             args.chunk_size,
         );
         std::mem::swap(&mut input_domain, &mut output_domain);
-        image2d(&input_domain, &args.frame_name(t));
+        if args.write_images {
+            image2d(&input_domain, &args.frame_name(t));
+        }
     }
 }

@@ -5,6 +5,9 @@ use nhls::solver::*;
 fn main() {
     let (args, output_image_path) = Args::cli_parse("heat_1d_ap_fft");
 
+    fftw::threading::init_threads_f64().unwrap();
+    fftw::threading::plan_with_nthreads_f64(8);
+
     let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
 
     // Create domains
@@ -27,9 +30,12 @@ fn main() {
         args.chunk_size,
     );
 
-    // Make image
-    let mut img = nhls::image::Image1D::new(grid_bound, args.lines as u32);
-    img.add_line(0, input_domain.buffer());
+    let mut img = None;
+    if args.write_image {
+        let mut i = nhls::image::Image1D::new(grid_bound, args.lines as u32);
+        i.add_line(0, input_domain.buffer());
+        img = Some(i);
+    }
     for t in 1..args.lines as u32 {
         solver.loop_solve(
             &mut input_domain,
@@ -37,8 +43,12 @@ fn main() {
             args.steps_per_line,
         );
         std::mem::swap(&mut input_domain, &mut output_domain);
-        img.add_line(t, input_domain.buffer());
+        if let Some(i) = img.as_mut() {
+            i.add_line(t, input_domain.buffer());
+        }
     }
 
-    img.write(&output_image_path);
+    if let Some(i) = img {
+        i.write(&output_image_path);
+    }
 }
