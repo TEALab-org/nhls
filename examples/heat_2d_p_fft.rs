@@ -6,9 +6,6 @@ use nhls::util::*;
 fn main() {
     let args = Args::cli_parse("heat_2d_p_direct");
 
-    fftw::threading::init_threads_f64().unwrap();
-    fftw::threading::plan_with_nthreads_f64(8);
-
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
 
     // Create domains

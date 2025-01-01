@@ -5,9 +5,6 @@ use nhls::solver::*;
 fn main() {
     let (args, output_image_path) = Args::cli_parse("heat_1d_ap_fft");
 
-    fftw::threading::init_threads_f64().unwrap();
-    fftw::threading::plan_with_nthreads_f64(8);
-
     let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
 
     // Create domains

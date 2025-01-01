@@ -31,6 +31,10 @@ pub struct Args {
     /// Write out image, WARNING: we do not check image size, so be reasonable.
     #[arg(short, long)]
     pub write_images: bool,
+
+    /// The number of threads to use.
+    #[arg(short, long, default_value = "8")]
+    pub threads: usize
 }
 
 impl Args {
@@ -43,6 +47,13 @@ impl Args {
         let output_dir = args.output_dir.to_str().unwrap();
         let _ = std::fs::remove_dir_all(output_dir);
         std::fs::create_dir(output_dir).unwrap();
+
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(args.threads)
+            .build_global()
+            .unwrap();
+        fftw::threading::init_threads_f64().unwrap();
+        fftw::threading::plan_with_nthreads_f64(args.threads);
 
         args
     }
