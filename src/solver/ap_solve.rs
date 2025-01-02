@@ -1,5 +1,6 @@
 use crate::decomposition::*;
 use crate::domain::*;
+use crate::solver::fft_plan::PlanType;
 use crate::solver::*;
 use crate::stencil::*;
 use crate::util::*;
@@ -40,6 +41,7 @@ where
         cutoff: i32,
         ratio: f64,
         max_bound: &AABB<GRID_DIMENSION>,
+        plan_type: PlanType,
         chunk_size: usize,
     ) -> Self {
         let params = FFTSolveParams {
@@ -48,7 +50,8 @@ where
             ratio,
         };
 
-        let periodic_lib = PeriodicPlanLibrary::new(max_bound, stencil);
+        let periodic_lib =
+            PeriodicPlanLibrary::new(max_bound, stencil, plan_type);
 
         let slopes = stencil.slopes();
 

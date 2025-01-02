@@ -1,3 +1,4 @@
+use crate::solver::fft_plan::PlanType;
 use crate::util::*;
 use clap::Parser;
 use std::path::PathBuf;
@@ -35,6 +36,14 @@ pub struct Args {
     /// The number of threads to use.
     #[arg(short, long, default_value = "8")]
     pub threads: usize,
+
+    /// FFTW3 plan creation strategy.
+    #[arg(short, long, default_value = "estimate")]
+    pub plan_type: PlanType,
+
+    /// File to load and save FFTW3 wisdom.
+    #[arg(short, long)]
+    pub wisdom_file: Option<PathBuf>,
 }
 
 impl Args {
@@ -58,10 +67,22 @@ impl Args {
         fftw::threading::init_threads_f64().unwrap();
         fftw::threading::plan_with_nthreads_f64(args.threads);
 
+        if let Some(ref wisdom_path) = args.wisdom_file {
+            if wisdom_path.exists() {
+                fftw::wisdom::import_wisdom_file_f64(&wisdom_path).unwrap();
+            }
+        }
+
         (args, output_image_path)
     }
 
     pub fn grid_bounds(&self) -> AABB<1> {
         AABB::new(matrix![0, self.domain_size as i32 - 1])
+    }
+
+    pub fn save_wisdom(&self) {
+        if let Some(ref wisdom_path) = self.wisdom_file {
+            fftw::wisdom::export_wisdom_file_f64(&wisdom_path).unwrap();
+        }
     }
 }
