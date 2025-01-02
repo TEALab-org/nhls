@@ -26,6 +26,7 @@ fn main() {
         nhls::solver::periodic_plan::PeriodicPlanLibrary::new(
             &grid_bound,
             &stencil,
+            args.plan_type,
         );
 
     let mut img = None;
@@ -50,4 +51,6 @@ fn main() {
     if let Some(i) = img {
         i.write(&output_image_path);
     }
+
+    args.save_wisdom();
 }

@@ -24,6 +24,7 @@ fn main() {
         cutoff,
         ratio,
         &grid_bound,
+        args.plan_type,
         args.chunk_size,
     );
 
@@ -48,4 +49,6 @@ fn main() {
     if let Some(i) = img {
         i.write(&output_image_path);
     }
+
+    args.save_wisdom();
 }

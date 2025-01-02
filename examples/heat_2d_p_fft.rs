@@ -36,6 +36,7 @@ fn main() {
         nhls::solver::periodic_plan::PeriodicPlanLibrary::new(
             &grid_bound,
             &stencil,
+            args.plan_type,
         );
     for t in 1..args.images {
         periodic_library.apply(
@@ -49,4 +50,6 @@ fn main() {
             image2d(&input_domain, &args.frame_name(t));
         }
     }
+
+    args.save_wisdom();
 }

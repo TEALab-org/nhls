@@ -1,4 +1,5 @@
 use nhls::domain::*;
+use nhls::solver::fft_plan::PlanType;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
@@ -41,6 +42,7 @@ fn heat_1d_p_compare() {
         nhls::solver::periodic_plan::PeriodicPlanLibrary::new(
             &grid_bound,
             &stencil,
+            PlanType::Estimate,
         );
 
     periodic_library.apply(
@@ -103,8 +105,11 @@ fn periodic_compare() {
             steps,
             chunk_size,
         );
-        let mut plan_library =
-            periodic_plan::PeriodicPlanLibrary::new(&bound, &stencil);
+        let mut plan_library = periodic_plan::PeriodicPlanLibrary::new(
+            &bound,
+            &stencil,
+            PlanType::Estimate,
+        );
         plan_library.apply(
             &mut domain_b_input,
             &mut domain_b_output,
@@ -148,8 +153,15 @@ fn heat_1d_ap_compare() {
     // Create AP Solver
     let cutoff = 40;
     let ratio = 0.5;
-    let mut solver =
-        APSolver::new(&bc, &stencil, cutoff, ratio, &grid_bound, chunk_size);
+    let mut solver = APSolver::new(
+        &bc,
+        &stencil,
+        cutoff,
+        ratio,
+        &grid_bound,
+        PlanType::Estimate,
+        chunk_size,
+    );
 
     solver.loop_solve(&mut fft_input_domain, &mut fft_output_domain, n_steps);
 

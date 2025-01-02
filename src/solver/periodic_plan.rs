@@ -53,6 +53,7 @@ where
     pub fn new(
         max_bound: &AABB<GRID_DIMENSION>,
         stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        plan_type: PlanType,
     ) -> Self {
         // Zeroed out by construction
         let max_real_size = max_bound.buffer_size();
@@ -65,7 +66,7 @@ where
 
         PeriodicPlanLibrary {
             convolution_map: HashMap::new(),
-            fft_plan_library: FFTPlanLibrary::new(),
+            fft_plan_library: FFTPlanLibrary::new(plan_type),
             stencil,
             real_buffer,
             convolution_buffer,
@@ -211,7 +212,8 @@ mod unit_tests {
     fn test_1d_simple() {
         let stencil = Stencil::new([[0]], |args: &[f64; 1]| args[0]);
         let max_size = AABB::new(matrix![0, 99]);
-        let mut plan_library = PeriodicPlanLibrary::new(&max_size, &stencil);
+        let mut plan_library =
+            PeriodicPlanLibrary::new(&max_size, &stencil, PlanType::Estimate);
 
         test_unit_stencil(&stencil, max_size, 10, &mut plan_library);
         test_unit_stencil(
@@ -226,7 +228,8 @@ mod unit_tests {
     fn test_2d_simple() {
         let stencil = Stencil::new([[0, 0]], |args: &[f64; 1]| args[0]);
         let bound = AABB::new(matrix![0, 49; 0, 49]);
-        let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
+        let mut plan_library =
+            PeriodicPlanLibrary::new(&bound, &stencil, PlanType::Estimate);
         test_unit_stencil(&stencil, bound, 31, &mut plan_library);
     }
 
@@ -244,7 +247,8 @@ mod unit_tests {
             },
         );
         let bound = AABB::new(matrix![0, 49; 0, 49]);
-        let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
+        let mut plan_library =
+            PeriodicPlanLibrary::new(&bound, &stencil, PlanType::Estimate);
         test_unit_stencil(&stencil, bound, 9, &mut plan_library);
     }
 
@@ -259,7 +263,8 @@ mod unit_tests {
             r
         });
         let bound = AABB::new(matrix![0, 99]);
-        let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
+        let mut plan_library =
+            PeriodicPlanLibrary::new(&bound, &stencil, PlanType::Estimate);
         test_unit_stencil(&stencil, bound, 43, &mut plan_library);
     }
 
@@ -284,7 +289,8 @@ mod unit_tests {
             },
         );
         let bound = AABB::new(matrix![0, 19; 0, 19; 0, 19]);
-        let mut plan_library = PeriodicPlanLibrary::new(&bound, &stencil);
+        let mut plan_library =
+            PeriodicPlanLibrary::new(&bound, &stencil, PlanType::Estimate);
         test_unit_stencil(&stencil, bound, 13, &mut plan_library);
         test_unit_stencil(&stencil, bound, 14, &mut plan_library);
         test_unit_stencil(&stencil, bound, 5, &mut plan_library);
