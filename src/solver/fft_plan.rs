@@ -9,11 +9,14 @@ use clap::ValueEnum;
 /// we expose three of them.
 #[derive(Copy, Clone, Debug, ValueEnum, Default)]
 pub enum PlanType {
-    /// Expensive, compute the optimal plan
+    /// Create optimziated plan
+    #[default]
+    Measure,
+
+    /// Create optimized plan with more exhaustive search than Measaure
     Patient,
 
     /// Create an un-optimal plan quickly
-    #[default]
     Estimate,
 
     /// Create plan only based on loaded wisdom
@@ -23,6 +26,7 @@ pub enum PlanType {
 impl PlanType {
     pub fn to_fftw3_flag(&self) -> Flag {
         match self {
+            PlanType::Measure => Flag::MEASURE,
             PlanType::Patient => Flag::PATIENT,
             PlanType::Estimate => Flag::ESTIMATE,
             PlanType::WisdomOnly => Flag::WISDOWMONLY,
