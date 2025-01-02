@@ -1,8 +1,8 @@
 use nhls::domain::*;
 use nhls::image_1d_example::*;
+use nhls::init;
 use nhls::solver::*;
 use nhls::stencil::*;
-use nhls::util::*;
 
 fn main() {
     let (args, output_image_path) = Args::cli_parse("gen_1d");
@@ -11,20 +11,14 @@ fn main() {
 
     // Create domains
     let grid_bound = args.grid_bounds();
-    let buffer_size = grid_bound.buffer_size();
     let mut input_domain = OwnedDomain::new(grid_bound);
     let mut output_domain = OwnedDomain::new(grid_bound);
 
-    // Fill in with IC values (use normal dist for spike in the middle)
-    let n_f = buffer_size as f64;
-    let sigma_sq: f64 = (n_f / 25.0) * (n_f / 25.0);
-    let ic_gen = |coord: Coord<1>| {
-        let x = (coord[0] as f64) - (n_f / 2.0);
-        //let f = ( 1.0 / (2.0 * std::f64::consts::PI * sigma_sq)).sqrt();
-        let exp = -x * x / (2.0 * sigma_sq);
-        exp.exp()
-    };
-    input_domain.par_set_values(ic_gen, args.chunk_size);
+    if args.rand_init {
+        init::rand(&mut input_domain, 1024, args.chunk_size);
+    } else {
+        init::normal_ic_1d(&mut input_domain, args.chunk_size);
+    }
 
     // Make image
     let mut img = nhls::image::Image1D::new(grid_bound, args.lines as u32);
