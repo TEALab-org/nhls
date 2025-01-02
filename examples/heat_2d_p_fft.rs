@@ -4,7 +4,7 @@ use nhls::image_2d_example::*;
 use nhls::init;
 
 fn main() {
-    let args = Args::cli_parse("heat_2d_p_direct");
+    let args = Args::cli_parse("heat_2d_p_fft");
 
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
 
