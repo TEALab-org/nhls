@@ -1,7 +1,7 @@
 use nhls::domain::*;
 use nhls::image_1d_example::*;
+use nhls::init;
 use nhls::solver::*;
-use nhls::util::*;
 
 fn main() {
     let (args, output_image_path) = Args::cli_parse("heat_1d_p_direct");
@@ -14,15 +14,11 @@ fn main() {
 
     let mut output_domain = OwnedDomain::new(grid_bound);
 
-    // Fill in with IC values (use normal dist for spike in the middle)
-    let n_f = grid_bound.buffer_size() as f64;
-    let sigma_sq: f64 = (n_f / 25.0) * (n_f / 25.0);
-    let ic_gen = |world_coord: Coord<1>| {
-        let x = (world_coord[0] as f64) - (n_f / 2.0);
-        let exp = -x * x / (2.0 * sigma_sq);
-        exp.exp()
-    };
-    input_domain.par_set_values(ic_gen, args.chunk_size);
+    if args.rand_init {
+        init::rand(&mut input_domain, 1024, args.chunk_size);
+    } else {
+        init::normal_ic_1d(&mut input_domain, args.chunk_size);
+    }
 
     let mut img = None;
     if args.write_image {

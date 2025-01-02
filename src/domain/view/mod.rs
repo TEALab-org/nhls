@@ -37,14 +37,9 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
     ) {
         self.par_modify_access(chunk_size).for_each(
             |mut d: DomainChunk<'_, GRID_DIMENSION>| {
-                d.coord_iter_mut().for_each(
-                    |(world_coord, value_mut): (
-                        Coord<GRID_DIMENSION>,
-                        &mut f64,
-                    )| {
-                        *value_mut = f(world_coord);
-                    },
-                )
+                d.coord_iter_mut().for_each(|(world_coord, value_mut)| {
+                    *value_mut = f(world_coord);
+                })
             },
         );
     }

@@ -44,6 +44,10 @@ pub struct Args {
     /// File to load and save FFTW3 wisdom.
     #[arg(short, long)]
     pub wisdom_file: Option<PathBuf>,
+
+    /// Fill with random values matching 2023 implementation
+    #[arg(short, long)]
+    pub rand_init: bool,
 }
 
 impl Args {

@@ -905,6 +905,7 @@ dependencies = [
  "nalgebra",
  "num 0.4.3",
  "num-traits",
+ "rand",
  "rayon",
 ]
 
