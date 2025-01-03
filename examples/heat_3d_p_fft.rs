@@ -19,7 +19,9 @@ fn main() {
     } else {
         init::normal_ic_3d(&mut input_domain, args.chunk_size);
     }
-    write_vtk3d(&input_domain, &args.frame_name(0));
+    if args.write_images {
+        write_vtk3d(&input_domain, &args.frame_name(0));
+    }
 
     // Apply periodic solver
     let mut periodic_library =

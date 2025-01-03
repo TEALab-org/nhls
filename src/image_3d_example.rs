@@ -84,7 +84,7 @@ impl Args {
 
     pub fn frame_name(&self, i: usize) -> PathBuf {
         let mut result = self.output_dir.to_path_buf();
-        result.push(format!("frame_{:04}.vtk", i));
+        result.push(format!("frame_{:04}.vtu", i));
         result
     }
 
