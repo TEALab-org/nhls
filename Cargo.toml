@@ -15,7 +15,7 @@ num-traits = "0.2.19"
 rayon = "1.10.0"
 clap = { version = "4.5.20", features = ["derive"] }
 rand = "0.8.5"
-vtkio = "0.6.3"
+vtkio = "0.7.0-rc1"
 
 [dev-dependencies]
 float-cmp = "0.10.0"
