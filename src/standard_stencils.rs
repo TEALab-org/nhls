@@ -34,3 +34,38 @@ pub fn heat_2d(
         },
     )
 }
+
+pub fn heat_3d(
+    dt: f64,
+    dx: f64,
+    dy: f64,
+    dz: f64,
+    k_x: f64,
+    k_y: f64,
+    k_z: f64,
+) -> StencilF64<impl StencilOperation<f64, 7>, 3, 7> {
+    Stencil::new(
+        [
+            [0, 0, 0],
+            [-1, 0, 0],
+            [1, 0, 0],
+            [0, -1, 0],
+            [0, 1, 0],
+            [0, 0, -1],
+            [0, 0, 1],
+        ],
+        move |args: &[f64; 7]| {
+            let middle = args[0];
+            let left = args[1];
+            let right = args[2];
+            let bottom = args[3];
+            let top = args[4];
+            let front = args[5];
+            let back = args[6];
+            middle
+                + (k_x * dt / (dx * dx)) * (left - 2.0 * middle + right)
+                + (k_y * dt / (dy * dy)) * (top - 2.0 * middle + bottom)
+                + (k_z * dt / (dz * dz)) * (front - 2.0 * middle + back)
+        },
+    )
+}

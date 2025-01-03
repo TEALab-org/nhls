@@ -25,8 +25,8 @@ pub struct Args {
     #[arg(short, long, default_value = "16")]
     pub steps_per_image: usize,
 
-    /// Domain size, assume square
-    #[arg(short, long, default_value = "1000")]
+    /// Domain size, assume cube
+    #[arg(short, long, default_value = "100")]
     pub domain_size: usize,
 
     /// Write out image, WARNING: we do not check image size, so be reasonable.
@@ -77,14 +77,14 @@ impl Args {
         args
     }
 
-    pub fn grid_bounds(&self) -> AABB<2> {
+    pub fn grid_bounds(&self) -> AABB<3> {
         let inclusive = self.domain_size as i32 - 1;
-        AABB::new(matrix![0, inclusive; 0, inclusive])
+        AABB::new(matrix![0, inclusive; 0, inclusive; 0, inclusive])
     }
 
     pub fn frame_name(&self, i: usize) -> PathBuf {
         let mut result = self.output_dir.to_path_buf();
-        result.push(format!("frame_{:04}.png", i));
+        result.push(format!("frame_{:04}.vtu", i));
         result
     }
 

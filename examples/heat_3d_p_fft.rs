@@ -1,12 +1,13 @@
 use nhls::domain::*;
-use nhls::image::*;
-use nhls::image_2d_example::*;
+use nhls::image_3d_example::*;
 use nhls::init;
+use nhls::vtk::*;
 
 fn main() {
-    let args = Args::cli_parse("heat_2d_p_fft");
+    let args = Args::cli_parse("heat_3d_p_fft");
 
-    let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
+    let stencil =
+        nhls::standard_stencils::heat_3d(1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.1);
 
     // Create domains
     let grid_bound = args.grid_bounds();
@@ -16,10 +17,10 @@ fn main() {
     if args.rand_init {
         init::rand(&mut input_domain, 1024, args.chunk_size);
     } else {
-        init::normal_ic_2d(&mut input_domain, args.chunk_size);
+        init::normal_ic_3d(&mut input_domain, args.chunk_size);
     }
     if args.write_images {
-        image2d(&input_domain, &args.frame_name(0));
+        write_vtk3d(&input_domain, &args.frame_name(0));
     }
 
     // Apply periodic solver
@@ -38,7 +39,7 @@ fn main() {
         );
         std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {
-            image2d(&input_domain, &args.frame_name(t));
+            write_vtk3d(&input_domain, &args.frame_name(t));
         }
     }
 
