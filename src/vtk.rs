@@ -47,7 +47,7 @@ pub fn write_vtk3d<F: AsRef<std::path::Path>, DomainType: DomainView<3>>(
     }
 
     Vtk {
-        version: Version { major: 1, minor: 0 },
+        version: Version::Auto,
         title: String::new(),
         byte_order: ByteOrder::LittleEndian,
         file_path: None,
