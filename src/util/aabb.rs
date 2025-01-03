@@ -201,7 +201,9 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
 
     pub fn cell_bounds(&self) -> Self {
         let mut cell_bounds = *self;
-        cell_bounds.bounds.set_column(1, &cell_bounds.bounds.column(1).add_scalar(-1));
+        cell_bounds
+            .bounds
+            .set_column(1, &cell_bounds.bounds.column(1).add_scalar(-1));
         cell_bounds
     }
 }

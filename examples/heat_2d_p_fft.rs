@@ -19,7 +19,7 @@ fn main() {
         init::normal_ic_2d(&mut input_domain, args.chunk_size);
     }
     if args.write_images {
-            image2d(&input_domain, &args.frame_name(0));
+        image2d(&input_domain, &args.frame_name(0));
     }
 
     // Apply periodic solver
