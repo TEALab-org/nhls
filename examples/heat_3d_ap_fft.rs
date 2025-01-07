@@ -1,9 +1,11 @@
+/*
 use nhls::domain::*;
 use nhls::image_3d_example::*;
 use nhls::solver::*;
 use nhls::vtk::*;
-
+*/
 fn main() {
+    /*
     let args = Args::cli_parse("heat_3d_ap_fft");
 
     let stencil =
@@ -45,4 +47,5 @@ fn main() {
     }
 
     args.save_wisdom();
+    */
 }

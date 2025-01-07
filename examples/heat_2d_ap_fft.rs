@@ -1,9 +1,12 @@
+/*
 use nhls::domain::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::solver::*;
+*/
 
 fn main() {
+    /*
     let args = Args::cli_parse("heat_2d_ap_fft");
 
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
@@ -44,4 +47,5 @@ fn main() {
     }
 
     args.save_wisdom();
+    */
 }

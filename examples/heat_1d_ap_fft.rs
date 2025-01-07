@@ -1,8 +1,11 @@
+/*
 use nhls::domain::*;
 use nhls::image_1d_example::*;
 use nhls::solver::*;
+*/
 
 fn main() {
+    /*
     let (args, output_image_path) = Args::cli_parse("heat_1d_ap_fft");
 
     let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
@@ -51,4 +54,5 @@ fn main() {
     }
 
     args.save_wisdom();
+    */
 }

@@ -1,6 +1,6 @@
 use crate::decomposition::*;
 use crate::domain::*;
-use crate::solver::fft_plan::PlanType;
+use crate::fft_solver::PlanType;
 use crate::solver::*;
 use crate::stencil::*;
 use crate::util::*;
@@ -18,10 +18,9 @@ pub struct APSolver<
     bc: &'a BC,
     stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     params: FFTSolveParams<GRID_DIMENSION>,
-    periodic_lib:
-        PeriodicPlanLibrary<'a, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     chunk_size: usize,
     slopes: Bounds<GRID_DIMENSION>,
+    plan_type: PlanType,
 }
 
 impl<
@@ -40,7 +39,6 @@ where
         stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         cutoff: i32,
         ratio: f64,
-        max_bound: &AABB<GRID_DIMENSION>,
         plan_type: PlanType,
         chunk_size: usize,
     ) -> Self {
@@ -50,18 +48,15 @@ where
             ratio,
         };
 
-        let periodic_lib =
-            PeriodicPlanLibrary::new(max_bound, stencil, plan_type);
-
         let slopes = stencil.slopes();
 
         APSolver {
             bc,
             stencil,
             params,
-            periodic_lib,
             chunk_size,
             slopes,
+            plan_type,
         }
     }
 
