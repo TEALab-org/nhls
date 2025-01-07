@@ -13,6 +13,8 @@ pub struct ConvolutionOperation {
 }
 
 impl ConvolutionOperation {
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
     pub fn create<
         Operation,
         const GRID_DIMENSION: usize,
@@ -76,6 +78,7 @@ impl ConvolutionOperation {
             chunk_size,
         );
 
+        // Clear convoluton_buffer
         par_slice::set_value(
             &mut convolution_buffer[0..n_c],
             c64::zero(),
@@ -89,6 +92,7 @@ impl ConvolutionOperation {
         }
     }
 
+    #[inline]
     pub fn apply<
         const GRID_DIMENSION: usize,
         DomainType: DomainView<GRID_DIMENSION>,
@@ -103,7 +107,7 @@ impl ConvolutionOperation {
         let n_r = input.aabb().buffer_size();
         let n_c = input.aabb().complex_buffer_size();
         self.forward_plan
-            .r2c(input.buffer_mut().1, &mut complex_buffer[0..n_c])
+            .r2c(input.buffer_mut(), &mut complex_buffer[0..n_c])
             .unwrap();
         par_slice::multiply_by(
             &mut complex_buffer[0..n_c],
@@ -111,8 +115,8 @@ impl ConvolutionOperation {
             chunk_size,
         );
         self.backward_plan
-            .c2r(&mut complex_buffer[0..n_c], output.buffer_mut().1)
+            .c2r(&mut complex_buffer[0..n_c], output.buffer_mut())
             .unwrap();
-        par_slice::div(output.buffer_mut().1, n_r as f64, chunk_size);
+        par_slice::div(output.buffer_mut(), n_r as f64, chunk_size);
     }
 }

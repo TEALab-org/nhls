@@ -100,7 +100,7 @@ where
         let n_c = input.aabb().complex_buffer_size();
         fft_plan
             .forward_plan
-            .r2c(input.buffer_mut().1, &mut self.complex_buffer[0..n_c])
+            .r2c(input.buffer_mut(), &mut self.complex_buffer[0..n_c])
             .unwrap();
         par_slice::multiply_by(
             &mut self.complex_buffer[0..n_c],
@@ -109,9 +109,9 @@ where
         );
         fft_plan
             .backward_plan
-            .c2r(&mut self.complex_buffer[0..n_c], output.buffer_mut().1)
+            .c2r(&mut self.complex_buffer[0..n_c], output.buffer_mut())
             .unwrap();
-        par_slice::div(output.buffer_mut().1, n_r as f64, chunk_size);
+        par_slice::div(output.buffer_mut(), n_r as f64, chunk_size);
     }
 
     fn new_convolution(
