@@ -81,6 +81,13 @@ where
         // TODO: we just frustrum solve each of the reguins, no recusion
         let mut remaining_steps = steps;
         while remaining_steps != 0 {
+            let mut sub_buf_tot = 0;
+            let mut sub_com_buf_tot = 0;
+            println!(
+                "big box buffer_size: {}, complex: {}",
+                input.aabb().buffer_size(),
+                input.aabb().complex_buffer_size()
+            );
             let maybe_fft_solve =
                 try_fftsolve(input.aabb(), &self.params, Some(remaining_steps));
             if maybe_fft_solve.is_none() {
@@ -120,6 +127,17 @@ where
                         &self.slopes,
                     );
 
+                    println!(
+                        "domain, d: {}, r: {}, bs: {}, cs: {}, {:?}",
+                        d,
+                        r,
+                        input_aabb.buffer_size(),
+                        input_aabb.complex_buffer_size(),
+                        input_aabb
+                    );
+                    sub_buf_tot += input_aabb.buffer_size();
+                    sub_com_buf_tot += input_aabb.complex_buffer_size();
+
                     // Make sub domain
                     let mut input_domain = OwnedDomain::new(input_aabb);
                     let mut output_domain = OwnedDomain::new(input_aabb);
@@ -143,7 +161,7 @@ where
                     output.par_set_subdomain(&output_domain, self.chunk_size);
                 }
             }
-
+            println!("Total: {}, ctotal: {}", sub_buf_tot, sub_com_buf_tot);
             remaining_steps -= iter_steps;
             std::mem::swap(input, output);
         }
