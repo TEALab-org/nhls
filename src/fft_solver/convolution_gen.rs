@@ -87,6 +87,6 @@ where
     }
 
     pub fn finish(self) -> ConvolutionStore {
-       ConvolutionStore::new(self.operations) 
+        ConvolutionStore::new(self.operations)
     }
 }
