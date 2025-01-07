@@ -14,6 +14,7 @@ pub mod init;
 pub mod par_slice;
 pub mod par_stencil;
 pub mod solver;
+pub mod fft_solver;
 pub mod standard_stencils;
 pub mod stencil;
 pub mod util;
