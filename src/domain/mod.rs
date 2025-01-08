@@ -7,8 +7,10 @@
 
 mod bc;
 mod gather_args;
+mod stack;
 mod view;
 
 pub use bc::*;
 pub use gather_args::*;
+pub use stack::*;
 pub use view::*;
