@@ -4,7 +4,6 @@ use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
 
-use fftw::array::*;
 use float_cmp::assert_approx_eq;
 use nalgebra::matrix;
 

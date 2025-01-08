@@ -93,6 +93,7 @@ mod unit_test {
         let aabb_1 = AABB::new(matrix![0, 1]);
         let aabb_1_s = aabb_1.buffer_size();
         let (id_1, domain_1) = counter.pop_domain(aabb_1);
+        debug_assert_eq!(id_1, 0);
 
         debug_assert_eq!(counter.buffer().len(), size);
         debug_assert_eq!(domain_1.buffer().len(), aabb_1_s);
@@ -106,6 +107,7 @@ mod unit_test {
         let aabb_2 = AABB::new(matrix![0, 3]);
         let aabb_2_s = aabb_2.buffer_size();
         let (id_2, domain_2) = counter.pop_domain(aabb_2);
+        debug_assert_eq!(id_2, 1);
         debug_assert_eq!(counter.buffer().len(), size);
         debug_assert_eq!(domain_2.buffer().len(), aabb_2_s);
         debug_assert_eq!(aabb_2_s + aabb_1_s + counter.remainder().len(), size);
@@ -120,7 +122,7 @@ mod unit_test {
         let aabb_3 = AABB::new(matrix![0, 5]);
         let aabb_3_s = aabb_3.buffer_size();
         let (id_3, domain_3) = counter.pop_domain(aabb_3);
-
+        debug_assert_eq!(id_3, 1);
         debug_assert_eq!(counter.buffer().len(), size);
         debug_assert_eq!(domain_3.buffer().len(), aabb_3_s);
         debug_assert_eq!(aabb_3_s + aabb_1_s + counter.remainder().len(), size);
