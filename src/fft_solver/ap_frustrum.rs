@@ -46,6 +46,7 @@ pub struct APFrustrum<const GRID_DIMENSION: usize> {
     pub output_aabb: AABB<GRID_DIMENSION>,
     pub recursion_dimension: usize,
     pub side: Side,
+    pub steps: usize,
 }
 
 impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
@@ -53,17 +54,19 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         output_aabb: AABB<GRID_DIMENSION>,
         recursion_dimension: usize,
         side: Side,
+        steps: usize,
     ) -> Self {
         APFrustrum {
             output_aabb,
             recursion_dimension,
             side,
+            steps,
         }
     }
 
-    pub fn decompose(&self, steps: usize) -> Vec<APFrustrum<GRID_DIMENSION>> {
+    pub fn decompose(&self) -> Vec<APFrustrum<GRID_DIMENSION>> {
         // Cause FFT goes steps in, so sub one, shrug
-        let i_steps = steps as i32 - 1;
+        let i_steps = self.steps as i32 - 1;
         let mut result = Vec::new();
 
         // 1 for this dimension,
@@ -78,6 +81,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
             outer_aabb,
             self.recursion_dimension,
             self.side,
+            self.steps,
         ));
 
         let mut remainder = self.output_aabb;
@@ -91,12 +95,12 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
             let mut min_aabb = remainder;
             let min_bound = min_aabb.bounds[(d, 0)];
             min_aabb.bounds[(d, 1)] = min_bound + i_steps;
-            result.push(APFrustrum::new(min_aabb, d, Side::Min));
+            result.push(APFrustrum::new(min_aabb, d, Side::Min, self.steps));
 
             let mut max_aabb = remainder;
             let max_bound = max_aabb.bounds[(d, 1)];
             max_aabb.bounds[(d, Side::Max.inner_index())] = max_bound - i_steps;
-            result.push(APFrustrum::new(max_aabb, d, Side::Max));
+            result.push(APFrustrum::new(max_aabb, d, Side::Max, self.steps));
         }
 
         result
@@ -113,35 +117,37 @@ mod unit_tests {
         {
             let aabb = AABB::new(matrix![0, 10]);
             println!("aabb: {:?}", aabb);
-            let f1 = APFrustrum::new(aabb, 0, Side::Min);
-            let d1 = f1.decompose(2);
+            let f1 = APFrustrum::new(aabb, 0, Side::Min, 2);
+            let d1 = f1.decompose();
             assert_eq!(d1.len(), 1);
             assert_eq!(
                 d1[0],
-                APFrustrum::new(AABB::new(matrix![0, 1]), 0, Side::Min)
+                APFrustrum::new(AABB::new(matrix![0, 1]), 0, Side::Min, 2)
             );
 
-            let f2 = APFrustrum::new(aabb, 0, Side::Max);
-            let d2 = f2.decompose(2);
+            let f2 = APFrustrum::new(aabb, 0, Side::Max, 2);
+            let d2 = f2.decompose();
             assert_eq!(d2.len(), 1);
             assert_eq!(
                 d2[0],
-                APFrustrum::new(AABB::new(matrix![9, 10]), 0, Side::Max)
+                APFrustrum::new(AABB::new(matrix![9, 10]), 0, Side::Max, 2)
             );
         }
 
         // 2D d0
         {
+            let steps = 20;
             let aabb = AABB::new(matrix![0, 50; 0, 200]);
-            let f1 = APFrustrum::new(aabb, 0, Side::Min);
-            let d1 = f1.decompose(20);
+            let f1 = APFrustrum::new(aabb, 0, Side::Min, steps);
+            let d1 = f1.decompose();
             assert_eq!(d1.len(), 3);
             assert_eq!(
                 d1[0],
                 APFrustrum::new(
                     AABB::new(matrix![0, 19; 0, 200]),
                     0,
-                    Side::Min
+                    Side::Min,
+                    steps,
                 )
             );
             assert_eq!(
@@ -149,7 +155,8 @@ mod unit_tests {
                 APFrustrum::new(
                     AABB::new(matrix![19, 50; 0, 19]),
                     1,
-                    Side::Min
+                    Side::Min,
+                    steps,
                 )
             );
             assert_eq!(
@@ -157,59 +164,70 @@ mod unit_tests {
                 APFrustrum::new(
                     AABB::new(matrix![19, 50; 181, 200]),
                     1,
-                    Side::Max
+                    Side::Max,
+                    steps,
                 )
             );
 
-            let f2 = APFrustrum::new(aabb, 0, Side::Max);
-            let d2 = f2.decompose(20);
+            let f2 = APFrustrum::new(aabb, 0, Side::Max, steps);
+            let d2 = f2.decompose();
             assert_eq!(d2.len(), 3);
             assert_eq!(
                 d2[0],
                 APFrustrum::new(
                     AABB::new(matrix![31, 50; 0, 200]),
                     0,
-                    Side::Max
+                    Side::Max,
+                    steps,
                 )
             );
             assert_eq!(
                 d2[1],
-                APFrustrum::new(AABB::new(matrix![0, 31; 0, 19]), 1, Side::Min)
+                APFrustrum::new(
+                    AABB::new(matrix![0, 31; 0, 19]),
+                    1,
+                    Side::Min,
+                    steps
+                )
             );
             assert_eq!(
                 d2[2],
                 APFrustrum::new(
                     AABB::new(matrix![0, 31; 181, 200]),
                     1,
-                    Side::Max
+                    Side::Max,
+                    steps,
                 )
             );
         }
 
         // 2D d1
         {
+            let steps = 20;
             let aabb = AABB::new(matrix![0, 200; 0, 50]);
-            let f1 = APFrustrum::new(aabb, 1, Side::Min);
-            let d1 = f1.decompose(20);
+            let f1 = APFrustrum::new(aabb, 1, Side::Min, steps);
+            let d1 = f1.decompose();
             assert_eq!(d1.len(), 1);
             assert_eq!(
                 d1[0],
                 APFrustrum::new(
                     AABB::new(matrix![0, 200; 0, 19]),
                     1,
-                    Side::Min
+                    Side::Min,
+                    steps,
                 )
             );
 
-            let f2 = APFrustrum::new(aabb, 1, Side::Max);
-            let d2 = f2.decompose(20);
+            let f2 = APFrustrum::new(aabb, 1, Side::Max, steps);
+            let d2 = f2.decompose();
             assert_eq!(d2.len(), 1);
             assert_eq!(
                 d2[0],
                 APFrustrum::new(
                     AABB::new(matrix![0, 200; 31, 50]),
                     1,
-                    Side::Max
+                    Side::Max,
+                    steps,
                 )
             );
         }
