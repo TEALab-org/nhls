@@ -1,9 +1,13 @@
 pub type OpId = usize;
 pub type NodeId = usize;
 
+pub mod ap_frustrum;
 pub mod ap_frustrum_execute;
 pub mod ap_frustrum_plan;
+pub mod ap_frustrum_planner;
 pub mod ap_frustrum_solver;
+pub mod find_periodic_solve;
+pub mod frustrum_util;
 
 mod convolution_gen;
 mod convolution_op;
