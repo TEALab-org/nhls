@@ -73,7 +73,7 @@ where
         *self.key_map.entry(key).or_insert_with(|| {
             let result = self.operations.len();
             self.operations.push(ConvolutionOperation::create(
-                &self.stencil,
+                self.stencil,
                 &self.stencil_weights,
                 &mut self.real_buffer,
                 &mut self.convolution_buffer,
@@ -86,7 +86,19 @@ where
         })
     }
 
+    pub fn op_count(&self) -> usize {
+        self.operations.len()
+    }
+
     pub fn finish(self) -> ConvolutionStore {
         ConvolutionStore::new(self.operations)
     }
+
+    pub fn report(&self) {
+        println!("CONVOLUTION GEN REPORT: {}", self.operations.len());
+        for (i, key) in self.key_map.keys().enumerate() {
+            println!("-- i: {}, o: {:?}", i, key);
+        }
+    }
+
 }

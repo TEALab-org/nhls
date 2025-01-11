@@ -80,7 +80,7 @@ where
         let periodic_solve = maybe_periodic_solve.unwrap();
         let convolution_id = self
             .convolution_gen
-            .get_op(&self.aabb, periodic_solve.steps);
+            .get_op(&input_aabb, periodic_solve.steps);
 
         // Do we need a time cut.
         // If so that will "trim" frustrum
@@ -230,6 +230,8 @@ mod unit_tests {
             }
         }
 
+        planner.convolution_gen.report();
+
         println!("n: {}", planner.nodes.len());
         println!("p_n: {}", p_n);
         println!("d_n: {}", d_n);
@@ -266,18 +268,11 @@ mod unit_tests {
             }
         }
 
+        planner.convolution_gen.report();
+
         println!("n: {}", planner.nodes.len());
         println!("p_n: {}", p_n);
         println!("d_n: {}", d_n);
         println!("r_n: {}", r_n);
-
-    }
-
-    #[test]
-    fn decomp_test_1() {
-        let aabb = AABB::new(matrix![0, 100]);
-        let center = AABB::new(matrix![25, 75]);
-        let d = aabb.decomposition(&center);
-        println!("{:?}", d);
     }
 }

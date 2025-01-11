@@ -5,6 +5,7 @@ pub mod ap_planner;
 //pub mod ap_frustrum_execute;
 pub mod ap_frustrum_planner;
 pub mod ap_frustrum_solver;
+pub mod ap_accountant;
 
 mod ap_frustrum;
 mod ap_plan;
