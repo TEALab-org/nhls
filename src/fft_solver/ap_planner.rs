@@ -236,7 +236,6 @@ mod unit_tests {
         println!("p_n: {}", p_n);
         println!("d_n: {}", d_n);
         println!("r_n: {}", r_n);
-
     }
 
     #[test]
