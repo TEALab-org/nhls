@@ -61,9 +61,61 @@ where
     }
     pub fn generate_frustrum(
         &mut self,
-        frustrum: APFrustrum<GRID_DIMENSION>,
+        mut frustrum: APFrustrum<GRID_DIMENSION>,
     ) -> PlanNode<GRID_DIMENSION> {
-        frustrum.generate_direct_node(&self.stencil_slopes)
+        let solve_params = PeriodicSolveParams {
+            stencil_slopes: self.stencil_slopes,
+            cutoff: self.cutoff,
+            ratio: self.ratio,
+            max_steps: Some(frustrum.steps),
+        };
+        let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
+
+        // Can we do a periodic solve or do we direct solve?
+        let maybe_periodic_solve =
+            find_periodic_solve(&input_aabb, &solve_params);
+        if maybe_periodic_solve.is_none() {
+            return frustrum.generate_direct_node(&self.stencil_slopes);
+        }
+        let periodic_solve = maybe_periodic_solve.unwrap();
+        let convolution_id = self
+            .convolution_gen
+            .get_op(&self.aabb, periodic_solve.steps);
+
+        // Do we need a time cut.
+        // If so that will "trim" frustrum
+        let mut time_cut = None;
+        let maybe_next_frustrum =
+            frustrum.time_cut(periodic_solve.steps, &self.stencil_slopes);
+        if let Some(next_frustrum) = maybe_next_frustrum {
+            let next_node = self.generate_frustrum(next_frustrum);
+            time_cut = Some(self.add_node(next_node));
+        }
+
+        debug_assert!(frustrum
+            .output_aabb
+            .contains_aabb(&periodic_solve.output_aabb));
+        let boundary_frustrums = frustrum.decompose();
+
+        let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
+        for bf in boundary_frustrums {
+            sub_nodes.push(self.generate_frustrum(bf));
+        }
+        // add the nodes, find the range
+        let first_node = self.nodes.len();
+        let last_node = first_node + sub_nodes.len();
+        self.nodes.extend(&mut sub_nodes.drain(..));
+
+        let periodic_node = PeriodicSolveNode {
+            input_aabb,
+            output_aabb: frustrum.output_aabb,
+            convolution_id,
+            steps: periodic_solve.steps,
+            remainder: first_node..last_node,
+            time_cut,
+        };
+
+        PlanNode::PeriodicSolve(periodic_node)
     }
 
     pub fn generate_central(&mut self, max_steps: usize) -> (NodeId, usize) {
@@ -109,7 +161,7 @@ where
             convolution_id,
             steps: periodic_solve.steps,
             remainder: first_node..last_node,
-            next: None,
+            time_cut: None,
         };
 
         let root_node =
@@ -149,12 +201,12 @@ mod unit_tests {
     use crate::standard_stencils::*;
 
     #[test]
-    fn test_gen() {
+    fn test_gen_1d() {
         let stencil = heat_1d(1.0, 1.0, 0.5);
         let aabb = AABB::new(matrix![0, 100]);
         let cutoff = 20;
         let ratio = 0.5;
-        let steps = 104;
+        let steps = 100;
         let plan_type = PlanType::Estimate;
         let chunk_size = 10;
 
@@ -166,6 +218,59 @@ mod unit_tests {
         for (i, n) in planner.nodes.iter().enumerate() {
             println!("i: {}, n: {:?}", i, n);
         }
+
+        let mut p_n = 0;
+        let mut d_n = 0;
+        let mut r_n = 0;
+        for node in &planner.nodes {
+            match node {
+                PlanNode::PeriodicSolve(_) => p_n += 1,
+                PlanNode::DirectSolve(_) => d_n += 1,
+                PlanNode::Repeat(_) => r_n += 1,
+            }
+        }
+
+        println!("n: {}", planner.nodes.len());
+        println!("p_n: {}", p_n);
+        println!("d_n: {}", d_n);
+        println!("r_n: {}", r_n);
+
+    }
+
+    #[test]
+    fn test_gen_2d() {
+        let stencil = heat_2d(1.0, 1.0, 1.0, 1.0, 0.5);
+        let aabb = AABB::new(matrix![0, 100; 0, 100]);
+        let cutoff = 20;
+        let ratio = 0.5;
+        let steps = 50;
+        let plan_type = PlanType::Estimate;
+        let chunk_size = 10;
+
+        let mut planner = APPlanner::new(
+            &stencil, aabb, steps, plan_type, cutoff, ratio, chunk_size,
+        );
+        planner.generate();
+
+        for (i, n) in planner.nodes.iter().enumerate() {
+            println!("i: {}, n: {:?}", i, n);
+        }
+        let mut p_n = 0;
+        let mut d_n = 0;
+        let mut r_n = 0;
+        for node in &planner.nodes {
+            match node {
+                PlanNode::PeriodicSolve(_) => p_n += 1,
+                PlanNode::DirectSolve(_) => d_n += 1,
+                PlanNode::Repeat(_) => r_n += 1,
+            }
+        }
+
+        println!("n: {}", planner.nodes.len());
+        println!("p_n: {}", p_n);
+        println!("d_n: {}", d_n);
+        println!("r_n: {}", r_n);
+
     }
 
     #[test]
