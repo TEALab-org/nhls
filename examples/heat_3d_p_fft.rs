@@ -35,6 +35,7 @@ fn main() {
     );
     for t in 1..args.images {
         periodic_solver.apply(&mut input_domain, &mut output_domain);
+        std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {
             write_vtk3d(&input_domain, &args.frame_name(t));
         }
