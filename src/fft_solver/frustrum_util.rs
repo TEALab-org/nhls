@@ -1,6 +1,6 @@
 use crate::util::*;
 
-// Calculate the input region for a trapezoidal solve
+// Calculate the input region for a frustrum solve
 // based on output region size and other parameters.
 pub fn frustrum_input_aabb<const GRID_DIMENSION: usize>(
     steps: usize,
@@ -12,6 +12,28 @@ pub fn frustrum_input_aabb<const GRID_DIMENSION: usize>(
     let negative_slopes = -1 * trapezoid_slopes.column(0);
     trapezoid_slopes.set_column(0, &negative_slopes);
     output_box.add_bounds_diff(steps as i32 * trapezoid_slopes)
+}
+
+// How many cells do we solve for?
+// so not including input
+pub fn frustrum_volume<const GRID_DIMENSION: usize>(
+    steps: usize,
+    output_box: &AABB<GRID_DIMENSION>,
+    sloped_sides: &Bounds<GRID_DIMENSION>,
+    stencil_slopes: &Bounds<GRID_DIMENSION>,
+    ) -> usize {
+    let mut trapezoid_slopes = stencil_slopes.component_mul(sloped_sides);
+    let negative_slopes = -1 * trapezoid_slopes.column(0);
+    trapezoid_slopes.set_column(0, &negative_slopes);
+
+    let mut b = *output_box;
+    let mut result = b.buffer_size();
+    for _ in 1..steps {
+        b = b.add_bounds_diff(trapezoid_slopes);
+        result += b.buffer_size();
+
+    }
+    result
 }
 
 /// This needs to match logic from AABB::decomposition

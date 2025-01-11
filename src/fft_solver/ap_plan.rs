@@ -15,7 +15,7 @@ pub struct PeriodicSolveNode<const GRID_DIMENSION: usize> {
     pub remainder: Range<NodeId>,
 
     /// Should we swap input / output and run this?
-    pub next: Option<NodeId>,
+    pub time_cut: Option<NodeId>,
 }
 
 #[derive(Debug)]

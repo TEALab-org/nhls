@@ -100,6 +100,37 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         PlanNode::DirectSolve(direct_node)
     }
 
+    // Steps from input face,
+    // slice off the rest, return it
+    pub fn time_cut(
+        &mut self,
+        cut_steps: usize,
+        stencil_slopes: &Bounds<GRID_DIMENSION>,
+    ) -> Option<APFrustrum<GRID_DIMENSION>> {
+        // The input_aabb for this frustrum doesn't change...
+        // but we define frustrum by output_aabb
+        // so we need to calculate that
+        // the output
+        debug_assert!(cut_steps <= self.steps);
+        // No time cut
+        if cut_steps == self.steps {
+            return None;
+        }
+
+        let remaining_steps = self.steps - cut_steps;
+        let next_frustrum = APFrustrum::new(
+            self.output_aabb,
+            self.recursion_dimension,
+            self.side,
+            remaining_steps,
+        );
+        self.output_aabb = next_frustrum.input_aabb(stencil_slopes);
+        self.steps = cut_steps;
+        Some(next_frustrum)
+    }
+
+    // TODO: add tests
+    // in particular,
     pub fn decompose(&self) -> Vec<APFrustrum<GRID_DIMENSION>> {
         // Cause FFT goes steps in, so sub one, shrug
         let i_steps = self.steps as i32 - 1;
