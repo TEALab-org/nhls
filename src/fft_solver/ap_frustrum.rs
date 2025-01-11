@@ -126,6 +126,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         );
         self.output_aabb = next_frustrum.input_aabb(stencil_slopes);
         self.steps = cut_steps;
+        println!("timecut: {}", cut_steps);
         Some(next_frustrum)
     }
 
@@ -316,5 +317,21 @@ mod unit_tests {
             println!(" -- rec {}: {:?}", i, d);
         }
         */
+    }
+
+    #[test]
+    fn memory() {
+        let s = crate::standard_stencils::heat_3d(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5);
+        let ss = s.slopes();
+        let f = APFrustrum::new(AABB::new(matrix![0, 51; 0, 100; 0, 100]), 0, Side::Min, 12);
+        println!("f_o: {}", f.input_aabb(&ss).buffer_size());
+        let ds = f.decompose();
+        let mut sum = 0;
+        for (_i, d) in ds.iter().enumerate() {
+            let input = d.input_aabb(&ss);
+            sum += input.buffer_size();
+        }
+        println!("sum: {}", sum);
+
     }
 }
