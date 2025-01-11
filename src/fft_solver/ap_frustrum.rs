@@ -1,3 +1,4 @@
+use crate::fft_solver::*;
 use crate::util::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -8,7 +9,7 @@ pub enum Side {
 
 impl Side {
     #[inline]
-    fn inner_index(&self) -> usize {
+    pub fn inner_index(&self) -> usize {
         match self {
             Side::Min => 1,
             Side::Max => 0,
@@ -16,7 +17,7 @@ impl Side {
     }
 
     #[inline]
-    fn outer_index(&self) -> usize {
+    pub fn outer_index(&self) -> usize {
         match self {
             Side::Min => 0,
             Side::Max => 1,
@@ -62,6 +63,41 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
             side,
             steps,
         }
+    }
+
+    pub fn sloped_sides(&self) -> Bounds<GRID_DIMENSION> {
+        let mut result = Bounds::from_element(1);
+        result[(self.recursion_dimension, self.side.outer_index())] = 0;
+        for d in self.recursion_dimension + 1..GRID_DIMENSION {
+            result[(d, 0)] = 0;
+            result[(d, 1)] = 0;
+        }
+        result
+    }
+
+    pub fn input_aabb(
+        &self,
+        stencil_slopes: &Bounds<GRID_DIMENSION>,
+    ) -> AABB<GRID_DIMENSION> {
+        let sloped_sides = self.sloped_sides();
+        frustrum_input_aabb(
+            self.steps,
+            &self.output_aabb,
+            &sloped_sides,
+            stencil_slopes,
+        )
+    }
+
+    pub fn generate_direct_node(
+        &self,
+        stencil_slopes: &Bounds<GRID_DIMENSION>,
+    ) -> PlanNode<GRID_DIMENSION> {
+        let direct_node = DirectSolveNode {
+            input_aabb: self.input_aabb(stencil_slopes),
+            output_aabb: self.output_aabb,
+            steps: self.steps,
+        };
+        PlanNode::DirectSolve(direct_node)
     }
 
     pub fn decompose(&self) -> Vec<APFrustrum<GRID_DIMENSION>> {
