@@ -321,9 +321,16 @@ mod unit_tests {
 
     #[test]
     fn memory() {
-        let s = crate::standard_stencils::heat_3d(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5);
+        let s = crate::standard_stencils::heat_3d(
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5,
+        );
         let ss = s.slopes();
-        let f = APFrustrum::new(AABB::new(matrix![0, 51; 0, 100; 0, 100]), 0, Side::Min, 12);
+        let f = APFrustrum::new(
+            AABB::new(matrix![0, 51; 0, 100; 0, 100]),
+            0,
+            Side::Min,
+            12,
+        );
         println!("f_o: {}", f.input_aabb(&ss).buffer_size());
         let ds = f.decompose();
         let mut sum = 0;
@@ -332,6 +339,5 @@ mod unit_tests {
             sum += input.buffer_size();
         }
         println!("sum: {}", sum);
-
     }
 }

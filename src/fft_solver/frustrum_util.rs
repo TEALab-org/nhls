@@ -21,7 +21,7 @@ pub fn frustrum_volume<const GRID_DIMENSION: usize>(
     output_box: &AABB<GRID_DIMENSION>,
     sloped_sides: &Bounds<GRID_DIMENSION>,
     stencil_slopes: &Bounds<GRID_DIMENSION>,
-    ) -> usize {
+) -> usize {
     let mut trapezoid_slopes = stencil_slopes.component_mul(sloped_sides);
     let negative_slopes = -1 * trapezoid_slopes.column(0);
     trapezoid_slopes.set_column(0, &negative_slopes);
@@ -31,7 +31,6 @@ pub fn frustrum_volume<const GRID_DIMENSION: usize>(
     for _ in 1..steps {
         b = b.add_bounds_diff(trapezoid_slopes);
         result += b.buffer_size();
-
     }
     result
 }
