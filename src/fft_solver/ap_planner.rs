@@ -2,6 +2,12 @@ use crate::fft_solver::*;
 use crate::stencil::*;
 use crate::util::*;
 
+pub struct PlannerResult<const GRID_DIMENSION: usize> {
+    pub plan: APPlan<GRID_DIMENSION>,
+    pub convolution_store: ConvolutionStore,
+    pub stencil_slopes: Bounds<GRID_DIMENSION>,
+}
+
 // generic over stencil
 pub struct APPlanner<
     'a,
@@ -193,6 +199,22 @@ where
 
         self.add_node(PlanNode::Repeat(repeat_node))
     }
+
+    pub fn finish(mut self) -> PlannerResult<GRID_DIMENSION> {
+        let root = self.generate();
+        let convolution_store = self.convolution_gen.finish();
+        let stencil_slopes = self.stencil_slopes;
+        let plan = APPlan {
+            nodes: self.nodes,
+            root,
+        };
+
+        PlannerResult {
+            plan,
+            convolution_store,
+            stencil_slopes,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -206,33 +228,32 @@ mod unit_tests {
         let aabb = AABB::new(matrix![0, 100]);
         let cutoff = 20;
         let ratio = 0.5;
-        let steps = 100;
+        let steps = 110;
         let plan_type = PlanType::Estimate;
         let chunk_size = 10;
 
-        let mut planner = APPlanner::new(
+        let planner = APPlanner::new(
             &stencil, aabb, steps, plan_type, cutoff, ratio, chunk_size,
         );
-        planner.generate();
 
-        for (i, n) in planner.nodes.iter().enumerate() {
+        let result = planner.finish();
+        result.plan.to_dot_file(&"test.dot");
+
+        for (i, n) in result.plan.nodes.iter().enumerate() {
             println!("i: {}, n: {:?}", i, n);
         }
 
         let mut p_n = 0;
         let mut d_n = 0;
         let mut r_n = 0;
-        for node in &planner.nodes {
+        for node in &result.plan.nodes {
             match node {
                 PlanNode::PeriodicSolve(_) => p_n += 1,
                 PlanNode::DirectSolve(_) => d_n += 1,
                 PlanNode::Repeat(_) => r_n += 1,
             }
         }
-
-        planner.convolution_gen.report();
-
-        println!("n: {}", planner.nodes.len());
+        println!("n: {}", result.plan.nodes.len());
         println!("p_n: {}", p_n);
         println!("d_n: {}", d_n);
         println!("r_n: {}", r_n);
@@ -244,32 +265,31 @@ mod unit_tests {
         let aabb = AABB::new(matrix![0, 100; 0, 100]);
         let cutoff = 20;
         let ratio = 0.5;
-        let steps = 50;
+        let steps = 100;
         let plan_type = PlanType::Estimate;
         let chunk_size = 10;
 
-        let mut planner = APPlanner::new(
+        let planner = APPlanner::new(
             &stencil, aabb, steps, plan_type, cutoff, ratio, chunk_size,
         );
-        planner.generate();
+        let result = planner.finish();
+        result.plan.to_dot_file(&"test.dot");
 
-        for (i, n) in planner.nodes.iter().enumerate() {
+        for (i, n) in result.plan.nodes.iter().enumerate() {
             println!("i: {}, n: {:?}", i, n);
         }
+
         let mut p_n = 0;
         let mut d_n = 0;
         let mut r_n = 0;
-        for node in &planner.nodes {
+        for node in &result.plan.nodes {
             match node {
                 PlanNode::PeriodicSolve(_) => p_n += 1,
                 PlanNode::DirectSolve(_) => d_n += 1,
                 PlanNode::Repeat(_) => r_n += 1,
             }
         }
-
-        planner.convolution_gen.report();
-
-        println!("n: {}", planner.nodes.len());
+        println!("n: {}", result.plan.nodes.len());
         println!("p_n: {}", p_n);
         println!("d_n: {}", d_n);
         println!("r_n: {}", r_n);
