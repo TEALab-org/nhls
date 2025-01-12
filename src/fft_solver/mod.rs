@@ -1,14 +1,11 @@
 pub type OpId = usize;
 pub type NodeId = usize;
 
-pub mod ap_planner;
-//pub mod ap_frustrum_execute;
-pub mod ap_accountant;
-pub mod ap_frustrum_planner;
-pub mod ap_frustrum_solver;
-
 mod ap_frustrum;
 mod ap_plan;
+mod ap_planner;
+mod ap_solver;
+
 mod convolution_gen;
 mod convolution_op;
 mod convolution_store;
@@ -19,6 +16,8 @@ mod plan_type;
 
 pub use ap_frustrum::*;
 pub use ap_plan::*;
+pub use ap_planner::*;
+pub use ap_solver::*;
 pub use convolution_gen::*;
 pub use convolution_op::*;
 pub use convolution_store::*;
