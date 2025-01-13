@@ -41,3 +41,31 @@ impl<const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
         self.buffer[index]
     }
 }
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    fn mock_solver<
+        const GRID_DIMENSION: usize,
+        DomainType: DomainView<GRID_DIMENSION>,
+    >(
+        input: &mut DomainType,
+        output: &mut DomainType,
+    ) {
+        std::mem::swap(input, output);
+    }
+
+    #[test]
+    fn swap_test() {
+        let mut a = OwnedDomain::new(AABB::new(matrix![0, 1]));
+        let mut b = OwnedDomain::new(AABB::new(matrix![0, 1]));
+        let a_ptr = a.buffer().as_ptr();
+        let b_ptr = b.buffer().as_ptr();
+        mock_solver(&mut a, &mut b);
+        let sa_ptr = a.buffer().as_ptr();
+        let sb_ptr = b.buffer().as_ptr();
+        assert_eq!(a_ptr, sb_ptr);
+        assert_eq!(b_ptr, sa_ptr);
+    }
+}
