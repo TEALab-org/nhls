@@ -46,9 +46,12 @@ impl<const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
 mod unit_tests {
     use super::*;
 
-    fn mock_solver<const GRID_DIMENSION: usize, DomainType: DomainView<GRID_DIMENSION>>(
-    input: &mut DomainType,
-    output: &mut DomainType,
+    fn mock_solver<
+        const GRID_DIMENSION: usize,
+        DomainType: DomainView<GRID_DIMENSION>,
+    >(
+        input: &mut DomainType,
+        output: &mut DomainType,
     ) {
         std::mem::swap(input, output);
     }
