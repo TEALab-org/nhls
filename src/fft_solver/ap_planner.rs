@@ -228,7 +228,7 @@ mod unit_tests {
         let aabb = AABB::new(matrix![0, 100]);
         let cutoff = 20;
         let ratio = 0.5;
-        let steps = 110;
+        let steps = 100;
         let plan_type = PlanType::Estimate;
         let chunk_size = 10;
 
@@ -257,6 +257,9 @@ mod unit_tests {
         println!("p_n: {}", p_n);
         println!("d_n: {}", d_n);
         println!("r_n: {}", r_n);
+
+        let s = APAccountant::scratch_size(&result.plan);
+        println!("Scratch size: n_c: {}, bytes: {}", s, s * std::mem::size_of::<c64>());
     }
 
     #[test]
@@ -293,5 +296,8 @@ mod unit_tests {
         println!("p_n: {}", p_n);
         println!("d_n: {}", d_n);
         println!("r_n: {}", r_n);
+
+        let s = APAccountant::scratch_size(&result.plan);
+        println!("Scratch size: n_c: {}, bytes: {}", s, s * std::mem::size_of::<c64>());
     }
 }

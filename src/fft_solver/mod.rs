@@ -5,6 +5,13 @@ mod ap_frustrum;
 mod ap_plan;
 mod ap_planner;
 mod ap_solver;
+mod ap_accountant;
+
+pub use ap_frustrum::*;
+pub use ap_plan::*;
+pub use ap_planner::*;
+pub use ap_solver::*;
+pub use ap_accountant::*;
 
 mod convolution_gen;
 mod convolution_op;
@@ -14,10 +21,6 @@ mod frustrum_util;
 mod periodic_solver;
 mod plan_type;
 
-pub use ap_frustrum::*;
-pub use ap_plan::*;
-pub use ap_planner::*;
-pub use ap_solver::*;
 pub use convolution_gen::*;
 pub use convolution_op::*;
 pub use convolution_store::*;
