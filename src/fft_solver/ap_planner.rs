@@ -258,8 +258,8 @@ mod unit_tests {
         println!("d_n: {}", d_n);
         println!("r_n: {}", r_n);
 
-        let s = APAccountant::scratch_size(&result.plan);
-        println!("Scratch size: n_c: {}, bytes: {}", s, s * std::mem::size_of::<c64>());
+        let s = APAccountBuilder::node_requirements(&result.plan);
+        println!("Scratch size: {:?}", s);
     }
 
     #[test]
@@ -297,7 +297,7 @@ mod unit_tests {
         println!("d_n: {}", d_n);
         println!("r_n: {}", r_n);
 
-        let s = APAccountant::scratch_size(&result.plan);
-        println!("Scratch size: n_c: {}, bytes: {}", s, s * std::mem::size_of::<c64>());
+        let s = APAccountBuilder::node_requirements(&result.plan);
+        println!("Scratch size: {:?}", s);
     }
 }
