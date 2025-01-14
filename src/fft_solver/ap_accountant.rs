@@ -4,6 +4,8 @@ use crate::fft_solver::*;
 use crate::util::*;
 use std::ops::Range;
 
+pub const MIN_ALIGNMENT: usize = 128;
+
 pub struct APAccountBuilder<'a, const GRID_DIMENSION: usize> {
     pub plan: &'a APPlan<GRID_DIMENSION>,
 }
@@ -17,11 +19,17 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         node_requirements
     }
 
-    fn get_input_output_size(&self, aabb: &AABB<GRID_DIMENSION>) -> usize {
+    fn real_buffer_requirement(&self, aabb: &AABB<GRID_DIMENSION>) -> usize {
         // TODO: this is where we should do the 128bit offset thing
         // We are allocating two, but the more I think about it,
         // we should just always allocate 128 aligned things
-        aabb.buffer_size()
+        let min_bytes = aabb.buffer_size() * std::mem::size_of::<f64>();
+        min_bytes.div_ceil(MIN_ALIGNMENT)
+    }
+
+    fn complex_buffer_requirement(&self, aabb: &AABB<GRID_DIMENSION>) -> usize {
+        let min_bytes = aabb.complex_buffer_size() * std::mem::size_of::<c64>();
+        min_bytes.div_ceil(MIN_ALIGNMENT)
     }
 
     fn handle_repeat_node(
@@ -37,26 +45,30 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
             panic!("ERROR: Not a repeat node");
         };
 
-        let mut node_requirement = self
-            .handle_central_periodic_node(repeat_node.node, node_requirements);
+        let mut node_requirement = self.handle_periodic_node(
+            repeat_node.node,
+            true,
+            node_requirements,
+        );
         if let Some(next) = repeat_node.next {
-            node_requirement = node_requirement.max(
-                self.handle_central_periodic_node(next, node_requirements),
-            );
+            node_requirement = node_requirement.max(self.handle_periodic_node(
+                next,
+                true,
+                node_requirements,
+            ));
         }
-        println!("Repeat: {}", node_requirement);
         node_requirements[node_id] = node_requirement;
         node_requirement
     }
 
-    fn handle_remainder(
+    fn handle_boundary_operations(
         &self,
         node_range: Range<NodeId>,
         node_requirements: &mut [usize],
     ) -> usize {
         let mut sum = 0;
         for node_id in node_range {
-            sum += self.handle_unknown(node_id, node_requirements);
+            sum += self.handle_unknown(node_id, false, node_requirements);
         }
         sum
     }
@@ -64,61 +76,30 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
     fn handle_unknown(
         &self,
         node_id: NodeId,
+        pre_allocated_io: bool,
         node_requirements: &mut [usize],
     ) -> usize {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
                 self.handle_direct_node(node_id, node_requirements)
             }
-            PlanNode::PeriodicSolve(_) => {
-                self.handle_periodic_node(node_id, node_requirements)
-            }
+            PlanNode::PeriodicSolve(_) => self.handle_periodic_node(
+                node_id,
+                pre_allocated_io,
+                node_requirements,
+            ),
             PlanNode::Repeat(_) => {
                 panic!("ERROR: Not expecting repeat node");
             }
         }
     }
-
-    // The central periodic solves already have input / output domains
-    // allocated.
-    // We just need the complex buffer
-    fn handle_central_periodic_node(
-        &self,
-        node_id: NodeId,
-        node_requirements: &mut [usize],
-    ) -> usize {
-        let periodic_node = if let PlanNode::PeriodicSolve(periodic_node) =
-            self.plan.get_node(node_id)
-        {
-            periodic_node
-        } else {
-            panic!("ERROR: Not a periodic node: {}", node_id);
-        };
-
-        let remainder = self.handle_remainder(
-            periodic_node.remainder.clone(),
-            node_requirements,
-        );
-        // TODO we should pull this out into separate function
-        let complex = periodic_node.input_aabb.complex_buffer_size();
-        let mut node_requirement = remainder.max(complex);
-        if let Some(time_cut) = periodic_node.time_cut {
-            let cut = self.handle_unknown(time_cut, node_requirements);
-            node_requirement = node_requirement.max(cut);
-            println!("handle central with cut: remainder: {}, complex: {}, cut: {}, node_requirement: {}", remainder, complex, cut, node_requirement);
-        } else {
-            println!("handle central: remainder: {}, complex: {}, node_requirement: {}", remainder, complex, node_requirement);
-        }
-        node_requirements[node_id] = node_requirement;
-        node_requirement
-    }
-
-    // Allocate input / output domains, complex buffer, then handle remainder
+    // Allocate input / output domains, complex buffer, then handle boundary
     // next operation doesn't need input output allocated, can use the current one
     // maybe use handle_central_periodic for that?
     fn handle_periodic_node(
         &self,
         node_id: NodeId,
+        pre_allocated_io: bool,
         node_requirements: &mut [usize],
     ) -> usize {
         let periodic_node = if let PlanNode::PeriodicSolve(periodic_node) =
@@ -129,21 +110,29 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
             panic!("ERROR: Not a periodic node");
         };
 
-        let mut node_requirement =
-            self.get_input_output_size(&periodic_node.input_aabb);
-        let remainder = self.handle_remainder(
-            periodic_node.remainder.clone(),
+        let remainder = self.handle_boundary_operations(
+            periodic_node.boundary_nodes.clone(),
             node_requirements,
         );
-        let complex = periodic_node.input_aabb.complex_buffer_size();
-        node_requirement += remainder.max(complex);
+        let complex =
+            self.complex_buffer_requirement(&periodic_node.input_aabb);
+        let mut node_requirement = remainder.max(complex);
         if let Some(time_cut) = periodic_node.time_cut {
-            let cut = self.handle_unknown(time_cut, node_requirements);
-            node_requirement = node_requirement.max(cut);
-            println!("handle periodic with cut: remainder: {}, complex: {}, cut: {}, node_requirement: {}", remainder, complex, cut, node_requirement);
-        } else {
-            println!("handle periodic: remainder: {}, complex: {}, node_requirement: {}", remainder, complex, node_requirement);
+            // Time cuts can re-use io buffers
+            let pre_allocated_io = true;
+            let cut_requirement = self.handle_unknown(
+                time_cut,
+                pre_allocated_io,
+                node_requirements,
+            );
+            node_requirement = node_requirement.max(cut_requirement);
         }
+
+        if !pre_allocated_io {
+            node_requirement +=
+                2 * self.real_buffer_requirement(&periodic_node.input_aabb);
+        }
+
         node_requirements[node_id] = node_requirement;
         node_requirement
     }
@@ -163,9 +152,8 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         };
 
         let node_requirement =
-            self.get_input_output_size(&direct_node.input_aabb);
+            2 * self.real_buffer_requirement(&direct_node.input_aabb);
         node_requirements[node_id] = node_requirement;
-        println!("handle direct, result: {}", node_requirement);
         node_requirement
     }
 }

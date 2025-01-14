@@ -117,7 +117,7 @@ where
             output_aabb: frustrum.output_aabb,
             convolution_id,
             steps: periodic_solve.steps,
-            remainder: first_node..last_node,
+            boundary_nodes: first_node..last_node,
             time_cut,
         };
 
@@ -166,7 +166,7 @@ where
             output_aabb: periodic_solve.output_aabb,
             convolution_id,
             steps: periodic_solve.steps,
-            remainder: first_node..last_node,
+            boundary_nodes: first_node..last_node,
             time_cut: None,
         };
 

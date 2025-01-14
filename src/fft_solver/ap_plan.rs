@@ -13,7 +13,7 @@ pub struct PeriodicSolveNode<const GRID_DIMENSION: usize> {
     /// calculate remaining output dections based on either
     ///  - AABB::decomposition for central solve
     ///  - APFrustrum::decomposition for frustrum solves
-    pub remainder: Range<NodeId>,
+    pub boundary_nodes: Range<NodeId>,
 
     /// Should we swap input / output and run this?
     pub time_cut: Option<NodeId>,
@@ -78,7 +78,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         for (i, node) in self.nodes.iter().enumerate() {
             match node {
                 PlanNode::PeriodicSolve(p) => {
-                    for r in p.remainder.clone() {
+                    for r in p.boundary_nodes.clone() {
                         writeln!(writer, " n_{} -> n_{} [color=blue];", i, r)
                             .unwrap();
                     }
