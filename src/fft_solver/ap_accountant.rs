@@ -4,8 +4,6 @@ use crate::fft_solver::*;
 use crate::util::*;
 use std::ops::Range;
 
-pub const MIN_ALIGNMENT: usize = 128;
-
 pub struct APAccountBuilder<'a, const GRID_DIMENSION: usize> {
     pub plan: &'a APPlan<GRID_DIMENSION>,
 }
@@ -102,14 +100,7 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         pre_allocated_io: bool,
         node_requirements: &mut [usize],
     ) -> usize {
-        let periodic_node = if let PlanNode::PeriodicSolve(periodic_node) =
-            self.plan.get_node(node_id)
-        {
-            periodic_node
-        } else {
-            panic!("ERROR: Not a periodic node");
-        };
-
+        let periodic_node = self.plan.unwrap_periodic_node(node_id);
         let remainder = self.handle_boundary_operations(
             periodic_node.boundary_nodes.clone(),
             node_requirements,
@@ -143,13 +134,7 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         node_id: NodeId,
         node_requirements: &mut [usize],
     ) -> usize {
-        let direct_node = if let PlanNode::DirectSolve(direct_node) =
-            self.plan.get_node(node_id)
-        {
-            direct_node
-        } else {
-            panic!("ERROR: Not a periodic node");
-        };
+        let direct_node = self.plan.unwrap_direct_node(node_id);
 
         let node_requirement =
             2 * self.real_buffer_requirement(&direct_node.input_aabb);

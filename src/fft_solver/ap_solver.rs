@@ -3,9 +3,53 @@ use crate::fft_solver::*;
 use crate::stencil::*;
 use crate::util::*;
 
-struct APSolverContext<'a, const GRID_DIMENSION: usize> {
+struct APSolverContext<
+    'a,
+    const GRID_DIMENSION: usize,
+    BC: BCCheck<GRID_DIMENSION>,
+> {
+    bc: &'a BC,
     stencil_slopes: &'a Bounds<GRID_DIMENSION>,
     convolution_store: &'a ConvolutionStore,
+    plan: &'a APPlan<GRID_DIMENSION>,
+    node_block_requirements: Vec<usize>,
+    chunk_size: usize,
+}
+
+impl<'a, const GRID_DIMENSION: usize, BC: BCCheck<GRID_DIMENSION>>
+    APSolverContext<'a, GRID_DIMENSION, BC>
+{
+    pub fn solve_root<DomainType: DomainView<GRID_DIMENSION>>(
+        &self,
+        input: &mut DomainType,
+        output: &mut DomainType,
+        scratch: &'a mut APNodeScratch<'a>,
+    ) {
+        //
+    }
+
+    pub fn solve_direct<'b>(
+        &self,
+        node_id: NodeId,
+        input: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        scratch: &'a mut APNodeScratch<'a>,
+    ) {
+        let direct_solve = self.plan.unwrap_direct_node(node_id);
+
+        // Allocate io buffers
+        let ([mut input_domain, mut output_domain], _remainder_) = scratch
+            .split_io_domains(
+                // copy input
+                direct_solve.input_aabb,
+            );
+        input_domain.par_from_superset(input, self.chunk_size);
+
+        // invoke direct solver
+
+        // copy output to output
+        output.par_set_subdomain(&output_domain, self.chunk_size);
+    }
 }
 
 pub struct APSolver<

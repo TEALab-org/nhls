@@ -9,7 +9,7 @@ colorous = "1.0.14"
 fftw = { git = "https://github.com/sallysoul/fftw3-rs.git", tag = "fftw3-v0.8.4" }
 
 image = "0.25.2"
-nalgebra = "0.33.2"
+nalgebra = { version = "0.33.2", features = ["convert-bytemuck"] }
 num = "0.4.3"
 num-traits = "0.2.19"
 rayon = "1.10.0"
