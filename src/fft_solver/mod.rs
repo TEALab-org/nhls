@@ -1,16 +1,20 @@
 pub type OpId = usize;
 pub type NodeId = usize;
 
+pub const MIN_ALIGNMENT: usize = 128;
+
 mod ap_accountant;
 mod ap_frustrum;
 mod ap_plan;
 mod ap_planner;
+mod ap_scratch;
 mod ap_solver;
 
 pub use ap_accountant::*;
 pub use ap_frustrum::*;
 pub use ap_plan::*;
 pub use ap_planner::*;
+pub use ap_scratch::*;
 pub use ap_solver::*;
 
 mod convolution_gen;
