@@ -81,6 +81,16 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
     ) {
         self.par_set_values(|world_coord| other.view(&world_coord), chunk_size);
     }
+
+    fn unsafe_mut_access(&self) -> SliceDomain<'_, GRID_DIMENSION> {
+        let buffer = self.buffer();
+        let len = buffer.len();
+        let buffer_ptr = buffer.as_ptr();
+        let buffer_ptr_mut = buffer_ptr as *mut f64;
+        let unsafe_buffer =
+            unsafe { std::slice::from_raw_parts_mut(buffer_ptr_mut, len) };
+        SliceDomain::new(*self.aabb(), unsafe_buffer)
+    }
 }
 
 /// Why not just put this into Domain::par_modify_access?
