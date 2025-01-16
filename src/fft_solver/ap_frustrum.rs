@@ -95,6 +95,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         let direct_node = DirectSolveNode {
             input_aabb: self.input_aabb(stencil_slopes),
             output_aabb: self.output_aabb,
+            sloped_sides: self.sloped_sides(),
             steps: self.steps,
         };
         PlanNode::DirectSolve(direct_node)

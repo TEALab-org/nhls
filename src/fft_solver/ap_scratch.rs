@@ -30,7 +30,7 @@ pub struct APNodeScratch<'a> {
 
 impl<'a> APNodeScratch<'a> {
     // split off scratch space
-    pub fn split_scratch(&'a mut self, blocks: usize) -> (Self, Self) {
+    pub fn split_scratch(mut self, blocks: usize) -> (Self, Self) {
         let bytes = blocks * MIN_ALIGNMENT;
         debug_assert!(self.buffer.len() >= bytes);
         let (scratch_buffer, remainder_buffer) =
@@ -46,7 +46,7 @@ impl<'a> APNodeScratch<'a> {
     }
 
     pub fn split_io_domains<const GRID_DIMENSION: usize>(
-        &'a mut self,
+        mut self,
         aabb: AABB<GRID_DIMENSION>,
     ) -> ([SliceDomain<'a, GRID_DIMENSION>; 2], APNodeScratch<'a>) {
         let min_bytes = aabb.buffer_size() * std::mem::size_of::<f64>();
@@ -80,6 +80,22 @@ impl<'a> APNodeScratch<'a> {
         let (complex_buffer, _remainder_buffer) =
             self.buffer.split_at_mut(bytes);
         let result = bytemuck::cast_slice_mut(complex_buffer);
+        result
+    }
+
+    pub fn unsafe_complex_buffer<const GRID_DIMENSION: usize>(
+        &'a self,
+        aabb: AABB<GRID_DIMENSION>,
+    ) -> &'a mut [c64] {
+        // We can use the whole slice for this, we return it right after
+        let len = self.buffer.len();
+        let buffer_ptr = self.buffer.as_ptr();
+        let buffer_mut = unsafe {
+            let buffer_ptr_mut = buffer_ptr as *mut u8;
+            std::slice::from_raw_parts_mut(buffer_ptr_mut, len)
+        };
+        let result = bytemuck::cast_slice_mut(buffer_mut);
+        debug_assert!(aabb.complex_buffer_size() <= result.len());
         result
     }
 }
