@@ -122,12 +122,12 @@ where
                 let node_scratch: APNodeScratch<'_>;
                 (node_scratch, scratch_remainder) =
                     scratch_remainder.split_scratch(block_requirement);
-                let mut output_domain = output.unsafe_mut_access();
+                let mut node_output = output_domain.unsafe_mut_access();
                 s.spawn(move |_| {
                     self.unknown_solve_allocate_io(
                         node_id,
                         input,
-                        &mut output_domain,
+                        &mut node_output,
                         node_scratch,
                     );
                 });
@@ -135,6 +135,17 @@ where
         });
 
         // call time cut if needed
+        if let Some(next_id) = periodic_solve.time_cut {
+            std::mem::swap(&mut input_domain, &mut output_domain);
+            self.periodic_solve_preallocated_io(
+                next_id,
+                &mut input_domain,
+                &mut output_domain,
+                node_scratch,
+            );
+        }
+        // mem swap input output,
+        // call pre-allocated solve
 
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
