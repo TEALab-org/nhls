@@ -45,6 +45,7 @@ impl ScratchSpace {
         offset: usize,
         len: usize,
     ) -> &mut [T] {
+        debug_assert!(len > 0);
         let scratch_bytes = unsafe {
             let scratch_ptr_mut = self.scratch_ptr.add(offset) as *mut u8;
             debug_assert!(scratch_ptr_mut as usize % MIN_ALIGNMENT == 0);
