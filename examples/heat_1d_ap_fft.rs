@@ -1,19 +1,18 @@
-/*
 use nhls::domain::*;
+use nhls::fft_solver::*;
 use nhls::image_1d_example::*;
-use nhls::solver::*;
-*/
 
 fn main() {
-    /*
     let (args, output_image_path) = Args::cli_parse("heat_1d_ap_fft");
 
     let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
 
     // Create domains
     let grid_bound = args.grid_bounds();
-    let mut input_domain = OwnedDomain::new(grid_bound);
-    let mut output_domain = OwnedDomain::new(grid_bound);
+    let mut buffer_1 = OwnedDomain::new(grid_bound);
+    let mut buffer_2 = OwnedDomain::new(grid_bound);
+    let mut input_domain = buffer_1.as_slice_domain();
+    let mut output_domain = buffer_2.as_slice_domain();
 
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);
@@ -24,10 +23,11 @@ fn main() {
     let mut solver = APSolver::new(
         &bc,
         &stencil,
+        grid_bound,
+        args.steps_per_line,
+        args.plan_type,
         cutoff,
         ratio,
-        &grid_bound,
-        args.plan_type,
         args.chunk_size,
     );
 
@@ -38,11 +38,7 @@ fn main() {
         img = Some(i);
     }
     for t in 1..args.lines as u32 {
-        solver.loop_solve(
-            &mut input_domain,
-            &mut output_domain,
-            args.steps_per_line,
-        );
+        solver.apply(&mut input_domain, &mut output_domain);
         std::mem::swap(&mut input_domain, &mut output_domain);
         if let Some(i) = img.as_mut() {
             i.add_line(t, input_domain.buffer());
@@ -54,5 +50,4 @@ fn main() {
     }
 
     args.save_wisdom();
-    */
 }
