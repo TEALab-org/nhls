@@ -52,6 +52,13 @@ where
             scratch_descriptor.output_offset,
             scratch_descriptor.real_buffer_size,
         );
+        println!(
+            "node_id: {}, input_buffer len: {}, aabb: {}",
+            node_id,
+            input_buffer.len(),
+            aabb.buffer_size()
+        );
+        println!("{:?}", self.plan.get_node(node_id));
         debug_assert!(input_buffer.len() >= aabb.buffer_size());
         debug_assert!(output_buffer.len() >= aabb.buffer_size());
 

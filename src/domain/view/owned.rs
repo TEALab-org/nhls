@@ -12,6 +12,10 @@ impl<const GRID_DIMENSION: usize> OwnedDomain<GRID_DIMENSION> {
         let buffer = AlignedVec::new(aabb.buffer_size());
         OwnedDomain { aabb, buffer }
     }
+
+    pub fn as_slice_domain(&mut self) -> SliceDomain<'_, GRID_DIMENSION> {
+        SliceDomain::new(self.aabb, &mut self.buffer)
+    }
 }
 
 impl<const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
