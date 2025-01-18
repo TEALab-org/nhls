@@ -86,6 +86,10 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         self.nodes.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
     pub fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P) {
         let mut writer =
             std::io::BufWriter::new(std::fs::File::create(path).unwrap());
