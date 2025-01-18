@@ -48,6 +48,10 @@ pub struct Args {
     /// Fill with random values matching 2023 implementation
     #[arg(short, long)]
     pub rand_init: bool,
+
+    /// Write out a dot file for the ap plan
+    #[arg(long)]
+    pub write_dot: bool,
 }
 
 impl Args {

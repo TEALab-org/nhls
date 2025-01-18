@@ -8,7 +8,7 @@ pub struct SliceDomain<'a, const GRID_DIMENSION: usize> {
 
 impl<'a, const GRID_DIMENSION: usize> SliceDomain<'a, GRID_DIMENSION> {
     pub fn new(aabb: AABB<GRID_DIMENSION>, buffer: &'a mut [f64]) -> Self {
-        debug_assert_eq!(buffer.len(), aabb.buffer_size());
+        debug_assert!(buffer.len() >= aabb.buffer_size());
         SliceDomain { aabb, buffer }
     }
 }
@@ -27,11 +27,12 @@ impl<'a, const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
     }
 
     fn buffer(&self) -> &[f64] {
-        self.buffer
+        &self.buffer[0..self.aabb().buffer_size()]
     }
 
     fn buffer_mut(&mut self) -> &mut [f64] {
-        self.buffer
+        let range = 0..self.aabb().buffer_size();
+        &mut self.buffer[range]
     }
 
     fn aabb_buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]) {

@@ -22,6 +22,11 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
         let scratch_space = ScratchSpace::new(
             builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
         );
+        println!("SCRATCH DESCRIPTORS");
+        for (i, d) in scratch_descriptors.iter().enumerate() {
+            println!("i: {}, d: {:?}", i, d);
+        }
+        println!("END SCRATCH DESCRIPTORS");
         (scratch_descriptors, scratch_space)
     }
 
@@ -99,14 +104,14 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
         &self,
         node_id: NodeId,
         mut offset: usize,
-        pre_allocate_io: bool,
+        pre_allocated_io: bool,
         scratch_descriptors: &mut [ScratchDescriptor],
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         let scratch_descriptor = &mut scratch_descriptors[node_id];
 
         // Input / Output scratch?
-        if pre_allocate_io {
+        if !pre_allocated_io {
             let buffer_len = self.real_buffer_bytes(&periodic_solve.input_aabb);
             scratch_descriptor.input_offset = offset;
             scratch_descriptor.output_offset = offset + buffer_len;
