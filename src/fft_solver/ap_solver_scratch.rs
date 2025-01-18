@@ -47,6 +47,7 @@ impl ScratchSpace {
     ) -> &mut [T] {
         let scratch_bytes = unsafe {
             let scratch_ptr_mut = self.scratch_ptr.add(offset) as *mut u8;
+            debug_assert!(scratch_ptr_mut as usize % MIN_ALIGNMENT == 0);
             std::slice::from_raw_parts_mut(scratch_ptr_mut, len)
         };
         bytemuck::cast_slice_mut(scratch_bytes)

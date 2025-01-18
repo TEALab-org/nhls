@@ -7,9 +7,9 @@ pub struct APScratchBuilder<'a, const GRID_DIMENSION: usize> {
 }
 
 impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
-    pub fn node_scratch_descriptors(
+    pub fn build(
         plan: &'a APPlan<GRID_DIMENSION>,
-    ) -> Vec<ScratchDescriptor> {
+    ) -> (Vec<ScratchDescriptor>, ScratchSpace) {
         let node_block_requirements = APAccountBuilder::node_requirements(plan);
         let mut scratch_descriptors =
             vec![ScratchDescriptor::default(); plan.len()];
@@ -19,7 +19,10 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
             node_block_requirements,
         };
         builder.handle_repeat(plan.root, 0, &mut scratch_descriptors);
-        scratch_descriptors
+        let scratch_space = ScratchSpace::new(
+            builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
+        );
+        (scratch_descriptors, scratch_space)
     }
 
     fn blocks_to_bytes(&self, blocks: usize) -> usize {
