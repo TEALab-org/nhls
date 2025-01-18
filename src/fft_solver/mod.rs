@@ -4,20 +4,20 @@ pub type NodeId = usize;
 pub const MIN_ALIGNMENT: usize = 128;
 
 mod ap_accountant;
+mod ap_context;
 mod ap_frustrum;
 mod ap_plan;
 mod ap_planner;
-mod ap_scratch;
 mod ap_scratch_builder;
 mod ap_solver;
 mod ap_solver_scratch;
 mod direct_frustrum_solver;
 
 pub use ap_accountant::*;
+pub use ap_context::*;
 pub use ap_frustrum::*;
 pub use ap_plan::*;
 pub use ap_planner::*;
-pub use ap_scratch::*;
 pub use ap_scratch_builder::*;
 pub use ap_solver::*;
 pub use ap_solver_scratch::*;
