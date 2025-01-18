@@ -99,13 +99,28 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         for (i, node) in self.nodes.iter().enumerate() {
             match node {
                 PlanNode::PeriodicSolve(_) => {
-                    writeln!(writer, " n_{} [label=\"periodic\"];", i).unwrap();
+                    writeln!(
+                        writer,
+                        " n_{id} [label=\"periodic: {id}\"];",
+                        id = i
+                    )
+                    .unwrap();
                 }
                 PlanNode::DirectSolve(_) => {
-                    writeln!(writer, " n_{} [label=\"direct\"];", i).unwrap();
+                    writeln!(
+                        writer,
+                        " n_{id} [label=\"direct: {id}\"];",
+                        id = i
+                    )
+                    .unwrap();
                 }
                 PlanNode::Repeat(_) => {
-                    writeln!(writer, " n_{} [label=\"repeat\"];", i).unwrap();
+                    writeln!(
+                        writer,
+                        " n_{id} [label=\"repeat: {id}\"];",
+                        id = i
+                    )
+                    .unwrap();
                 }
             }
         }
