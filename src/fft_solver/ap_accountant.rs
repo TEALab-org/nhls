@@ -70,7 +70,7 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
     ) -> usize {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
-                self.handle_direct_node(node_id, node_requirements)
+                self.handle_direct_node(node_id, pre_allocated_io, node_requirements)
             }
             PlanNode::PeriodicSolve(_) => self.handle_periodic_node(
                 node_id,
@@ -123,8 +123,13 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
     pub fn handle_direct_node(
         &self,
         node_id: NodeId,
+        pre_allocated_io: bool,
         node_requirements: &mut [usize],
     ) -> usize {
+        if pre_allocated_io {
+            return 0;
+        }
+
         let direct_node = self.plan.unwrap_direct_node(node_id);
 
         let node_requirement =

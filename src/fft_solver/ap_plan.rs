@@ -52,6 +52,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         &self.nodes[node]
     }
 
+    #[track_caller]
     pub fn unwrap_periodic_node(
         &self,
         node_id: NodeId,
@@ -59,10 +60,11 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         if let PlanNode::PeriodicSolve(periodic_node) = self.get_node(node_id) {
             periodic_node
         } else {
-            panic!("ERROR: Not a periodic node");
+            panic!("ERROR: Not a periodic node, {}", node_id);
         }
     }
 
+    #[track_caller]
     pub fn unwrap_direct_node(
         &self,
         node_id: NodeId,
@@ -70,15 +72,16 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         if let PlanNode::DirectSolve(direct_node) = self.get_node(node_id) {
             direct_node
         } else {
-            panic!("ERROR: Not a direct node");
+            panic!("ERROR: Not a direct node, {}", node_id);
         }
     }
 
+    #[track_caller]
     pub fn unwrap_repeat_node(&self, node_id: NodeId) -> &RepeatNode {
         if let PlanNode::Repeat(repeat_node) = self.get_node(node_id) {
             repeat_node
         } else {
-            panic!("ERROR: Not a repeat node");
+            panic!("ERROR: Not a repeat node, {}", node_id);
         }
     }
 

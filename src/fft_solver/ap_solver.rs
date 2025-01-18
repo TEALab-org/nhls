@@ -159,7 +159,7 @@ where
     ) {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
-                self.direct_solve(node_id, input, output);
+                self.direct_solve_allocate_io(node_id, input, output);
             }
             PlanNode::PeriodicSolve(_) => {
                 self.periodic_solve_allocate_io(node_id, input, output);
@@ -169,6 +169,26 @@ where
             }
         }
     }
+
+    pub fn unknown_solve_preallocated_io<'b>(
+        &self,
+        node_id: NodeId,
+        input: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+    ) {
+        match self.plan.get_node(node_id) {
+            PlanNode::DirectSolve(_) => {
+                self.direct_solve_preallocated_io(node_id, input, output);
+            }
+            PlanNode::PeriodicSolve(_) => {
+                self.periodic_solve_preallocated_io(node_id, input, output);
+            }
+            PlanNode::Repeat(_) => {
+                panic!("ERROR: Not expecting repeat node");
+            }
+        }
+    }
+
 
     pub fn periodic_solve_preallocated_io<'b>(
         &self,
@@ -217,7 +237,7 @@ where
         // call time cut if needed
         if let Some(next_id) = periodic_solve.time_cut {
             std::mem::swap(input_domain, output_domain);
-            self.periodic_solve_preallocated_io(
+            self.unknown_solve_preallocated_io(
                 next_id,
                 input_domain,
                 output_domain,
@@ -247,7 +267,7 @@ where
         output.par_set_subdomain(&output_domain, self.chunk_size);
     }
 
-    pub fn direct_solve<'b>(
+    pub fn direct_solve_allocate_io<'b>(
         &self,
         node_id: NodeId,
         input: &SliceDomain<'b, GRID_DIMENSION>,
@@ -261,16 +281,27 @@ where
         // copy input
         input_domain.par_from_superset(input, self.chunk_size);
 
+        self.direct_solve_preallocated_io(node_id, &mut input_domain, &mut output_domain);
+
+        // copy output to output
+        output.par_set_subdomain(&output_domain, self.chunk_size);
+    }
+
+    pub fn direct_solve_preallocated_io<'b>(
+        &self,
+        node_id: NodeId,
+        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+    ) {
+        let direct_solve = self.plan.unwrap_direct_node(node_id);
+
         // invoke direct solver
         self.direct_frustrum_solver.apply(
-            &mut input_domain,
-            &mut output_domain,
+            input_domain,
+            output_domain,
             &direct_solve.sloped_sides,
             direct_solve.steps,
         );
         debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
-
-        // copy output to output
-        output.par_set_subdomain(&output_domain, self.chunk_size);
     }
 }
