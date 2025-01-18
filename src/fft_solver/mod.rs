@@ -9,6 +9,7 @@ mod ap_plan;
 mod ap_planner;
 mod ap_scratch;
 mod ap_solver;
+mod ap_solver_scratch;
 mod direct_frustrum_solver;
 
 pub use ap_accountant::*;
@@ -17,6 +18,7 @@ pub use ap_plan::*;
 pub use ap_planner::*;
 pub use ap_scratch::*;
 pub use ap_solver::*;
+pub use ap_solver_scratch::*;
 pub use direct_frustrum_solver::*;
 
 mod convolution_gen;
