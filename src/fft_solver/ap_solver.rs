@@ -1,6 +1,5 @@
 use crate::domain::*;
 use crate::fft_solver::*;
-use crate::solver::trapezoid::*;
 use crate::stencil::*;
 use crate::util::*;
 
@@ -24,7 +23,8 @@ pub struct APSolverContext<
     //stencil_slopes: &'a Bounds<GRID_DIMENSION>,
     convolution_store: &'a ConvolutionStore,
     plan: &'a APPlan<GRID_DIMENSION>,
-    node_block_requirements: Vec<usize>,
+    node_scratch_descriptors: Vec<ScratchDescriptor>,
+    scratch_space: ScratchSpace,
     chunk_size: usize,
 }
 
@@ -39,25 +39,59 @@ where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    pub fn solve_root<DomainType: DomainView<GRID_DIMENSION>>(
+    fn get_input_output(
         &self,
-        input: &mut DomainType,
-        output: &mut DomainType,
-        scratch: &'a mut APNodeScratch<'a>,
-    ) {
-        //
+        node_id: usize,
+        aabb: &AABB<GRID_DIMENSION>,
+    ) -> (SliceDomain<GRID_DIMENSION>, SliceDomain<GRID_DIMENSION>) {
+        let scratch_descriptor = &self.node_scratch_descriptors[node_id];
+        let input_buffer = self.scratch_space.unsafe_get_buffer(
+            scratch_descriptor.input_offset,
+            scratch_descriptor.real_buffer_size,
+        );
+        let output_buffer = self.scratch_space.unsafe_get_buffer(
+            scratch_descriptor.output_offset,
+            scratch_descriptor.real_buffer_size,
+        );
+        debug_assert!(input_buffer.len() >= aabb.buffer_size());
+        debug_assert!(output_buffer.len() >= aabb.buffer_size());
+
+        let input_domain = SliceDomain::new(*aabb, input_buffer);
+        let output_domain = SliceDomain::new(*aabb, output_buffer);
+        (input_domain, output_domain)
     }
 
-    pub fn periodic_solve_preallocated_io<'b>(
+    fn get_complex(&self, node_id: usize) -> &mut [c64] {
+        let scratch_descriptor = &self.node_scratch_descriptors[node_id];
+        self.scratch_space.unsafe_get_buffer(
+            scratch_descriptor.complex_offset,
+            scratch_descriptor.complex_buffer_size,
+        )
+    }
+
+    pub fn solve_root(
         &self,
-        node_id: NodeId,
-        input: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output: &mut SliceDomain<'b, GRID_DIMENSION>,
-        scratch: APNodeScratch<'a>,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
     ) {
-        let periodic_solve = self.plan.unwrap_periodic_node(node_id);
-        debug_assert_eq!(periodic_solve.input_aabb, *input.aabb());
-        debug_assert_eq!(periodic_solve.input_aabb, *output.aabb());
+        let repeat_solve = self.plan.unwrap_repeat_node(self.plan.root);
+        for _ in 0..repeat_solve.n {
+            self.periodic_solve_preallocated_io(
+                repeat_solve.node,
+                input_domain,
+                output_domain,
+            );
+            std::mem::swap(input_domain, output_domain);
+        }
+        if let Some(next) = repeat_solve.next {
+            self.periodic_solve_preallocated_io(
+                next,
+                input_domain,
+                output_domain,
+            )
+        } else {
+            std::mem::swap(input_domain, output_domain);
+        }
     }
 
     pub fn unknown_solve_allocate_io<'b>(
@@ -65,16 +99,13 @@ where
         node_id: NodeId,
         input: &SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
-        scratch: APNodeScratch<'a>,
     ) {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
-                self.direct_solve(node_id, input, output, scratch);
+                self.direct_solve(node_id, input, output);
             }
             PlanNode::PeriodicSolve(_) => {
-                self.periodic_solve_allocate_io(
-                    node_id, input, output, scratch,
-                );
+                self.periodic_solve_allocate_io(node_id, input, output);
             }
             PlanNode::Repeat(_) => {
                 panic!("ERROR: Not expecting repeat node");
@@ -82,31 +113,24 @@ where
         }
     }
 
-    pub fn periodic_solve_allocate_io<'b>(
+    pub fn periodic_solve_preallocated_io<'b>(
         &self,
         node_id: NodeId,
-        input: &SliceDomain<'b, GRID_DIMENSION>,
-        output: &mut SliceDomain<'b, GRID_DIMENSION>,
-        scratch: APNodeScratch<'a>,
+        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
-
-        // Allocate io buffers
-        let ([mut input_domain, mut output_domain], mut scratch_remainder) =
-            scratch.split_io_domains(periodic_solve.input_aabb);
-
-        // copy input
-        input_domain.par_from_superset(input, self.chunk_size);
+        debug_assert_eq!(periodic_solve.input_aabb, *input_domain.aabb());
+        debug_assert_eq!(periodic_solve.input_aabb, *output_domain.aabb());
 
         // Apply convolution
         {
             let convolution_op =
                 self.convolution_store.get(periodic_solve.convolution_id);
             convolution_op.apply(
-                &mut input_domain,
-                &mut output_domain,
-                scratch_remainder
-                    .unsafe_complex_buffer(periodic_solve.input_aabb),
+                input_domain,
+                output_domain,
+                self.get_complex(node_id),
                 self.chunk_size,
             );
         }
@@ -116,37 +140,52 @@ where
         // block requirement
         // split that from scratch
         // get mutable output domain
-        rayon::scope(|s| {
-            for node_id in periodic_solve.boundary_nodes.clone() {
-                let block_requirement = self.node_block_requirements[node_id];
-                let node_scratch: APNodeScratch<'_>;
-                (node_scratch, scratch_remainder) =
-                    scratch_remainder.split_scratch(block_requirement);
-                let mut node_output = output_domain.unsafe_mut_access();
-                s.spawn(move |_| {
-                    self.unknown_solve_allocate_io(
-                        node_id,
-                        input,
-                        &mut node_output,
-                        node_scratch,
-                    );
-                });
-            }
-        });
+        {
+            let input_domain_const: &SliceDomain<'b, GRID_DIMENSION> =
+                input_domain;
+            rayon::scope(|s| {
+                for node_id in periodic_solve.boundary_nodes.clone() {
+                    let mut node_output = output_domain.unsafe_mut_access();
+                    s.spawn(move |_| {
+                        self.unknown_solve_allocate_io(
+                            node_id,
+                            input_domain_const,
+                            &mut node_output,
+                        );
+                    });
+                }
+            });
+        }
 
         // call time cut if needed
         if let Some(next_id) = periodic_solve.time_cut {
-            std::mem::swap(&mut input_domain, &mut output_domain);
+            std::mem::swap(input_domain, output_domain);
             self.periodic_solve_preallocated_io(
                 next_id,
-                &mut input_domain,
-                &mut output_domain,
-                node_scratch,
+                input_domain,
+                output_domain,
             );
         }
-        // mem swap input output,
-        // call pre-allocated solve
+    }
 
+    pub fn periodic_solve_allocate_io<'b>(
+        &self,
+        node_id: NodeId,
+        input: &SliceDomain<'b, GRID_DIMENSION>,
+        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+    ) {
+        let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+        let (mut input_domain, mut output_domain) =
+            self.get_input_output(node_id, &periodic_solve.input_aabb);
+
+        // copy input
+        input_domain.par_from_superset(input, self.chunk_size);
+
+        self.periodic_solve_preallocated_io(
+            node_id,
+            &mut input_domain,
+            &mut output_domain,
+        );
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
     }
@@ -156,13 +195,11 @@ where
         node_id: NodeId,
         input: &SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
-        scratch: APNodeScratch<'a>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
 
-        // Allocate io buffers
-        let ([mut input_domain, mut output_domain], _remainder_) =
-            scratch.split_io_domains(direct_solve.input_aabb);
+        let (mut input_domain, mut output_domain) =
+            self.get_input_output(node_id, &direct_solve.input_aabb);
 
         // copy input
         input_domain.par_from_superset(input, self.chunk_size);

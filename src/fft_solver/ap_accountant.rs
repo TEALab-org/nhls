@@ -5,7 +5,7 @@ use crate::util::*;
 use std::ops::Range;
 
 pub struct APAccountBuilder<'a, const GRID_DIMENSION: usize> {
-    pub plan: &'a APPlan<GRID_DIMENSION>,
+    plan: &'a APPlan<GRID_DIMENSION>,
 }
 
 impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
@@ -18,9 +18,6 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
     }
 
     fn real_buffer_requirement(&self, aabb: &AABB<GRID_DIMENSION>) -> usize {
-        // TODO: this is where we should do the 128bit offset thing
-        // We are allocating two, but the more I think about it,
-        // we should just always allocate 128 aligned things
         let min_bytes = aabb.buffer_size() * std::mem::size_of::<f64>();
         min_bytes.div_ceil(MIN_ALIGNMENT)
     }
@@ -35,13 +32,7 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         node_id: NodeId,
         node_requirements: &mut [usize],
     ) -> usize {
-        let repeat_node = if let PlanNode::Repeat(repeat_node) =
-            self.plan.get_node(node_id)
-        {
-            repeat_node
-        } else {
-            panic!("ERROR: Not a repeat node");
-        };
+        let repeat_node = self.plan.unwrap_repeat_node(node_id);
 
         let mut node_requirement = self.handle_periodic_node(
             repeat_node.node,
