@@ -201,6 +201,8 @@ where
 
         // Apply convolution
         {
+            println!("***(1) o: {:?}. i: {:?}, po: {:?}", input_domain.aabb(), output_domain.aabb(), periodic_solve.output_aabb);
+
             let convolution_op =
                 self.convolution_store.get(periodic_solve.convolution_id);
             convolution_op.apply(
@@ -209,6 +211,14 @@ where
                 self.get_complex(node_id),
                 self.chunk_size,
             );
+            println!("***(2) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
+
+            std::mem::swap(input_domain, output_domain);
+            output_domain.set_aabb(periodic_solve.output_aabb);
+            println!("***(3) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
+            output_domain.par_from_superset(input_domain, self.chunk_size);
+            input_domain.set_aabb(periodic_solve.output_aabb);
+             
         }
 
         // Boundary
