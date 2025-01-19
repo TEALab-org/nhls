@@ -134,6 +134,7 @@ where
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
     ) {
         let repeat_solve = self.plan.unwrap_repeat_node(self.plan.root);
+        println!("- Solve Root, n_id: {}, {:?}", self.plan.root, repeat_solve);
         for _ in 0..repeat_solve.n {
             self.periodic_solve_preallocated_io(
                 repeat_solve.node,
@@ -198,6 +199,10 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+        println!(
+            "- Solve Periodic PreAlloc, n_id: {}, {:?}",
+            node_id, periodic_solve
+        );
 
         // Likely the input domain will be larger than needed?
         std::mem::swap(input_domain, output_domain);
@@ -230,7 +235,7 @@ where
                     // access to the output_domain
                     let mut node_output = output_domain.unsafe_mut_access();
 
-                    // Each boundary solve will need 
+                    // Each boundary solve will need
                     // new input / output domains from the scratch space
                     s.spawn(move |_| {
                         self.unknown_solve_allocate_io(
@@ -261,6 +266,11 @@ where
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+        println!(
+            "- Solve Periodic Alloc, n_id: {}, {:?}",
+            node_id, periodic_solve
+        );
+
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &periodic_solve.input_aabb);
 
@@ -283,7 +293,10 @@ where
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
-
+        println!(
+            "- Solve Direct Alloc, n_id: {}, {:?}",
+            node_id, direct_solve
+        );
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &direct_solve.input_aabb);
 
@@ -307,13 +320,17 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
+        println!(
+            "- Solve Direct PreAlloc, n_id: {}, {:?}",
+            node_id, direct_solve
+        );
         debug_assert!(input_domain
             .aabb()
             .contains_aabb(&direct_solve.input_aabb));
 
-        // For time-cuts, the provided domains 
+        // For time-cuts, the provided domains
         // will not have the expected sizes.
-        // All we know is that the provided input domain contains 
+        // All we know is that the provided input domain contains
         // the expected input domain
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(direct_solve.input_aabb);

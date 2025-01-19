@@ -10,6 +10,9 @@ pub struct PeriodicSolveNode<const GRID_DIMENSION: usize> {
     pub convolution_id: OpId,
     pub steps: usize,
 
+    pub recursion_dimension: usize,
+    pub side: Side,
+
     /// calculate remaining output dections based on either
     ///  - AABB::decomposition for central solve
     ///  - APFrustrum::decomposition for frustrum solves
@@ -25,6 +28,9 @@ pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
     pub output_aabb: AABB<GRID_DIMENSION>,
     pub sloped_sides: Bounds<GRID_DIMENSION>,
     pub steps: usize,
+
+    pub recursion_dimension: usize,
+    pub side: Side,
 }
 
 /// Used for central periodic solve, can't appear in frustrums
@@ -104,18 +110,28 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
                 PlanNode::PeriodicSolve(periodic_solve) => {
                     writeln!(
                         writer,
-                        " n_{id} [label=\"n_{id}: PERIODIC\nsteps: {s}\"];",
+                        " n_{id} [label=\"n_{id}: PERIODIC\nsteps: {s}\nin: {in}\nout: {out}\nrd: {rd}, side: {side}\nconv_id: {c_id}\"];",
                         id = i,
-                        s = periodic_solve.steps
+                        s = periodic_solve.steps,
+                        in = periodic_solve.input_aabb,
+                        out = periodic_solve.output_aabb,
+                        c_id = periodic_solve.convolution_id,
+                        rd = periodic_solve.recursion_dimension,
+                        side = periodic_solve.side,
                     )
                     .unwrap();
                 }
                 PlanNode::DirectSolve(direct_solve) => {
                     writeln!(
                         writer,
-                        " n_{id} [label=\"n_{id}: DIRECT\nsteps: {s}\"];",
+                        " n_{id} [label=\"n_{id}: DIRECT\nsteps: {s}\nin: {in}\nout: {out}\nrd: {rd}, side: {side}\nsloped_sides: {slope:?}\"];",
                         id = i,
                         s = direct_solve.steps,
+                        in = direct_solve.input_aabb,
+                        out = direct_solve.output_aabb,
+                        slope = direct_solve.sloped_sides,
+                        rd = direct_solve.recursion_dimension,
+                        side = direct_solve.side,
                     )
                     .unwrap();
                 }
@@ -124,7 +140,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
                         writer,
                         " n_{id} [label=\"n_{id}: REPEAT\nn: {n}\"];",
                         id = i,
-                        n = repeat_node.n
+                        n = repeat_node.n,
                     )
                     .unwrap();
                 }
