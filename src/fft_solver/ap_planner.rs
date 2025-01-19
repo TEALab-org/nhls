@@ -119,6 +119,8 @@ where
             steps: periodic_solve.steps,
             boundary_nodes: first_node..last_node,
             time_cut,
+            recursion_dimension: frustrum.recursion_dimension,
+            side: frustrum.side,
         };
 
         PlanNode::PeriodicSolve(periodic_node)
@@ -168,6 +170,8 @@ where
             steps: periodic_solve.steps,
             boundary_nodes: first_node..last_node,
             time_cut: None,
+            recursion_dimension: 123456,
+            side: Side::Min,
         };
 
         let root_node =

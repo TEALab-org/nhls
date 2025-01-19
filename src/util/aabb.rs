@@ -17,6 +17,12 @@ pub struct AABB<const DIMENSION: usize> {
     pub bounds: Bounds<DIMENSION>,
 }
 
+impl<const GRID_DIMENSION: usize> std::fmt::Display for AABB<GRID_DIMENSION> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+         write!(f, "{:?}", self.bounds)
+    }
+}
+
 impl<const DIMENSION: usize> AABB<DIMENSION> {
     /// Create AABB from raw bounds.
     #[inline]

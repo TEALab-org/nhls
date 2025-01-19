@@ -7,6 +7,15 @@ pub enum Side {
     Max,
 }
 
+impl std::fmt::Display for Side {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Side::Min => write!(f, "Min"),
+            Side::Max => write!(f, "Max"),
+        }
+    }
+}
+
 impl Side {
     #[inline]
     pub fn inner_index(&self) -> usize {
@@ -97,6 +106,8 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
             output_aabb: self.output_aabb,
             sloped_sides: self.sloped_sides(),
             steps: self.steps,
+            recursion_dimension: self.recursion_dimension,
+            side: self.side,
         };
         PlanNode::DirectSolve(direct_node)
     }
