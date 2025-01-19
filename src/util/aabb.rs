@@ -19,6 +19,7 @@ pub struct AABB<const DIMENSION: usize> {
 
 impl<const DIMENSION: usize> AABB<DIMENSION> {
     /// Create AABB from raw bounds.
+    #[inline]
     pub fn new(bounds: Bounds<DIMENSION>) -> Self {
         AABB { bounds }
     }
@@ -39,11 +40,13 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
     }
 
     /// Return the number of coordinates contained in the instance.
+    #[inline]
     pub fn buffer_size(&self) -> usize {
         real_buffer_size(&self.exclusive_bounds())
     }
 
     /// Return the number of complex numbers needed for a FFTW buffer.
+    #[inline]
     pub fn complex_buffer_size(&self) -> usize {
         complex_buffer_size(&self.exclusive_bounds())
     }
