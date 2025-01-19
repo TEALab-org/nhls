@@ -46,10 +46,8 @@ where
         trapezoid_slopes.set_column(1, &negative_slopes);
 
         let mut output_box = *input_domain.aabb();
-        println!("   direct apply: {}", steps);
-        for i in 0..steps {
+        for _ in 0..steps {
             output_box = output_box.add_bounds_diff(trapezoid_slopes);
-            println!("     obox: {:?}", output_box);
             debug_assert!(
                 input_domain.aabb().buffer_size() >= output_box.buffer_size()
             );
