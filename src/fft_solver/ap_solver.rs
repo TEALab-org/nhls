@@ -104,12 +104,12 @@ where
             scratch_descriptor.real_buffer_size,
         );
         println!(
-            "node_id: {}, input_buffer len: {}, aabb: {}",
+            "input_output for node_id: {}, input_buffer len: {}, aabb: {}",
             node_id,
             input_buffer.len(),
             aabb.buffer_size()
         );
-        println!("{:?}", self.plan.get_node(node_id));
+        println!("  - {:?}", self.plan.get_node(node_id));
         debug_assert!(input_buffer.len() >= aabb.buffer_size());
         debug_assert!(output_buffer.len() >= aabb.buffer_size());
 
@@ -188,7 +188,6 @@ where
             }
         }
     }
-
 
     pub fn periodic_solve_preallocated_io<'b>(
         &self,
@@ -281,7 +280,11 @@ where
         // copy input
         input_domain.par_from_superset(input, self.chunk_size);
 
-        self.direct_solve_preallocated_io(node_id, &mut input_domain, &mut output_domain);
+        self.direct_solve_preallocated_io(
+            node_id,
+            &mut input_domain,
+            &mut output_domain,
+        );
 
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
@@ -294,6 +297,7 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
+        debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
 
         // invoke direct solver
         self.direct_frustrum_solver.apply(
@@ -301,6 +305,12 @@ where
             output_domain,
             &direct_solve.sloped_sides,
             direct_solve.steps,
+        );
+        println!(
+            "Direct solve, steps: {}, i: {:?}, o: {:?}",
+            direct_solve.steps,
+            direct_solve.input_aabb,
+            direct_solve.output_aabb
         );
         debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
     }
