@@ -8,7 +8,10 @@ pub enum Side {
 }
 
 impl std::fmt::Display for Side {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> Result<(), std::fmt::Error> {
         match self {
             Side::Min => write!(f, "Min"),
             Side::Max => write!(f, "Max"),

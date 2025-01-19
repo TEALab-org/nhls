@@ -18,8 +18,11 @@ pub struct AABB<const DIMENSION: usize> {
 }
 
 impl<const GRID_DIMENSION: usize> std::fmt::Display for AABB<GRID_DIMENSION> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-         write!(f, "{:?}", self.bounds)
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> Result<(), std::fmt::Error> {
+        write!(f, "{:?}", self.bounds)
     }
 }
 
