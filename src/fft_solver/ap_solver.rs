@@ -313,6 +313,9 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
+        debug_assert!(input_domain
+            .aabb()
+            .contains_aabb(&direct_solve.input_aabb));
 
         // Likely the input domain will be larger than needed?
         std::mem::swap(input_domain, output_domain);

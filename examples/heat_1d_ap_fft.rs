@@ -20,7 +20,7 @@ fn main() {
     // Create AP Solver
     let cutoff = 40;
     let ratio = 0.5;
-    let mut solver = APSolver::new(
+    let solver = APSolver::new(
         &bc,
         &stencil,
         grid_bound,

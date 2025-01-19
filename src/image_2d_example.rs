@@ -42,12 +42,16 @@ pub struct Args {
     pub plan_type: PlanType,
 
     /// File to load and save FFTW3 wisdom.
-    #[arg(short, long)]
+    #[arg(long)]
     pub wisdom_file: Option<PathBuf>,
 
     /// Fill with random values matching 2023 implementation
     #[arg(short, long)]
     pub rand_init: bool,
+
+    /// Write out a dot file for the ap plan
+    #[arg(long)]
+    pub write_dot: bool,
 }
 
 impl Args {
@@ -63,6 +67,7 @@ impl Args {
 
         rayon::ThreadPoolBuilder::new()
             .num_threads(args.threads)
+            .thread_name(|i| format!("rayon_thread_{}", i))
             .build_global()
             .unwrap();
         fftw::threading::init_threads_f64().unwrap();
