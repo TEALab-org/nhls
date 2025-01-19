@@ -139,8 +139,8 @@ where
             .convolution_gen
             .get_op(&self.aabb, periodic_solve.steps);
 
-        println!("aabb: {:?}", self.aabb);
-        println!("output: {:?}", periodic_solve.output_aabb);
+        //println!("aabb: {:?}", self.aabb);
+        //println!("output: {:?}", periodic_solve.output_aabb);
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
@@ -182,7 +182,7 @@ where
 
         let n = self.steps / central_solve_steps;
         let remainder = self.steps % central_solve_steps;
-        println!("n: {}, remainder: {}", n, remainder);
+        //println!("n: {}, remainder: {}", n, remainder);
         let mut next = None;
         if remainder != 0 {
             let (remainder_solve_node, remainder_solve_steps) =

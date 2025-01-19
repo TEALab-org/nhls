@@ -127,7 +127,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         );
         self.output_aabb = next_frustrum.input_aabb(stencil_slopes);
         self.steps = cut_steps;
-        println!("timecut: {}", cut_steps);
+        //println!("timecut: {}", cut_steps);
         Some(next_frustrum)
     }
 

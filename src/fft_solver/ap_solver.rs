@@ -103,6 +103,7 @@ where
             scratch_descriptor.output_offset,
             scratch_descriptor.real_buffer_size,
         );
+        /*
         println!(
             "input_output for node_id: {}, input_buffer len: {}, aabb: {}",
             node_id,
@@ -110,6 +111,7 @@ where
             aabb.buffer_size()
         );
         println!("  - {:?}", self.plan.get_node(node_id));
+        */
         debug_assert!(input_buffer.len() >= aabb.buffer_size());
         debug_assert!(output_buffer.len() >= aabb.buffer_size());
 
@@ -196,20 +198,25 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
-        /*
+
         // Likely the input domain will be larger than needed?
         std::mem::swap(input_domain, output_domain);
-        output_domain.set_aabb(periodic_solve.input_aabb);
-        println!("***(43) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
-        output_domain.par_from_superset(input_domain, self.chunk_size);
         input_domain.set_aabb(periodic_solve.input_aabb);
-        debug_assert_eq!(periodic_solve.input_aabb, *input_domain.aabb());
-        debug_assert_eq!(periodic_solve.input_aabb, *output_domain.aabb());
-*/
+        input_domain.par_from_superset(output_domain, self.chunk_size);
+        output_domain.set_aabb(periodic_solve.input_aabb);
+
+        /*
+                // Likely the input domain will be larger than needed?
+                std::mem::swap(input_domain, output_domain);
+                output_domain.set_aabb(periodic_solve.input_aabb);
+                println!("***(43) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
+                output_domain.par_from_superset(input_domain, self.chunk_size);
+                input_domain.set_aabb(periodic_solve.input_aabb);
+                debug_assert_eq!(periodic_solve.input_aabb, *input_domain.aabb());
+                debug_assert_eq!(periodic_solve.input_aabb, *output_domain.aabb());
+        */
         // Apply convolution
         {
-            println!("***(1) o: {:?}. i: {:?}, po: {:?}", input_domain.aabb(), output_domain.aabb(), periodic_solve.output_aabb);
-
             let convolution_op =
                 self.convolution_store.get(periodic_solve.convolution_id);
             convolution_op.apply(
@@ -218,8 +225,6 @@ where
                 self.get_complex(node_id),
                 self.chunk_size,
             );
-            println!("***(2) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
-             
         }
 
         // Boundary
@@ -288,8 +293,6 @@ where
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &direct_solve.input_aabb);
 
-        println!("Direct Solve Allocate: i ({}, {}), o ({}, {})", input_domain.buffer().as_ptr() as usize, input_domain.buffer().len(), output_domain.buffer().as_ptr() as usize, output_domain.buffer().len());
-
         // copy input
         input_domain.par_from_superset(input, self.chunk_size);
 
@@ -310,15 +313,12 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
-       
+
         // Likely the input domain will be larger than needed?
-        /*
         std::mem::swap(input_domain, output_domain);
-        output_domain.set_aabb(direct_solve.input_aabb);
-        println!("***(43) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
-        output_domain.par_from_superset(input_domain, self.chunk_size);
         input_domain.set_aabb(direct_solve.input_aabb);
-        */
+        input_domain.par_from_superset(output_domain, self.chunk_size);
+        output_domain.set_aabb(direct_solve.input_aabb);
 
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
 
@@ -329,12 +329,14 @@ where
             &direct_solve.sloped_sides,
             direct_solve.steps,
         );
+        /*
         println!(
             "Direct solve, steps: {}, i: {:?}, o: {:?}",
             direct_solve.steps,
             direct_solve.input_aabb,
             direct_solve.output_aabb
         );
+        */
         debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
     }
 }

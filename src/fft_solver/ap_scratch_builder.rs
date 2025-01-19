@@ -22,11 +22,13 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
         let scratch_space = ScratchSpace::new(
             builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
         );
+        /*
         println!("SCRATCH DESCRIPTORS");
         for (i, d) in scratch_descriptors.iter().enumerate() {
             println!("i: {}, d: {:?}", i, d);
         }
         println!("END SCRATCH DESCRIPTORS");
+        */
         (scratch_descriptors, scratch_space)
     }
 
