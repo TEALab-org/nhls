@@ -196,6 +196,7 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+
         debug_assert_eq!(periodic_solve.input_aabb, *input_domain.aabb());
         debug_assert_eq!(periodic_solve.input_aabb, *output_domain.aabb());
 
@@ -212,12 +213,6 @@ where
                 self.chunk_size,
             );
             println!("***(2) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
-
-            std::mem::swap(input_domain, output_domain);
-            output_domain.set_aabb(periodic_solve.output_aabb);
-            println!("***(3) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
-            output_domain.par_from_superset(input_domain, self.chunk_size);
-            input_domain.set_aabb(periodic_solve.output_aabb);
              
         }
 
@@ -307,6 +302,14 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
+       
+        // Likely the input domain will be larger than needed?
+        std::mem::swap(input_domain, output_domain);
+        output_domain.set_aabb(direct_solve.input_aabb);
+        println!("***(43) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
+        output_domain.par_from_superset(input_domain, self.chunk_size);
+        input_domain.set_aabb(direct_solve.input_aabb);
+
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
 
         // invoke direct solver
