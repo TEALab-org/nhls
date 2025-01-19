@@ -205,16 +205,6 @@ where
         input_domain.par_from_superset(output_domain, self.chunk_size);
         output_domain.set_aabb(periodic_solve.input_aabb);
 
-        /*
-                // Likely the input domain will be larger than needed?
-                std::mem::swap(input_domain, output_domain);
-                output_domain.set_aabb(periodic_solve.input_aabb);
-                println!("***(43) o: {:?}. i: {:?}", input_domain.aabb(), output_domain.aabb());
-                output_domain.par_from_superset(input_domain, self.chunk_size);
-                input_domain.set_aabb(periodic_solve.input_aabb);
-                debug_assert_eq!(periodic_solve.input_aabb, *input_domain.aabb());
-                debug_assert_eq!(periodic_solve.input_aabb, *output_domain.aabb());
-        */
         // Apply convolution
         {
             let convolution_op =
@@ -228,16 +218,20 @@ where
         }
 
         // Boundary
-        // For each boundary node we need
-        // block requirement
-        // split that from scratch
-        // get mutable output domain
+        // In a rayon scope, we fork for each of the boundary solves,
+        // each of which will fill in their part of of output_domain
         {
             let input_domain_const: &SliceDomain<'b, GRID_DIMENSION> =
                 input_domain;
             rayon::scope(|s| {
                 for node_id in periodic_solve.boundary_nodes.clone() {
+                    // Our plan should provide the guarantee that
+                    // that boundary nodes have mutually exclusive
+                    // access to the output_domain
                     let mut node_output = output_domain.unsafe_mut_access();
+
+                    // Each boundary solve will need 
+                    // new input / output domains from the scratch space
                     s.spawn(move |_| {
                         self.unknown_solve_allocate_io(
                             node_id,
@@ -317,7 +311,10 @@ where
             .aabb()
             .contains_aabb(&direct_solve.input_aabb));
 
-        // Likely the input domain will be larger than needed?
+        // For time-cuts, the provided domains 
+        // will not have the expected sizes.
+        // All we know is that the provided input domain contains 
+        // the expected input domain
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(direct_solve.input_aabb);
         input_domain.par_from_superset(output_domain, self.chunk_size);
