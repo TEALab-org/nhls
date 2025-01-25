@@ -8,9 +8,8 @@ pub fn frustrum_input_aabb<const GRID_DIMENSION: usize>(
     sloped_sides: &Bounds<GRID_DIMENSION>,
     stencil_slopes: &Bounds<GRID_DIMENSION>,
 ) -> AABB<GRID_DIMENSION> {
-    let mut trapezoid_slopes = stencil_slopes.component_mul(sloped_sides);
-    let negative_slopes = -1 * trapezoid_slopes.column(0);
-    trapezoid_slopes.set_column(0, &negative_slopes);
+    let trapezoid_slopes =
+        slopes_to_outward_diff(&stencil_slopes.component_mul(sloped_sides));
     output_box.add_bounds_diff(steps as i32 * trapezoid_slopes)
 }
 
@@ -22,9 +21,8 @@ pub fn frustrum_volume<const GRID_DIMENSION: usize>(
     sloped_sides: &Bounds<GRID_DIMENSION>,
     stencil_slopes: &Bounds<GRID_DIMENSION>,
 ) -> usize {
-    let mut trapezoid_slopes = stencil_slopes.component_mul(sloped_sides);
-    let negative_slopes = -1 * trapezoid_slopes.column(0);
-    trapezoid_slopes.set_column(0, &negative_slopes);
+    let trapezoid_slopes =
+        slopes_to_outward_diff(&stencil_slopes.component_mul(sloped_sides));
 
     let mut b = *output_box;
     let mut result = b.buffer_size();
