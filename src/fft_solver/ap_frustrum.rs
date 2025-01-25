@@ -104,14 +104,18 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         &self,
         stencil_slopes: &Bounds<GRID_DIMENSION>,
     ) -> PlanNode<GRID_DIMENSION> {
+        println!("Generate direct Node: {:?}", self);
+        println!(" -- input_aabb: {:?}", self.input_aabb(stencil_slopes));
+
         let direct_node = DirectSolveNode {
             input_aabb: self.input_aabb(stencil_slopes),
             output_aabb: self.output_aabb,
             sloped_sides: self.sloped_sides(),
-            steps: self.steps,
+            steps: self.steps - 1,
             recursion_dimension: self.recursion_dimension,
             side: self.side,
         };
+        println!(" -- r: {:?}", direct_node);
         PlanNode::DirectSolve(direct_node)
     }
 
@@ -128,7 +132,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         // the output
         debug_assert!(cut_steps <= self.steps);
         // No time cut
-        if cut_steps == self.steps {
+        if cut_steps >= self.steps {
             return None;
         }
 
@@ -145,10 +149,23 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         Some(next_frustrum)
     }
 
+    /// complement to decompose
+    pub fn periodic_solve_output(
+        &self,
+        stencil_slopes: &Bounds<GRID_DIMENSION>,
+    ) -> AABB<GRID_DIMENSION> {
+        // sloped sides are part of periodic solve
+        // so we want to 1-0 flip
+        let boundary_sides = flip_sloped(&self.sloped_sides());
+        self.output_aabb;
+        self.output_aabb
+    }
+
     // TODO: add tests
     // in particular,
     pub fn decompose(&self) -> Vec<APFrustrum<GRID_DIMENSION>> {
         // Cause FFT goes steps in, so sub one, shrug
+        // !!!! danger, was -1  here, uh oh
         let i_steps = self.steps as i32 - 1;
         let mut result = Vec::new();
 
@@ -171,7 +188,6 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         remainder.bounds
             [(self.recursion_dimension, self.side.outer_index())] +=
             self.side.outer_coef() * i_steps;
-        //println!(" -- remainder: {:?}", remainder);
 
         // 2 for each lower dimension
         for d in self.recursion_dimension + 1..GRID_DIMENSION {
@@ -314,45 +330,84 @@ mod unit_tests {
                 )
             );
         }
-        /*
-        let aabb = AABB::new(matrix![0, 50; 0, 200; 0, 200]);
-        println!("aabb: {:?}", aabb);
-        let f1 = APFrustrum::new(aabb, 0, Side::Min);
-        println!("Min: {:?}", f1);
-        let d1 = f1.decompose(20);
-        for (i, d) in d1.iter().enumerate() {
-            println!(" -- rec {}: {:?}", i, d);
-        }
-
-
-        let f2 = APFrustrum::new(aabb, 0, Side::Max);
-        println!("Max: {:?}", f2);
-        let d2 = f2.decompose(20);
-        for (i, d) in d2.iter().enumerate() {
-            println!(" -- rec {}: {:?}", i, d);
-        }
-        */
     }
 
     #[test]
-    fn memory() {
-        let s = crate::standard_stencils::heat_3d(
-            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5,
-        );
-        let ss = s.slopes();
-        let f = APFrustrum::new(
-            AABB::new(matrix![0, 51; 0, 100; 0, 100]),
-            0,
-            Side::Min,
-            12,
-        );
-        println!("f_o: {}", f.input_aabb(&ss).buffer_size());
-        let ds = f.decompose();
-        let mut sum = 0;
-        for (_i, d) in ds.iter().enumerate() {
-            let input = d.input_aabb(&ss);
-            sum += input.buffer_size();
+    fn sloped_sides_test() {
+        {
+            let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
+            let f = APFrustrum::new(output_aabb, 0, Side::Min, 10);
+            debug_assert_eq!(f.sloped_sides(), matrix![0, 1; 0, 0]);
         }
-        println!("sum: {}", sum);
+
+        {
+            let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
+            let f = APFrustrum::new(output_aabb, 0, Side::Max, 10);
+            debug_assert_eq!(f.sloped_sides(), matrix![1, 0; 0, 0]);
+        }
+
+        {
+            let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
+            let f = APFrustrum::new(output_aabb, 1, Side::Min, 10);
+            debug_assert_eq!(f.sloped_sides(), matrix![1, 1; 0, 1]);
+        }
+
+        {
+            let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
+            let f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
+            debug_assert_eq!(f.sloped_sides(), matrix![1, 1; 1, 0]);
+        }
     }
+
+    #[test]
+    fn time_cut_test() {
+        // Cut greater than or equal is no cut at all
+        {
+            let ss = matrix![1, 1; 1, 1];
+            let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
+            let mut f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
+            debug_assert_eq!(f.time_cut(11, &ss), None);
+        }
+        {
+            let ss = matrix![1, 1; 1, 1];
+            let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
+            let mut f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
+            debug_assert_eq!(f.time_cut(10, &ss), None);
+        }
+
+        // Cut 1 to start
+        {
+            let ss = matrix![1, 1; 1, 1];
+            let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
+            let mut f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
+
+            let expected_output_aabb =
+                debug_assert_eq!(f.time_cut(1, &ss), None);
+        }
+    }
+
+    /*
+        // Test that decomp + center = bounds exactly
+        // by checking every coordinate appears once.
+        fn test_decomp<const DIMENSION: usize>(
+            frustrum: &APFrustrum<DIMENSION>,
+        ) {
+            let mut coord_set = std::collections::HashSet::new();
+            coord_set.extend(center.coord_iter());
+
+            let d = bounds.decomposition(center);
+            for [b1, b2] in d {
+                for c in b1.coord_iter().chain(b2.coord_iter()) {
+                    assert!(!coord_set.contains(&c));
+                    coord_set.insert(c);
+                }
+            }
+
+            for c in bounds.coord_iter() {
+                assert!(coord_set.contains(&c));
+            }
+
+            println!("{}", coord_set.len());
+        }
+    */
 }

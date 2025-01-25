@@ -14,3 +14,48 @@ pub trait NumTrait = Num + Copy + Send + Sync;
 
 pub type Coord<const GRID_DIMENSION: usize> =
     nalgebra::SVector<i32, { GRID_DIMENSION }>;
+
+#[inline]
+pub fn flip_sloped<const GRID_DIMENSION: usize>(
+    sloped: &Bounds<GRID_DIMENSION>,
+) -> Bounds<GRID_DIMENSION> {
+    debug_assert!(sloped.min() >= 0);
+    debug_assert!(sloped.max() <= 1);
+    sloped.add_scalar(-1) * -1
+}
+
+#[inline]
+pub fn slopes_to_outward_diff<const GRID_DIMENSION: usize>(
+    slopes: &Bounds<GRID_DIMENSION>,
+) -> Bounds<GRID_DIMENSION> {
+    let mut diff_slopes = *slopes;
+    let negative_slioes = -1 * diff_slopes.column(0);
+    diff_slopes.set_column(0, &negative_slioes);
+    diff_slopes
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    #[test]
+    fn flip_slopes_test() {
+        {
+            let slopes = matrix![0, 1];
+            debug_assert_eq!(flip_sloped(&slopes), matrix![1, 0]);
+        }
+
+        {
+            let slopes = matrix![0, 1; 1, 1; 0, 0; 1, 0];
+            debug_assert_eq!(
+                flip_sloped(&slopes),
+                matrix![1, 0; 0, 0; 1, 1; 0, 1]
+            );
+        }
+    }
+
+    #[test]
+    fn slopes_to_diff() {
+        {}
+    }
+}

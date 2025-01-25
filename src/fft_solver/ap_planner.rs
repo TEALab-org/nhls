@@ -69,6 +69,14 @@ where
         &mut self,
         mut frustrum: APFrustrum<GRID_DIMENSION>,
     ) -> PlanNode<GRID_DIMENSION> {
+        println!("Generate Frustrum: {:?}", frustrum);
+        println!(
+            "  -- input: {:?}",
+            frustrum.input_aabb(&self.stencil_slopes)
+        );
+        debug_assert!(self
+            .aabb
+            .contains_aabb(&frustrum.input_aabb(&self.stencil_slopes)));
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -107,6 +115,17 @@ where
         for bf in boundary_frustrums {
             sub_nodes.push(self.generate_frustrum(bf));
         }
+        /*
+        for n in sub_nodes {
+            match n {
+                PlanNode::Repeat(_) => panic!("Not expecting repeat");
+                PlanNode::Periodic(p) => {
+                    debug_assert!(frustum.output_aabb.contains(p.output_aabb));
+                }
+            }
+        }
+        */
+
         // add the nodes, find the range
         let first_node = self.nodes.len();
         let last_node = first_node + sub_nodes.len();
