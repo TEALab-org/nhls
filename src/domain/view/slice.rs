@@ -22,7 +22,6 @@ impl<'a, const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
 
     fn set_aabb(&mut self, aabb: AABB<GRID_DIMENSION>) {
         debug_assert!(aabb.buffer_size() <= self.buffer.len());
-        // TODO: should we re-slice here?
         self.aabb = aabb;
     }
 
