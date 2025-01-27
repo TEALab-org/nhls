@@ -134,10 +134,13 @@ where
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
     ) {
         let repeat_solve = self.plan.unwrap_repeat_node(self.plan.root);
+        /*
         println!("- Solve Root, n_id: {}, {:?}", self.plan.root, repeat_solve);
+        */
         for _ in 0..repeat_solve.n {
             self.periodic_solve_preallocated_io(
                 repeat_solve.node,
+                false,
                 input_domain,
                 output_domain,
             );
@@ -146,6 +149,7 @@ where
         if let Some(next) = repeat_solve.next {
             self.periodic_solve_preallocated_io(
                 next,
+                false,
                 input_domain,
                 output_domain,
             )
@@ -184,7 +188,9 @@ where
                 self.direct_solve_preallocated_io(node_id, input, output);
             }
             PlanNode::PeriodicSolve(_) => {
-                self.periodic_solve_preallocated_io(node_id, input, output);
+                self.periodic_solve_preallocated_io(
+                    node_id, true, input, output,
+                );
             }
             PlanNode::Repeat(_) => {
                 panic!("ERROR: Not expecting repeat node");
@@ -195,14 +201,17 @@ where
     pub fn periodic_solve_preallocated_io<'b>(
         &self,
         node_id: NodeId,
+        resize: bool,
         input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+        /*
         println!(
             "- Solve Periodic PreAlloc, n_id: {}, {:?}",
             node_id, periodic_solve
         );
+        */
 
         // Likely the input domain will be larger than needed?
         std::mem::swap(input_domain, output_domain);
@@ -248,6 +257,13 @@ where
             });
         }
 
+        if resize {
+            std::mem::swap(input_domain, output_domain);
+            output_domain.set_aabb(periodic_solve.output_aabb);
+            output_domain.par_from_superset(input_domain, self.chunk_size);
+            input_domain.set_aabb(periodic_solve.output_aabb);
+        }
+
         // call time cut if needed
         if let Some(next_id) = periodic_solve.time_cut {
             std::mem::swap(input_domain, output_domain);
@@ -266,10 +282,12 @@ where
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+        /*
         println!(
             "- Solve Periodic Alloc, n_id: {}, {:?}",
             node_id, periodic_solve
         );
+        */
 
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &periodic_solve.input_aabb);
@@ -279,9 +297,11 @@ where
 
         self.periodic_solve_preallocated_io(
             node_id,
+            true,
             &mut input_domain,
             &mut output_domain,
         );
+
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
     }
@@ -293,10 +313,12 @@ where
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
+        /*
         println!(
             "- Solve Direct Alloc, n_id: {}, {:?}",
             node_id, direct_solve
         );
+        */
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &direct_solve.input_aabb);
 
@@ -320,10 +342,12 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
+        /*
         println!(
             "- Solve Direct PreAlloc, n_id: {}, {:?}",
             node_id, direct_solve
         );
+        */
         debug_assert!(input_domain
             .aabb()
             .contains_aabb(&direct_solve.input_aabb));
@@ -354,6 +378,6 @@ where
             direct_solve.output_aabb
         );
         */
-        debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
+        //debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
     }
 }

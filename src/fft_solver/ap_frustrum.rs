@@ -111,7 +111,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
             input_aabb: self.input_aabb(stencil_slopes),
             output_aabb: self.output_aabb,
             sloped_sides: self.sloped_sides(),
-            steps: self.steps - 1,
+            steps: self.steps,
             recursion_dimension: self.recursion_dimension,
             side: self.side,
         };
