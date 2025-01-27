@@ -76,6 +76,9 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
             PlanNode::DirectSolve(_) => {
                 self.handle_direct(node_id, offset, scratch_descriptors)
             }
+            PlanNode::AOBDirectSolve(_) => {
+                self.handle_aob_direct(node_id, offset, scratch_descriptors)
+            }
             PlanNode::PeriodicSolve(_) => self.handle_periodic(
                 node_id,
                 offset,
@@ -96,6 +99,21 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
         let buffer_len = self.real_buffer_bytes(&direct_solve.input_aabb);
+        let scratch_descriptor = &mut scratch_descriptors[node_id];
+        scratch_descriptor.input_offset = offset;
+        scratch_descriptor.output_offset = offset + buffer_len;
+        scratch_descriptor.real_buffer_size = buffer_len;
+    }
+
+    fn handle_aob_direct(
+        &self,
+        node_id: NodeId,
+        offset: usize,
+        scratch_descriptors: &mut [ScratchDescriptor],
+    ) {
+        let aob_direct_solve = self.plan.unwrap_aob_direct_node(node_id);
+        let buffer_len =
+            self.real_buffer_bytes(&aob_direct_solve.init_input_aabb);
         let scratch_descriptor = &mut scratch_descriptors[node_id];
         scratch_descriptor.input_offset = offset;
         scratch_descriptor.output_offset = offset + buffer_len;

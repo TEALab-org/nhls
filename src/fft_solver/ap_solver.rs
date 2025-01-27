@@ -168,6 +168,9 @@ where
             PlanNode::DirectSolve(_) => {
                 self.direct_solve_allocate_io(node_id, input, output);
             }
+            PlanNode::AOBDirectSolve(_) => {
+                self.aob_direct_solve_allocate_io(node_id, input, output);
+            }
             PlanNode::PeriodicSolve(_) => {
                 self.periodic_solve_allocate_io(node_id, input, output);
             }
@@ -186,6 +189,9 @@ where
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
                 self.direct_solve_preallocated_io(node_id, input, output);
+            }
+            PlanNode::AOBDirectSolve(_) => {
+                self.aob_direct_solve_preallocated_io(node_id, input, output);
             }
             PlanNode::PeriodicSolve(_) => {
                 self.periodic_solve_preallocated_io(
@@ -313,12 +319,7 @@ where
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
-        /*
-        println!(
-            "- Solve Direct Alloc, n_id: {}, {:?}",
-            node_id, direct_solve
-        );
-        */
+
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &direct_solve.input_aabb);
 
@@ -378,6 +379,73 @@ where
             direct_solve.output_aabb
         );
         */
-        //debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
+        debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
+    }
+
+    pub fn aob_direct_solve_allocate_io<'b>(
+        &self,
+        node_id: NodeId,
+        input: &SliceDomain<'b, GRID_DIMENSION>,
+        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+    ) {
+        let aob_direct_solve = self.plan.unwrap_aob_direct_node(node_id);
+
+        let (mut input_domain, mut output_domain) =
+            self.get_input_output(node_id, &aob_direct_solve.init_input_aabb);
+
+        // copy input
+        input_domain.par_from_superset(input, self.chunk_size);
+
+        self.aob_direct_solve_preallocated_io(
+            node_id,
+            &mut input_domain,
+            &mut output_domain,
+        );
+
+        // copy output to output
+        output.par_set_subdomain(&output_domain, self.chunk_size);
+    }
+
+    pub fn aob_direct_solve_preallocated_io<'b>(
+        &self,
+        node_id: NodeId,
+        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+    ) {
+        let aob_direct_solve = self.plan.unwrap_aob_direct_node(node_id);
+
+        debug_assert!(input_domain
+            .aabb()
+            .contains_aabb(&aob_direct_solve.init_input_aabb));
+
+        // For time-cuts, the provided domains
+        // will not have the expected sizes.
+        // All we know is that the provided input domain contains
+        // the expected input domain
+        std::mem::swap(input_domain, output_domain);
+        input_domain.set_aabb(aob_direct_solve.init_input_aabb);
+        input_domain.par_from_superset(output_domain, self.chunk_size);
+        output_domain.set_aabb(aob_direct_solve.init_input_aabb);
+
+        //debug_assert_eq!(*input_domain.aabb(), aob_direct_solve.input_aabb);
+
+        // invoke direct solver
+        // todo aob
+        self.direct_frustrum_solver.aob_apply(
+            input_domain,
+            output_domain,
+            &aob_direct_solve.input_aabb,
+            &aob_direct_solve.sloped_sides,
+            aob_direct_solve.steps,
+        );
+        /*
+        println!(
+            "Direct solve, steps: {}, i: {:?}, o: {:?}",
+            direct_solve.steps,
+            direct_solve.input_aabb,
+            direct_solve.output_aabb
+        );
+        */
+        debug_assert_eq!(aob_direct_solve.output_aabb, *output_domain.aabb());
     }
 }

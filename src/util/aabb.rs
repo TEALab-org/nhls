@@ -93,6 +93,13 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         true
     }
 
+    pub fn trim_to_aabb(&mut self, other: &Self) {
+        for d in 0..DIMENSION {
+            self.bounds[(d, 0)] = self.bounds[(d, 0)].max(other.bounds[(d, 0)]);
+            self.bounds[(d, 1)] = self.bounds[(d, 1)].min(other.bounds[(d, 1)]);
+        }
+    }
+
     /// Element wise add the bounds diff.
     pub fn add_bounds_diff(&self, diff: Bounds<DIMENSION>) -> Self {
         Self::new(self.bounds + diff)

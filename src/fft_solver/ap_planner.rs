@@ -65,6 +65,42 @@ where
         self.nodes.push(node);
         result
     }
+
+    pub fn generate_direct_node(
+        &self,
+        mut frustrum: APFrustrum<GRID_DIMENSION>,
+    ) -> PlanNode<GRID_DIMENSION> {
+        let mut input_aabb = frustrum.input_aabb(&self.stencil_slopes);
+        if !self.aabb.contains_aabb(&input_aabb) {
+            // Trim to aabb,
+            input_aabb.trim_to_aabb(&self.aabb);
+            // TODO debug assert that we're only a step size away
+            frustrum.steps -= 1;
+
+            return PlanNode::AOBDirectSolve(AOBDirectSolveNode {
+                init_input_aabb: input_aabb,
+                input_aabb: frustrum.input_aabb(&self.stencil_slopes),
+                output_aabb: frustrum.output_aabb,
+                sloped_sides: frustrum.sloped_sides(),
+                steps: frustrum.steps,
+                recursion_dimension: frustrum.recursion_dimension,
+                side: frustrum.side,
+            });
+            // edit frustrum to have one less steps
+        }
+
+        let direct_node = DirectSolveNode {
+            input_aabb: frustrum.input_aabb(&self.stencil_slopes),
+            output_aabb: frustrum.output_aabb,
+            sloped_sides: frustrum.sloped_sides(),
+            steps: frustrum.steps,
+            recursion_dimension: frustrum.recursion_dimension,
+            side: frustrum.side,
+        };
+        println!(" -- r: {:?}", direct_node);
+        PlanNode::DirectSolve(direct_node)
+    }
+
     pub fn generate_frustrum(
         &mut self,
         mut frustrum: APFrustrum<GRID_DIMENSION>,
@@ -74,9 +110,11 @@ where
             "  -- input: {:?}",
             frustrum.input_aabb(&self.stencil_slopes)
         );
+        /*
         debug_assert!(self
             .aabb
             .contains_aabb(&frustrum.input_aabb(&self.stencil_slopes)));
+            */
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -89,7 +127,7 @@ where
         let maybe_periodic_solve =
             find_periodic_solve(&input_aabb, &solve_params);
         if maybe_periodic_solve.is_none() {
-            return frustrum.generate_direct_node(&self.stencil_slopes);
+            return self.generate_direct_node(frustrum);
         }
         let periodic_solve = maybe_periodic_solve.unwrap();
         let convolution_id = self

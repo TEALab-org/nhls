@@ -33,6 +33,18 @@ pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
     pub side: Side,
 }
 
+#[derive(Debug)]
+pub struct AOBDirectSolveNode<const GRID_DIMENSION: usize> {
+    pub init_input_aabb: AABB<GRID_DIMENSION>,
+    pub input_aabb: AABB<GRID_DIMENSION>,
+    pub output_aabb: AABB<GRID_DIMENSION>,
+    pub sloped_sides: Bounds<GRID_DIMENSION>,
+    pub steps: usize,
+
+    pub recursion_dimension: usize,
+    pub side: Side,
+}
+
 /// Used for central periodic solve, can't appear in frustrums
 #[derive(Debug)]
 pub struct RepeatNode {
@@ -45,6 +57,7 @@ pub struct RepeatNode {
 pub enum PlanNode<const GRID_DIMENSION: usize> {
     PeriodicSolve(PeriodicSolveNode<GRID_DIMENSION>),
     DirectSolve(DirectSolveNode<GRID_DIMENSION>),
+    AOBDirectSolve(AOBDirectSolveNode<GRID_DIMENSION>),
     Repeat(RepeatNode),
 }
 
@@ -77,6 +90,20 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
     ) -> &DirectSolveNode<GRID_DIMENSION> {
         if let PlanNode::DirectSolve(direct_node) = self.get_node(node_id) {
             direct_node
+        } else {
+            panic!("ERROR: Not a direct node, {}", node_id);
+        }
+    }
+
+    #[track_caller]
+    pub fn unwrap_aob_direct_node(
+        &self,
+        node_id: NodeId,
+    ) -> &AOBDirectSolveNode<GRID_DIMENSION> {
+        if let PlanNode::AOBDirectSolve(aob_direct_node) =
+            self.get_node(node_id)
+        {
+            aob_direct_node
         } else {
             panic!("ERROR: Not a direct node, {}", node_id);
         }
@@ -135,6 +162,21 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
                     )
                     .unwrap();
                 }
+                PlanNode::AOBDirectSolve(aob_direct_solve) => {
+                    writeln!(
+                        writer,
+                        " n_{id} [label=\"n_{id}: AOB-DIRECT\nsteps: {s}\nin: {in}\nout: {out}\ninit: {init}\nrd: {rd}, side: {side}\nsloped_sides: {slope:?}\"];",
+                        id = i,
+                        s = aob_direct_solve.steps,
+                        in = aob_direct_solve.input_aabb,
+                        out = aob_direct_solve.output_aabb,
+                        slope = aob_direct_solve.sloped_sides,
+                        rd = aob_direct_solve.recursion_dimension,
+                        init = aob_direct_solve.init_input_aabb,
+                        side = aob_direct_solve.side,
+                    )
+                    .unwrap();
+                }
                 PlanNode::Repeat(repeat_node) => {
                     writeln!(
                         writer,
@@ -160,6 +202,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
                     }
                 }
                 PlanNode::DirectSolve(_) => {}
+                PlanNode::AOBDirectSolve(_) => {}
                 PlanNode::Repeat(r) => {
                     writeln!(writer, " n_{} -> n_{} [color=green];", i, r.node)
                         .unwrap();
