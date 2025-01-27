@@ -100,25 +100,6 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         )
     }
 
-    pub fn generate_direct_node(
-        &self,
-        stencil_slopes: &Bounds<GRID_DIMENSION>,
-    ) -> PlanNode<GRID_DIMENSION> {
-        println!("Generate direct Node: {:?}", self);
-        println!(" -- input_aabb: {:?}", self.input_aabb(stencil_slopes));
-
-        let direct_node = DirectSolveNode {
-            input_aabb: self.input_aabb(stencil_slopes),
-            output_aabb: self.output_aabb,
-            sloped_sides: self.sloped_sides(),
-            steps: self.steps,
-            recursion_dimension: self.recursion_dimension,
-            side: self.side,
-        };
-        println!(" -- r: {:?}", direct_node);
-        PlanNode::DirectSolve(direct_node)
-    }
-
     // Steps from input face,
     // slice off the rest, return it
     pub fn time_cut(

@@ -63,4 +63,49 @@ where
         }
         std::mem::swap(input_domain, output_domain);
     }
+
+    pub fn aob_apply<'b>(
+        &self,
+        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input_aabb: &AABB<GRID_DIMENSION>,
+        sloped_sides: &Bounds<GRID_DIMENSION>,
+        steps: usize,
+    ) {
+        assert_eq!(input_domain.aabb(), output_domain.aabb());
+
+        // Do AOB time step
+        output_domain.set_aabb(*input_aabb);
+        par_stencil::apply(
+            self.bc,
+            self.stencil,
+            input_domain,
+            output_domain,
+            self.chunk_size,
+        );
+        std::mem::swap(input_domain, output_domain);
+
+        // trapezoid solve the rest
+        let mut trapezoid_slopes =
+            self.stencil_slopes.component_mul(sloped_sides);
+        let negative_slopes = -1 * trapezoid_slopes.column(1);
+        trapezoid_slopes.set_column(1, &negative_slopes);
+        let mut output_box = *input_domain.aabb();
+        for _ in 0..steps {
+            output_box = output_box.add_bounds_diff(trapezoid_slopes);
+            debug_assert!(
+                input_domain.aabb().buffer_size() >= output_box.buffer_size()
+            );
+            output_domain.set_aabb(output_box);
+            par_stencil::apply(
+                self.bc,
+                self.stencil,
+                input_domain,
+                output_domain,
+                self.chunk_size,
+            );
+            std::mem::swap(input_domain, output_domain);
+        }
+        std::mem::swap(input_domain, output_domain);
+    }
 }
