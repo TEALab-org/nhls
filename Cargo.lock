@@ -933,7 +933,6 @@ dependencies = [
  "num-traits",
  "rand",
  "rayon",
- "sync-ptr",
  "vtkio",
 ]
 
