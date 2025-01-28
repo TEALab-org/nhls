@@ -288,12 +288,6 @@ where
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
-        /*
-        println!(
-            "- Solve Periodic Alloc, n_id: {}, {:?}",
-            node_id, periodic_solve
-        );
-        */
 
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &periodic_solve.input_aabb);
@@ -331,6 +325,7 @@ where
             &mut input_domain,
             &mut output_domain,
         );
+        debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
 
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
@@ -343,12 +338,7 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
-        /*
-        println!(
-            "- Solve Direct PreAlloc, n_id: {}, {:?}",
-            node_id, direct_solve
-        );
-        */
+
         debug_assert!(input_domain
             .aabb()
             .contains_aabb(&direct_solve.input_aabb));
@@ -361,7 +351,6 @@ where
         input_domain.set_aabb(direct_solve.input_aabb);
         input_domain.par_from_superset(output_domain, self.chunk_size);
         output_domain.set_aabb(direct_solve.input_aabb);
-
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
 
         // invoke direct solver
@@ -371,14 +360,6 @@ where
             &direct_solve.sloped_sides,
             direct_solve.steps,
         );
-        /*
-        println!(
-            "Direct solve, steps: {}, i: {:?}, o: {:?}",
-            direct_solve.steps,
-            direct_solve.input_aabb,
-            direct_solve.output_aabb
-        );
-        */
         debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
     }
 
@@ -422,15 +403,13 @@ where
         // will not have the expected sizes.
         // All we know is that the provided input domain contains
         // the expected input domain
+        // TODO: We don't need this in the case we allocate
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(aob_direct_solve.init_input_aabb);
         input_domain.par_from_superset(output_domain, self.chunk_size);
         output_domain.set_aabb(aob_direct_solve.init_input_aabb);
 
-        //debug_assert_eq!(*input_domain.aabb(), aob_direct_solve.input_aabb);
-
         // invoke direct solver
-        // todo aob
         self.direct_frustrum_solver.aob_apply(
             input_domain,
             output_domain,
@@ -438,14 +417,7 @@ where
             &aob_direct_solve.sloped_sides,
             aob_direct_solve.steps,
         );
-        /*
-        println!(
-            "Direct solve, steps: {}, i: {:?}, o: {:?}",
-            direct_solve.steps,
-            direct_solve.input_aabb,
-            direct_solve.output_aabb
-        );
-        */
+
         debug_assert_eq!(aob_direct_solve.output_aabb, *output_domain.aabb());
     }
 }
