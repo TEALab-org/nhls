@@ -85,6 +85,8 @@ where
         );
         std::mem::swap(input_domain, output_domain);
 
+        // TODO just call normal apply from here
+
         // trapezoid solve the rest
         let mut trapezoid_slopes =
             self.stencil_slopes.component_mul(sloped_sides);
