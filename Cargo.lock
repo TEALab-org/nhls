@@ -482,6 +482,7 @@ dependencies = [
 [[package]]
 name = "fftw"
 version = "0.8.0"
+source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-v0.8.4#0556d8f6102976010462f3b7d0da649b986c2ca9"
 dependencies = [
  "bitflags 2.6.0",
  "fftw-sys",
@@ -497,6 +498,7 @@ dependencies = [
 [[package]]
 name = "fftw-src"
 version = "0.8.0"
+source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-v0.8.4#0556d8f6102976010462f3b7d0da649b986c2ca9"
 dependencies = [
  "anyhow",
  "cc",
@@ -508,6 +510,7 @@ dependencies = [
 [[package]]
 name = "fftw-sys"
 version = "0.8.0"
+source = "git+https://github.com/SallySoul/fftw3-rs.git?tag=fftw3-v0.8.4#0556d8f6102976010462f3b7d0da649b986c2ca9"
 dependencies = [
  "fftw-src",
  "libc",
