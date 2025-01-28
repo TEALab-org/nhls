@@ -52,9 +52,7 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
         other: &DomainType,
         chunk_size: usize,
     ) {
-        /*
-        println!("  -- par_set_subdomain, {} into {}", other.aabb(), self.aabb());
-        */
+        //println!("  -- par_set_subdomain, {} into {}", other.aabb(), self.aabb());
         let const_self_ref: &Self = self;
         other.buffer()[0..other.aabb().buffer_size()]
             .par_chunks(chunk_size)

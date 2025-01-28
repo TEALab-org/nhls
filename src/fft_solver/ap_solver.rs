@@ -214,12 +214,13 @@ where
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         /*
         println!(
-            "- Solve Periodic PreAlloc, n_id: {}, {:?}",
-            node_id, periodic_solve
+            "- Solve Periodic PreAlloc, n_id: {}, steps: {}",
+            node_id, periodic_solve.steps
         );
         */
 
         // Likely the input domain will be larger than needed?
+        //println!("  - resize: {} -> {}", input_domain.aabb(), periodic_solve.input_aabb);
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(periodic_solve.input_aabb);
         input_domain.par_from_superset(output_domain, self.chunk_size);
@@ -244,7 +245,8 @@ where
             let input_domain_const: &SliceDomain<'b, GRID_DIMENSION> =
                 input_domain;
             rayon::scope(|s| {
-                for node_id in periodic_solve.boundary_nodes.clone() {
+                //for node_id in periodic_solve.boundary_nodes.clone() {
+                { let node_id = periodic_solve.boundary_nodes.clone().last().unwrap();
                     // Our plan should provide the guarantee that
                     // that boundary nodes have mutually exclusive
                     // access to the output_domain
@@ -264,6 +266,7 @@ where
         }
 
         if resize {
+            //println!("- resize n_id: {}, {}", node_id, periodic_solve.output_aabb);
             std::mem::swap(input_domain, output_domain);
             output_domain.set_aabb(periodic_solve.output_aabb);
             output_domain.par_from_superset(input_domain, self.chunk_size);
@@ -288,6 +291,7 @@ where
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+        //println!("- Periodic Allocate n_id: {}", node_id);
 
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &periodic_solve.input_aabb);
@@ -302,6 +306,7 @@ where
             &mut output_domain,
         );
 
+        //println!("- cp for n_id: {}", node_id);
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
     }
@@ -313,6 +318,7 @@ where
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
+        //println!("- Direct Allocate n_id: {}", node_id);
 
         let (mut input_domain, mut output_domain) =
             self.get_input_output(node_id, &direct_solve.input_aabb);
@@ -326,6 +332,7 @@ where
             &mut output_domain,
         );
         debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
+        //println!("- cp for n_id: {}", node_id);
 
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
@@ -338,6 +345,7 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
+        //println!("- Direct Solve n_id: {}, steps: {}", node_id, direct_solve.steps);
 
         debug_assert!(input_domain
             .aabb()
@@ -417,7 +425,7 @@ where
             &aob_direct_solve.sloped_sides,
             aob_direct_solve.steps,
         );
-
+        
         debug_assert_eq!(aob_direct_solve.output_aabb, *output_domain.aabb());
     }
 }
