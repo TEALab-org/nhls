@@ -364,7 +364,7 @@ mod unit_tests {
             let mut f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
 
             //let expected_output_aabb =
-             //   debug_assert_eq!(f.time_cut(1, &ss), None);
+            //   debug_assert_eq!(f.time_cut(1, &ss), None);
         }
     }
 

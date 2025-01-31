@@ -227,7 +227,6 @@ where
         output_domain.set_aabb(periodic_solve.input_aabb);
         //write_debug_file(&format!("n_{}_periodic_input", node_id), input_domain);
 
-
         // Apply convolution
         {
             let convolution_op =
@@ -242,7 +241,6 @@ where
 
         //write_debug_file(&format!("n_{}_periodic_post_convolution", node_id), output_domain);
 
-
         // Boundary
         // In a rayon scope, we fork for each of the boundary solves,
         // each of which will fill in their part of of output_domain
@@ -251,7 +249,7 @@ where
                 input_domain;
             rayon::scope(|s| {
                 for node_id in periodic_solve.boundary_nodes.clone() {
-                //{ let node_id = periodic_solve.boundary_nodes.clone().last().unwrap();
+                    //{ let node_id = periodic_solve.boundary_nodes.clone().last().unwrap();
                     // Our plan should provide the guarantee that
                     // that boundary nodes have mutually exclusive
                     // access to the output_domain
@@ -436,9 +434,9 @@ where
             &aob_direct_solve.sloped_sides,
             aob_direct_solve.steps,
         );
- 
+
         //write_debug_file(&format!("n_{}_aob_output", node_id), output_domain);
-       
+
         debug_assert_eq!(aob_direct_solve.output_aabb, *output_domain.aabb());
     }
 }

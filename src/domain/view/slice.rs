@@ -60,7 +60,5 @@ impl<'a, const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
         );
         let index = self.aabb.coord_to_linear(world_coord);
         self.buffer[index] = value;
-
     }
-
 }

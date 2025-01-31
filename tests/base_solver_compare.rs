@@ -1,9 +1,9 @@
 use nhls::domain::*;
 use nhls::fft_solver::*;
+use nhls::init;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
-use nhls::init;
 
 use float_cmp::assert_approx_eq;
 use nalgebra::matrix;
@@ -85,7 +85,6 @@ fn heat_2d_p_compare() {
 
     let mut fft_input_domain = OwnedDomain::new(grid_bound);
     let mut fft_output_domain = OwnedDomain::new(grid_bound);
-
 
     init::normal_ic_2d(&mut direct_input_domain, chunk_size);
     init::normal_ic_2d(&mut fft_input_domain, chunk_size);
