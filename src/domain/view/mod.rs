@@ -1,8 +1,10 @@
 mod chunk;
+mod debug_io;
 mod owned;
 mod slice;
 
 pub use chunk::*;
+pub use debug_io::*;
 pub use owned::*;
 pub use slice::*;
 
@@ -21,6 +23,8 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
     fn aabb_buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]);
 
     fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f64;
+
+    fn set_coord(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f64);
 
     fn par_modify_access<'a>(
         &'a mut self,
@@ -83,6 +87,11 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
         self.par_set_values(|world_coord| other.view(&world_coord), chunk_size);
     }
 
+    /// WARNING, obviously unsafe.
+    ///
+    /// In parallel situations, if you can gaurentee that threads are accessing
+    /// mutually exclusive coords, then use this as an escape hatch.
+    /// DO NOT modify aabb in parallel.
     fn unsafe_mut_access(&self) -> SliceDomain<'_, GRID_DIMENSION> {
         let buffer = self.buffer();
         let len = buffer.len();

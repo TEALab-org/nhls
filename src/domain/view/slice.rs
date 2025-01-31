@@ -49,4 +49,18 @@ impl<'a, const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
         let index = self.aabb.coord_to_linear(world_coord);
         self.buffer[index]
     }
+
+    #[track_caller]
+    fn set_coord(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f64) {
+        debug_assert!(
+            self.aabb.contains(world_coord),
+            "{:?} does not contain {:?}",
+            self.aabb,
+            world_coord
+        );
+        let index = self.aabb.coord_to_linear(world_coord);
+        self.buffer[index] = value;
+
+    }
+
 }

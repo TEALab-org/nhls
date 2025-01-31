@@ -16,9 +16,10 @@ rayon = "1.10.0"
 clap = { version = "4.5.20", features = ["derive"] }
 rand = "0.8.5"
 vtkio = "0.7.0-rc1"
+sync-ptr = "0.1.1"
+float-cmp = "0.10.0"
 
 [dev-dependencies]
-float-cmp = "0.10.0"
 
 [profile.bench]
 codegen-units = 1

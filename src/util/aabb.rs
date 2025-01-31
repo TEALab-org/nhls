@@ -112,7 +112,7 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         for d in 0..DIMENSION {
             let di_raw = coord[d];
             result[d] = if di_raw < self.bounds[(d, 0)] {
-                self.bounds[(d, 1)] + 1 + di_raw
+                (self.bounds[(d, 1)] + 1) - (self.bounds[(d, 0)] - di_raw)
             } else if di_raw > self.bounds[(d, 1)] {
                 self.bounds[(d, 0)] + (di_raw - self.bounds[(d, 1)] - 1)
             } else {
@@ -332,6 +332,39 @@ mod unit_tests {
                 bound.periodic_coord(&index),
                 vector![0, 100, 97, 82, 33]
             );
+        }
+
+        // Mimic use in convolution op for non-origin AABB
+        {
+            let aabb = AABB::new(matrix![13, 96; 0, 40]);
+            let offsets = [
+                vector![0, 0],
+                vector![1, 0],
+                vector![-1, 0],
+                vector![0, 1],
+                vector![0, -1],
+                vector![1, 1],
+                vector![-1, 1],
+                vector![1, -1],
+                vector![-1, -1],
+            ];
+            let expected = [
+                vector![13, 0],
+                vector![14, 0],
+                vector![96, 0],
+                vector![13, 1],
+                vector![13, 40],
+                vector![14, 1],
+                vector![96, 1],
+                vector![14, 40],
+                vector![96, 40],
+            ];
+            debug_assert_eq!(offsets.len(), expected.len());
+            for (offset, expected) in offsets.iter().zip(expected.iter()) {
+                let c: Coord<2> = aabb.min() + offset;
+                let pc = aabb.periodic_coord(&c);
+                debug_assert_eq!(pc, *expected);
+            }
         }
     }
 

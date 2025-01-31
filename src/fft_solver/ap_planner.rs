@@ -312,6 +312,7 @@ mod unit_tests {
                 PlanNode::PeriodicSolve(_) => p_n += 1,
                 PlanNode::DirectSolve(_) => d_n += 1,
                 PlanNode::Repeat(_) => r_n += 1,
+                PlanNode::AOBDirectSolve(_) => r_n += 1,
             }
         }
         println!("n: {}", result.plan.nodes.len());
@@ -351,6 +352,7 @@ mod unit_tests {
                 PlanNode::PeriodicSolve(_) => p_n += 1,
                 PlanNode::DirectSolve(_) => d_n += 1,
                 PlanNode::Repeat(_) => r_n += 1,
+                PlanNode::AOBDirectSolve(_) => r_n += 1,
             }
         }
         println!("n: {}", result.plan.nodes.len());

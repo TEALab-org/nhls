@@ -5,6 +5,7 @@ use crate::stencil::*;
 use crate::util::*;
 use fftw::array::*;
 use fftw::plan::*;
+use float_cmp::assert_approx_eq;
 
 pub struct ConvolutionOperation {
     pub forward_plan: fftw::plan::Plan<f64, c64, fftw::plan::Plan64>,
@@ -32,6 +33,12 @@ impl ConvolutionOperation {
     where
         Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     {
+        {
+            let b: &[f64] = real_buffer;
+            for v in b {
+                assert_approx_eq!(f64, *v, 0.0, epsilon = 0.0000000000001);
+            }
+        }
         let size = aabb.exclusive_bounds();
         let plan_size = size.try_cast::<usize>().unwrap();
         let forward_plan = fftw::plan::R2CPlan64::aligned(
@@ -45,28 +52,35 @@ impl ConvolutionOperation {
         )
         .unwrap();
 
+        // TODO: Create domain for real buffer
+        let mut stencil_domain = SliceDomain::new(*aabb, real_buffer);
+
         // Place offsets in real buffer
         let offsets = stencil.offsets();
         for n_i in 0..NEIGHBORHOOD_SIZE {
-            let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
-            let index = &aabb.periodic_coord(&rn_i);
-            let l = aabb.coord_to_linear(index);
-            real_buffer[l] = stencil_weights[n_i];
+            let rn_i: Coord<GRID_DIMENSION> = aabb.min() + offsets[n_i] * -1;
+            let periodic_coord = aabb.periodic_coord(&rn_i);
+            println!(
+                "n_i: {}, offset: {:?}, pc: {:?}",
+                n_i,
+                aabb.min() + offsets[n_i] * -1,
+                periodic_coord
+            );
+            stencil_domain.set_coord(&periodic_coord, stencil_weights[n_i]);
         }
 
         // Calculate convolution of stencil
-        let n_r = aabb.buffer_size();
         let n_c = aabb.complex_buffer_size();
         forward_plan
-            .r2c(&mut real_buffer[0..n_r], &mut convolution_buffer[0..n_c])
+            .r2c(stencil_domain.buffer_mut(), &mut convolution_buffer[0..n_c])
             .unwrap();
 
-        // clean up real buffer
+        // Clean up real buffer
+        //stencil_domain.par_set_values(|_| 0.0, chunk_size);
         for n_i in 0..NEIGHBORHOOD_SIZE {
-            let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
-            let index = &aabb.periodic_coord(&rn_i);
-            let l = aabb.coord_to_linear(index);
-            real_buffer[l] = 0.0;
+            let rn_i: Coord<GRID_DIMENSION> = aabb.min() + offsets[n_i] * -1;
+            let periodic_coord = aabb.periodic_coord(&rn_i);
+            stencil_domain.set_coord(&periodic_coord, 0.0);
         }
 
         // Apply power calculation to convolution
@@ -103,7 +117,6 @@ impl ConvolutionOperation {
         complex_buffer: &mut [c64],
         chunk_size: usize,
     ) {
-        // fftw bindings expect slices of specific size
         let n_r = input.aabb().buffer_size();
         let n_c = input.aabb().complex_buffer_size();
         self.forward_plan

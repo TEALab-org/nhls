@@ -225,6 +225,8 @@ where
         input_domain.set_aabb(periodic_solve.input_aabb);
         input_domain.par_from_superset(output_domain, self.chunk_size);
         output_domain.set_aabb(periodic_solve.input_aabb);
+        //write_debug_file(&format!("n_{}_periodic_input", node_id), input_domain);
+
 
         // Apply convolution
         {
@@ -238,6 +240,9 @@ where
             );
         }
 
+        //write_debug_file(&format!("n_{}_periodic_post_convolution", node_id), output_domain);
+
+
         // Boundary
         // In a rayon scope, we fork for each of the boundary solves,
         // each of which will fill in their part of of output_domain
@@ -245,8 +250,8 @@ where
             let input_domain_const: &SliceDomain<'b, GRID_DIMENSION> =
                 input_domain;
             rayon::scope(|s| {
-                //for node_id in periodic_solve.boundary_nodes.clone() {
-                { let node_id = periodic_solve.boundary_nodes.clone().last().unwrap();
+                for node_id in periodic_solve.boundary_nodes.clone() {
+                //{ let node_id = periodic_solve.boundary_nodes.clone().last().unwrap();
                     // Our plan should provide the guarantee that
                     // that boundary nodes have mutually exclusive
                     // access to the output_domain
@@ -265,6 +270,7 @@ where
             });
         }
 
+        //write_debug_file(&format!("n_{}_periodic_pre_resize", node_id), output_domain);
         if resize {
             //println!("- resize n_id: {}, {}", node_id, periodic_solve.output_aabb);
             std::mem::swap(input_domain, output_domain);
@@ -272,6 +278,7 @@ where
             output_domain.par_from_superset(input_domain, self.chunk_size);
             input_domain.set_aabb(periodic_solve.output_aabb);
         }
+        //write_debug_file(&format!("n_{}_periodic_output", node_id), output_domain);
 
         // call time cut if needed
         if let Some(next_id) = periodic_solve.time_cut {
@@ -306,7 +313,6 @@ where
             &mut output_domain,
         );
 
-        //println!("- cp for n_id: {}", node_id);
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
     }
@@ -360,6 +366,7 @@ where
         input_domain.par_from_superset(output_domain, self.chunk_size);
         output_domain.set_aabb(direct_solve.input_aabb);
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
+        //write_debug_file(&format!("n_{}_direct_input", node_id), input_domain);
 
         // invoke direct solver
         self.direct_frustrum_solver.apply(
@@ -368,6 +375,8 @@ where
             &direct_solve.sloped_sides,
             direct_solve.steps,
         );
+        //write_debug_file(&format!("n_{}_direct_output", node_id), output_domain);
+
         debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
     }
 
@@ -417,6 +426,8 @@ where
         input_domain.par_from_superset(output_domain, self.chunk_size);
         output_domain.set_aabb(aob_direct_solve.init_input_aabb);
 
+        //write_debug_file(&format!("n_{}_aob_input", node_id), input_domain);
+
         // invoke direct solver
         self.direct_frustrum_solver.aob_apply(
             input_domain,
@@ -425,7 +436,9 @@ where
             &aob_direct_solve.sloped_sides,
             aob_direct_solve.steps,
         );
-        
+ 
+        //write_debug_file(&format!("n_{}_aob_output", node_id), output_domain);
+       
         debug_assert_eq!(aob_direct_solve.output_aabb, *output_domain.aabb());
     }
 }

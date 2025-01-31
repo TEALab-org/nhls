@@ -3,6 +3,7 @@ use nhls::fft_solver::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
+use nhls::init;
 
 use float_cmp::assert_approx_eq;
 use nalgebra::matrix;
@@ -36,6 +37,58 @@ fn heat_1d_p_compare() {
     };
     direct_input_domain.par_set_values(ic_gen, chunk_size);
     fft_input_domain.par_set_values(ic_gen, chunk_size);
+
+    let plan_type = PlanType::Estimate;
+    let mut periodic_solver = PeriodicSolver::create(
+        &stencil,
+        fft_output_domain.buffer_mut(),
+        &grid_bound,
+        n_steps,
+        plan_type,
+        chunk_size,
+    );
+    periodic_solver.apply(&mut fft_input_domain, &mut fft_output_domain);
+
+    direct_periodic_apply(
+        &stencil,
+        &mut direct_input_domain,
+        &mut direct_output_domain,
+        n_steps,
+        chunk_size,
+    );
+
+    for i in 0..buffer_size {
+        assert_approx_eq!(
+            f64,
+            fft_output_domain.buffer()[i],
+            direct_output_domain.buffer()[i],
+            epsilon = 0.0000000000001
+        );
+    }
+}
+
+#[test]
+fn heat_2d_p_compare() {
+    // Grid size
+    let grid_bound = AABB::new(matrix![2, 333; 14, 423]);
+
+    let n_steps = 400;
+
+    let chunk_size = 100;
+
+    let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
+
+    // Create domains
+    let buffer_size = grid_bound.buffer_size();
+    let mut direct_input_domain = OwnedDomain::new(grid_bound);
+    let mut direct_output_domain = OwnedDomain::new(grid_bound);
+
+    let mut fft_input_domain = OwnedDomain::new(grid_bound);
+    let mut fft_output_domain = OwnedDomain::new(grid_bound);
+
+
+    init::normal_ic_2d(&mut direct_input_domain, chunk_size);
+    init::normal_ic_2d(&mut fft_input_domain, chunk_size);
 
     let plan_type = PlanType::Estimate;
     let mut periodic_solver = PeriodicSolver::create(
