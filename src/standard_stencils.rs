@@ -1,6 +1,6 @@
 use crate::stencil::*;
 
-// Heat stencils in 1D, 2D, and 3D
+//// Heat stencils in 1D, 2D, and 3D
 
 pub fn heat_1d(
     dt: f64,
@@ -72,7 +72,7 @@ pub fn heat_3d(
     )
 }
 
-// Jacobi (Average) stencisl in 1D, 2D, and 3D
+//// Jacobi (Average) stencisl in 1D, 2D, and 3D
 
 pub fn jacobi_1d(
     weight: f64,
@@ -162,7 +162,7 @@ pub fn jacobi_3d(
     )
 }
 
-// Guassian Blur stencils in 1D, 2D, and 3D
+//// Guassian Blur stencils in 1D, 2D, and 3D
 
 pub fn gaussian_blur_1d() -> StencilF64<impl StencilOperation<f64, 3>, 1, 3> {
     Stencil::new([[-1], [0], [1]], move |args: &[f64; 3]| {
@@ -239,7 +239,7 @@ pub fn gaussian_blur_3d() -> StencilF64<impl StencilOperation<f64, 27>, 3, 27> {
     )
 }
 
-// Linear possion (discrete Laplacian operator) stencils in 1D, 2D, and 3D
+//// Linear possion (discrete Laplacian operator) stencils in 1D, 2D, and 3D
 
 pub fn poisson_1d() -> StencilF64<impl StencilOperation<f64, 3>, 1, 3> {
     Stencil::new([[-1], [0], [1]], move |args: &[f64; 3]| {
