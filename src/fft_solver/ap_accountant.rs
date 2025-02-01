@@ -74,11 +74,6 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
                 pre_allocated_io,
                 node_requirements,
             ),
-            PlanNode::AOBDirectSolve(_) => self.handle_aob_direct_node(
-                node_id,
-                pre_allocated_io,
-                node_requirements,
-            ),
             PlanNode::PeriodicSolve(_) => self.handle_periodic_node(
                 node_id,
                 pre_allocated_io,
@@ -148,25 +143,6 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
                 2 * self.real_buffer_requirement(&direct_node.input_aabb);
         }
 
-        node_requirements[node_id] = node_requirement;
-        node_requirement
-    }
-
-    // We just need input / output node allocated.
-    pub fn handle_aob_direct_node(
-        &self,
-        node_id: NodeId,
-        pre_allocated_io: bool,
-        node_requirements: &mut [usize],
-    ) -> usize {
-        if pre_allocated_io {
-            return 0;
-        }
-
-        let aob_direct_node = self.plan.unwrap_aob_direct_node(node_id);
-
-        let node_requirement =
-            2 * self.real_buffer_requirement(&aob_direct_node.init_input_aabb);
         node_requirements[node_id] = node_requirement;
         node_requirement
     }

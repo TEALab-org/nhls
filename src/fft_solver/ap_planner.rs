@@ -79,8 +79,6 @@ where
             output_aabb: frustrum.output_aabb,
             sloped_sides: frustrum.sloped_sides(),
             steps: frustrum.steps,
-            recursion_dimension: frustrum.recursion_dimension,
-            side: frustrum.side,
             out_of_bounds_cut: None,
         };
 
@@ -159,8 +157,6 @@ where
                 steps: periodic_solve.steps,
                 boundary_nodes: first_node..last_node,
                 time_cut,
-                recursion_dimension: frustrum.recursion_dimension,
-                side: frustrum.side,
             });
         }
 
@@ -218,8 +214,6 @@ where
             steps: periodic_solve.steps,
             boundary_nodes: first_node..last_node,
             time_cut: None,
-            recursion_dimension: 123456,
-            side: Side::Min,
         };
 
         let root_node =
@@ -291,8 +285,6 @@ where
                 output_aabb,
                 sloped_sides: remainder_slopes,
                 steps: 1,
-                recursion_dimension: 123456,
-                side: Side::Min,
                 out_of_bounds_cut: None,
             };
 
@@ -339,7 +331,6 @@ mod unit_tests {
                 PlanNode::PeriodicSolve(_) => p_n += 1,
                 PlanNode::DirectSolve(_) => d_n += 1,
                 PlanNode::Repeat(_) => r_n += 1,
-                PlanNode::AOBDirectSolve(_) => r_n += 1,
             }
         }
         println!("n: {}", result.plan.nodes.len());
@@ -379,7 +370,6 @@ mod unit_tests {
                 PlanNode::PeriodicSolve(_) => p_n += 1,
                 PlanNode::DirectSolve(_) => d_n += 1,
                 PlanNode::Repeat(_) => r_n += 1,
-                PlanNode::AOBDirectSolve(_) => r_n += 1,
             }
         }
         println!("n: {}", result.plan.nodes.len());
