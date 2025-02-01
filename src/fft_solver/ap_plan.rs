@@ -25,7 +25,6 @@ pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
     pub output_aabb: AABB<GRID_DIMENSION>,
     pub sloped_sides: Bounds<GRID_DIMENSION>,
     pub steps: usize,
-    pub out_of_bounds_cut: Option<NodeId>,
 }
 
 /// Used for central periodic solve, can't appear in frustrums
@@ -149,16 +148,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
                             .unwrap();
                     }
                 }
-                PlanNode::DirectSolve(p) => {
-                    if let Some(r) = p.out_of_bounds_cut {
-                        writeln!(
-                            writer,
-                            " n_{} -> n_{} [color = purple];",
-                            i, r
-                        )
-                        .unwrap();
-                    }
-                }
+                PlanNode::DirectSolve(_) => {}
                 PlanNode::Repeat(r) => {
                     writeln!(writer, " n_{} -> n_{} [color=green];", i, r.node)
                         .unwrap();

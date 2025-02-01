@@ -68,42 +68,22 @@ where
 
     pub fn generate_direct_node(
         &mut self,
-        mut frustrum: APFrustrum<GRID_DIMENSION>,
+        frustrum: APFrustrum<GRID_DIMENSION>,
     ) -> PlanNode<GRID_DIMENSION> {
-        println!("Direct calling out_of_bounds_cut");
-        let maybe_oob_node = self.out_of_bounds_cut(&mut frustrum);
-        println!("maybe_oob_node: {:?}", maybe_oob_node);
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
         let direct_node = DirectSolveNode {
             input_aabb,
             output_aabb: frustrum.output_aabb,
             sloped_sides: frustrum.sloped_sides(),
             steps: frustrum.steps,
-            out_of_bounds_cut: None,
         };
-
-        if let Some(mut oob_node) = maybe_oob_node {
-            let node_id = self.add_node(PlanNode::DirectSolve(direct_node));
-            println!("  -- add oob_node: {}", node_id);
-            oob_node.out_of_bounds_cut = Some(node_id);
-            PlanNode::DirectSolve(oob_node)
-        } else {
-            println!("  -- no oob_node");
-            PlanNode::DirectSolve(direct_node)
-        }
+        PlanNode::DirectSolve(direct_node)
     }
 
     pub fn generate_frustrum(
         &mut self,
         mut frustrum: APFrustrum<GRID_DIMENSION>,
     ) -> PlanNode<GRID_DIMENSION> {
-        println!("Generate Frustrum: {:?}", frustrum);
-        println!(
-            "  -- input: {:?}",
-            frustrum.input_aabb(&self.stencil_slopes)
-        );
-        let maybe_oob_node = self.out_of_bounds_cut(&mut frustrum);
-
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -160,14 +140,7 @@ where
             });
         }
 
-        if let Some(mut oob_node) = maybe_oob_node {
-            println!("Generate Frustrum OOB");
-            let node_id = self.add_node(result_node);
-            oob_node.out_of_bounds_cut = Some(node_id);
-            PlanNode::DirectSolve(oob_node)
-        } else {
-            result_node
-        }
+        result_node
     }
 
     pub fn generate_central(&mut self, max_steps: usize) -> (NodeId, usize) {
@@ -259,40 +232,6 @@ where
             plan,
             convolution_store,
             stencil_slopes,
-        }
-    }
-
-    pub fn out_of_bounds_cut(
-        &self,
-        frustrum: &mut APFrustrum<GRID_DIMENSION>,
-    ) -> Option<DirectSolveNode<GRID_DIMENSION>> {
-        if let Some(remainder_slopes) =
-            frustrum.out_of_bounds_cut(&self.stencil_slopes, &self.aabb)
-        {
-            let output_aabb = frustrum.input_aabb(&self.stencil_slopes);
-            let aabb_modifier = slopes_to_outward_diff(
-                &remainder_slopes.component_mul(&self.stencil_slopes),
-            );
-
-            let input_aabb = output_aabb.add_bounds_diff(aabb_modifier);
-            println!("out_of_bounds_cut, self.aabb {}, input_aabb: {}, output_aabb: {}, mod: {:?}, frustrum_slopes: {:?} remainder_slopes: {:?}", self.aabb, input_aabb, output_aabb, aabb_modifier, frustrum.sloped_sides(), remainder_slopes);
-            println!("{:?}", frustrum);
-            debug_assert!(self.aabb.contains_aabb(&input_aabb));
-            debug_assert!(input_aabb.contains_aabb(&output_aabb));
-
-            let node = DirectSolveNode {
-                input_aabb,
-                output_aabb,
-                sloped_sides: remainder_slopes,
-                steps: 1,
-                out_of_bounds_cut: None,
-            };
-
-            let result = Some(node);
-            println!("Returning planner_cut: {:?}", result);
-            result
-        } else {
-            None
         }
     }
 }

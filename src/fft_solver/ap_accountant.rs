@@ -131,13 +131,6 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         let mut node_requirement = 0;
         let direct_node = self.plan.unwrap_direct_node(node_id);
 
-        if let Some(cut) = direct_node.out_of_bounds_cut {
-            let pre_allocated_io = true;
-            let cut_requirement =
-                self.handle_unknown(cut, pre_allocated_io, node_requirements);
-            node_requirement += cut_requirement;
-        }
-
         if !pre_allocated_io {
             node_requirement +=
                 2 * self.real_buffer_requirement(&direct_node.input_aabb);

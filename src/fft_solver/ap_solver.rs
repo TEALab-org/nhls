@@ -383,17 +383,5 @@ where
             "ERROR: n_id: {}, Unexpected solve output",
             node_id
         );
-
-        // call time cut if needed
-        if let Some(next_id) = direct_solve.out_of_bounds_cut {
-            std::mem::swap(input_domain, output_domain);
-            self.unknown_solve_preallocated_io(
-                next_id,
-                input_domain,
-                output_domain,
-            );
-        }
-
-        //write_debug_file(&format!("n_{}_direct_output", node_id), output_domain);
     }
 }
