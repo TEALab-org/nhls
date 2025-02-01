@@ -1,6 +1,5 @@
 use nhls::domain::*;
 use nhls::fft_solver::*;
-use nhls::image::*;
 use nhls::image_3d_example::*;
 use nhls::vtk::*;
 

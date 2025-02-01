@@ -37,14 +37,6 @@ impl Side {
     }
 
     #[inline]
-    fn inner_coef(&self) -> i32 {
-        match self {
-            Side::Min => -1,
-            Side::Max => 1,
-        }
-    }
-
-    #[inline]
     fn outer_coef(&self) -> i32 {
         match self {
             Side::Min => 1,
@@ -128,18 +120,6 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         self.steps = cut_steps;
         //println!("timecut: {}", cut_steps);
         Some(next_frustrum)
-    }
-
-    /// complement to decompose
-    pub fn periodic_solve_output(
-        &self,
-        stencil_slopes: &Bounds<GRID_DIMENSION>,
-    ) -> AABB<GRID_DIMENSION> {
-        // sloped sides are part of periodic solve
-        // so we want to 1-0 flip
-        let boundary_sides = flip_sloped(&self.sloped_sides());
-        self.output_aabb;
-        self.output_aabb
     }
 
     pub fn decompose(
@@ -449,14 +429,6 @@ mod unit_tests {
 
     #[test]
     fn time_cut_test() {
-        // Cut greater than or equal is no cut at all
-        {
-            let ss = matrix![1, 1; 1, 1];
-            let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
-            let mut f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
-            //debug_assert_eq!(f.time_cut(11, &ss), None);
-        }
-
         {
             let ss = matrix![1, 1; 1, 1];
             let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
@@ -469,9 +441,15 @@ mod unit_tests {
             let ss = matrix![1, 1; 1, 1];
             let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
             let mut f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
-
-            //let expected_output_aabb =
-            //   debug_assert_eq!(f.time_cut(1, &ss), None);
+            debug_assert_eq!(
+                f.time_cut(1, &ss),
+                Some(APFrustrum::new(
+                    AABB::new(matrix![20, 40; 20, 40]),
+                    1,
+                    Side::Max,
+                    9
+                ))
+            );
         }
     }
 
