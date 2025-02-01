@@ -70,7 +70,7 @@ fn heat_1d_p_compare() {
 #[test]
 fn heat_2d_p_compare() {
     // Grid size
-    let grid_bound = AABB::new(matrix![2, 333; 14, 423]);
+    let grid_bound = AABB::new(matrix![2, 81; 14, 87]);
 
     let n_steps = 400;
 

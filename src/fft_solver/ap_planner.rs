@@ -140,7 +140,7 @@ where
             debug_assert!(frustrum
                 .output_aabb
                 .contains_aabb(&periodic_solve.output_aabb));
-            let boundary_frustrums = frustrum.decompose();
+            let boundary_frustrums = frustrum.decompose(&self.stencil_slopes);
 
             let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
             for bf in boundary_frustrums {
