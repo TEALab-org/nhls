@@ -7,12 +7,6 @@ fn main() {
     let args = Args::cli_parse("heat_2d_ap_fft");
 
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
-    /*
-    let stencil = nhls::stencil::Stencil::new(
-        [[-1, 0], [1, 0], [0, -1], [0, 1], [0, 0]],
-        |f| f[2],
-    );
-    */
 
     // Create domains
     let grid_bound = args.grid_bounds();
@@ -45,7 +39,11 @@ fn main() {
         let mut dot_path = args.output_dir.clone();
         dot_path.push("plan.dot");
         solver.to_dot_file(&dot_path);
-        // std::process::exit(0);
+
+        let mut d_path = args.output_dir.clone();
+        d_path.push("scratch.txt");
+        solver.scratch_descriptor_file(&d_path);
+        //std::process::exit(0);
     }
 
     for t in 1..args.images {

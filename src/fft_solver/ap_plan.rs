@@ -28,6 +28,7 @@ pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
     pub output_aabb: AABB<GRID_DIMENSION>,
     pub sloped_sides: Bounds<GRID_DIMENSION>,
     pub steps: usize,
+    pub out_of_bounds_cut: Option<NodeId>,
 
     pub recursion_dimension: usize,
     pub side: Side,
@@ -130,7 +131,6 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         let mut writer =
             std::io::BufWriter::new(std::fs::File::create(path).unwrap());
         writeln!(writer, "digraph plan {{").unwrap();
-        //writeln!(writer, "  ratio=1.3;").unwrap();
 
         for (i, node) in self.nodes.iter().enumerate() {
             match node {
@@ -201,7 +201,16 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
                             .unwrap();
                     }
                 }
-                PlanNode::DirectSolve(_) => {}
+                PlanNode::DirectSolve(p) => {
+                    if let Some(r) = p.out_of_bounds_cut {
+                        writeln!(
+                            writer,
+                            " n_{} -> n_{} [color = purple];",
+                            i, r
+                        )
+                        .unwrap();
+                    }
+                }
                 PlanNode::AOBDirectSolve(_) => {}
                 PlanNode::Repeat(r) => {
                     writeln!(writer, " n_{} -> n_{} [color=green];", i, r.node)

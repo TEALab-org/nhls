@@ -58,6 +58,9 @@ impl ConvolutionOperation {
         // Place offsets in real buffer
         let offsets = stencil.offsets();
         for n_i in 0..NEIGHBORHOOD_SIZE {
+            // I don't understand why, but we found that this mirroring operation
+            // was necessary. I think it was in the paper.
+            // TODO: Why is this the case?
             let rn_i: Coord<GRID_DIMENSION> = aabb.min() + offsets[n_i] * -1;
             let periodic_coord = aabb.periodic_coord(&rn_i);
             println!(

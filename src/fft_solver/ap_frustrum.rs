@@ -185,6 +185,39 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
 
         result
     }
+
+    pub fn out_of_bounds_cut(
+        &mut self,
+        stencil_slopes: &Bounds<GRID_DIMENSION>,
+        global_aabb: &AABB<GRID_DIMENSION>,
+    ) -> Option<Bounds<GRID_DIMENSION>> {
+        let input_aabb = self.input_aabb(stencil_slopes);
+        // Calculate slopes
+        let mut out_of_bounds = false;
+        let mut remainder_slopes = self.sloped_sides();
+        for d in 0..GRID_DIMENSION {
+            if input_aabb.bounds[(d, 0)] < global_aabb.bounds[(d, 0)] {
+                remainder_slopes[(d, 0)] = 0;
+                out_of_bounds = true;
+            }
+
+            if input_aabb.bounds[(d, 1)] > global_aabb.bounds[(d, 1)] {
+                remainder_slopes[(d, 1)] = 0;
+                out_of_bounds = true;
+            }
+        }
+
+        if out_of_bounds {
+            self.steps -= 1;
+            debug_assert!(
+                global_aabb.contains_aabb(&self.input_aabb(stencil_slopes))
+            );
+            println!("Returining slopes from frustum");
+            Some(remainder_slopes)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -392,4 +425,27 @@ mod unit_tests {
             println!("{}", coord_set.len());
         }
     */
+
+    #[test]
+    fn out_of_bounds_cut_test() {
+        {
+            let global_aabb = AABB::new(matrix![0, 399; 0, 399]);
+            let mut frustrum = APFrustrum::new(
+                AABB::new(matrix![300, 387; 0, 12]),
+                1,
+                Side::Min,
+                13,
+            );
+            let stencil_slopes = Bounds::from_element(1);
+            println!("slopes: {:?}", stencil_slopes);
+            debug_assert_eq!(
+                frustrum.input_aabb(&stencil_slopes),
+                AABB::new(matrix![287, 400; 0, 25])
+            );
+            assert_eq!(frustrum.sloped_sides(), matrix![1, 1; 0, 1]);
+            let maybe_out_of_bounds =
+                frustrum.out_of_bounds_cut(&stencil_slopes, &global_aabb);
+            assert_eq!(maybe_out_of_bounds, Some(matrix![1, 0; 0, 1]));
+        }
+    }
 }

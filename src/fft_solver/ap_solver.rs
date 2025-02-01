@@ -2,6 +2,7 @@ use crate::domain::*;
 use crate::fft_solver::*;
 use crate::stencil::*;
 use crate::util::*;
+use std::io::prelude::*;
 
 pub struct APSolver<
     'a,
@@ -87,6 +88,14 @@ where
 
     pub fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P) {
         self.plan.to_dot_file(path);
+    }
+
+    pub fn scratch_descriptor_file<P: AsRef<std::path::Path>>(&self, path: &P) {
+        let mut writer =
+            std::io::BufWriter::new(std::fs::File::create(path).unwrap());
+        for (i, d) in self.node_scratch_descriptors.iter().enumerate() {
+            writeln!(writer, "n_id: {} -- {:?}", i, d).unwrap();
+        }
     }
 
     fn get_input_output(
@@ -373,9 +382,25 @@ where
             &direct_solve.sloped_sides,
             direct_solve.steps,
         );
-        //write_debug_file(&format!("n_{}_direct_output", node_id), output_domain);
 
-        debug_assert_eq!(direct_solve.output_aabb, *output_domain.aabb());
+        debug_assert_eq!(
+            direct_solve.output_aabb,
+            *output_domain.aabb(),
+            "ERROR: n_id: {}, Unexpected solve output",
+            node_id
+        );
+
+        // call time cut if needed
+        if let Some(next_id) = direct_solve.out_of_bounds_cut {
+            std::mem::swap(input_domain, output_domain);
+            self.unknown_solve_preallocated_io(
+                next_id,
+                input_domain,
+                output_domain,
+            );
+        }
+
+        //write_debug_file(&format!("n_{}_direct_output", node_id), output_domain);
     }
 
     pub fn aob_direct_solve_allocate_io<'b>(

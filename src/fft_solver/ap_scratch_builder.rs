@@ -73,9 +73,12 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
         scratch_descriptors: &mut [ScratchDescriptor],
     ) {
         match self.plan.get_node(node_id) {
-            PlanNode::DirectSolve(_) => {
-                self.handle_direct(node_id, offset, scratch_descriptors)
-            }
+            PlanNode::DirectSolve(_) => self.handle_direct(
+                node_id,
+                offset,
+                pre_allocated_io,
+                scratch_descriptors,
+            ),
             PlanNode::AOBDirectSolve(_) => {
                 self.handle_aob_direct(node_id, offset, scratch_descriptors)
             }
@@ -94,15 +97,33 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
     fn handle_direct(
         &self,
         node_id: NodeId,
-        offset: usize,
+        mut offset: usize,
+        pre_allocated_io: bool,
         scratch_descriptors: &mut [ScratchDescriptor],
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
-        let buffer_len = self.real_buffer_bytes(&direct_solve.input_aabb);
         let scratch_descriptor = &mut scratch_descriptors[node_id];
-        scratch_descriptor.input_offset = offset;
-        scratch_descriptor.output_offset = offset + buffer_len;
-        scratch_descriptor.real_buffer_size = buffer_len;
+
+        // Input / Output scratch?
+        if !pre_allocated_io {
+            let buffer_len = self.real_buffer_bytes(&direct_solve.input_aabb);
+            scratch_descriptor.input_offset = offset;
+            scratch_descriptor.output_offset = offset + buffer_len;
+            scratch_descriptor.real_buffer_size = buffer_len;
+            offset += 2 * buffer_len;
+        }
+
+        // Time Cut
+        if let Some(cut) = direct_solve.out_of_bounds_cut {
+            // Time cuts can re-use io buffers
+            let pre_allocated_io = true;
+            self.handle_unknown(
+                cut,
+                offset,
+                pre_allocated_io,
+                scratch_descriptors,
+            );
+        }
     }
 
     fn handle_aob_direct(
