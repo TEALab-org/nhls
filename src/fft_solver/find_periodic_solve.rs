@@ -1,5 +1,6 @@
 use crate::util::*;
 
+#[derive(Debug)]
 pub struct PeriodicSolveParams<const DIMENSION: usize> {
     pub stencil_slopes: Bounds<DIMENSION>,
     pub cutoff: i32,
@@ -7,6 +8,7 @@ pub struct PeriodicSolveParams<const DIMENSION: usize> {
     pub max_steps: Option<usize>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct PeriodicSolve<const DIMENSION: usize> {
     pub output_aabb: AABB<DIMENSION>,
     pub steps: usize,

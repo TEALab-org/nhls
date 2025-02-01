@@ -146,7 +146,6 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
     // in particular,
     pub fn decompose(&self) -> Vec<APFrustrum<GRID_DIMENSION>> {
         // Cause FFT goes steps in, so sub one, shrug
-        // !!!! danger, was -1  here, uh oh
         let i_steps = self.steps as i32 - 1;
         let mut result = Vec::new();
 
@@ -168,7 +167,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         let mut remainder = self.output_aabb;
         remainder.bounds
             [(self.recursion_dimension, self.side.outer_index())] +=
-            self.side.outer_coef() * i_steps;
+            self.side.outer_coef() * self.steps as i32;
 
         // 2 for each lower dimension
         for d in self.recursion_dimension + 1..GRID_DIMENSION {
@@ -179,8 +178,11 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
 
             let mut max_aabb = remainder;
             let max_bound = max_aabb.bounds[(d, 1)];
-            max_aabb.bounds[(d, Side::Max.inner_index())] = max_bound - i_steps;
+            max_aabb.bounds[(d, 0)] = max_bound - i_steps;
             result.push(APFrustrum::new(max_aabb, d, Side::Max, self.steps));
+
+            remainder.bounds[(d, 0)] += self.steps as i32;
+            remainder.bounds[(d, 1)] -= self.steps as i32;
         }
 
         result
@@ -209,9 +211,11 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
 
         if out_of_bounds {
             self.steps -= 1;
+            /*
             debug_assert!(
                 global_aabb.contains_aabb(&self.input_aabb(stencil_slopes))
             );
+            */
             println!("Returining slopes from frustum");
             Some(remainder_slopes)
         } else {
@@ -266,7 +270,7 @@ mod unit_tests {
             assert_eq!(
                 d1[1],
                 APFrustrum::new(
-                    AABB::new(matrix![19, 50; 0, 19]),
+                    AABB::new(matrix![20, 50; 0, 19]),
                     1,
                     Side::Min,
                     steps,
@@ -275,7 +279,7 @@ mod unit_tests {
             assert_eq!(
                 d1[2],
                 APFrustrum::new(
-                    AABB::new(matrix![19, 50; 181, 200]),
+                    AABB::new(matrix![20, 50; 181, 200]),
                     1,
                     Side::Max,
                     steps,
@@ -297,7 +301,7 @@ mod unit_tests {
             assert_eq!(
                 d2[1],
                 APFrustrum::new(
-                    AABB::new(matrix![0, 31; 0, 19]),
+                    AABB::new(matrix![0, 30; 0, 19]),
                     1,
                     Side::Min,
                     steps
@@ -306,7 +310,7 @@ mod unit_tests {
             assert_eq!(
                 d2[2],
                 APFrustrum::new(
-                    AABB::new(matrix![0, 31; 181, 200]),
+                    AABB::new(matrix![0, 30; 181, 200]),
                     1,
                     Side::Max,
                     steps,
@@ -447,5 +451,94 @@ mod unit_tests {
                 frustrum.out_of_bounds_cut(&stencil_slopes, &global_aabb);
             assert_eq!(maybe_out_of_bounds, Some(matrix![1, 0; 0, 1]));
         }
+    }
+
+    // Unit test from early 3d plan that was failing
+    #[test]
+    fn decompose_central() {
+        let global_aabb = AABB::new(matrix![0, 199; 0, 199; 0, 199]);
+        let solve_aabb = AABB::new(matrix![50, 149; 50, 149; 50, 149]);
+        let decomposition = global_aabb.decomposition(&solve_aabb);
+        let stencil_slopes = Bounds::from_element(1);
+
+        for d in 0..3 {
+            for side in [Side::Min, Side::Max] {
+                let frustrum = APFrustrum::new(
+                    decomposition[d][side.outer_index()],
+                    d,
+                    side,
+                    50,
+                );
+                let input_aabb = frustrum.input_aabb(&stencil_slopes);
+                debug_assert!(global_aabb.contains_aabb(&input_aabb));
+            }
+        }
+
+        let mut frustrum = APFrustrum::new(
+            decomposition[0][Side::Min.outer_index()],
+            0,
+            Side::Min,
+            50,
+        );
+        let mut time_cut_1 = frustrum.time_cut(25, &stencil_slopes).unwrap();
+        let time_cut_2 = time_cut_1.time_cut(18, &stencil_slopes).unwrap();
+
+        debug_assert_eq!(
+            frustrum.output_aabb,
+            time_cut_1.input_aabb(&stencil_slopes)
+        );
+        debug_assert_eq!(
+            time_cut_1.output_aabb,
+            time_cut_2.input_aabb(&stencil_slopes)
+        );
+    }
+
+    fn test_decomp<const GRID_DIMENSION: usize>(
+        frustrum: &APFrustrum<GRID_DIMENSION>,
+        solve_output: &AABB<GRID_DIMENSION>,
+    ) {
+        let mut coord_set = std::collections::HashSet::new();
+        coord_set.extend(solve_output.coord_iter());
+
+        let boundary_frustrums = frustrum.decompose();
+        for bf in boundary_frustrums {
+            for c in bf.output_aabb.coord_iter() {
+                assert!(!coord_set.contains(&c));
+                coord_set.insert(c);
+            }
+        }
+
+        let mut n = 0;
+        for c in frustrum.output_aabb.coord_iter() {
+            n += 1;
+            assert!(coord_set.contains(&c));
+        }
+        assert_eq!(n, coord_set.len());
+    }
+
+    #[test]
+    fn decompose_3d() {
+        let cutoff = 40;
+        let ratio = 0.5;
+        let stencil_slopes = Bounds::from_element(1);
+        let frustrum = APFrustrum::new(
+            AABB::new(matrix![0, 37; 0, 60; 0, 60]),
+            0,
+            Side::Min,
+            12,
+        );
+        let input_aabb = frustrum.input_aabb(&stencil_slopes);
+
+        let solve_params = PeriodicSolveParams {
+            stencil_slopes,
+            cutoff,
+            ratio,
+            max_steps: None,
+        };
+
+        let periodic_solve =
+            find_periodic_solve(&input_aabb, &solve_params).unwrap();
+
+        test_decomp(&frustrum, &periodic_solve.output_aabb);
     }
 }

@@ -1,23 +1,16 @@
-/*
 use nhls::domain::*;
+use nhls::fft_solver::*;
+use nhls::image::*;
 use nhls::image_3d_example::*;
-use nhls::solver::*;
 use nhls::vtk::*;
-*/
+
 fn main() {
-    /*
     let args = Args::cli_parse("heat_3d_ap_fft");
 
     let stencil =
         nhls::standard_stencils::heat_3d(1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.1);
 
-    // Create domains
     let grid_bound = args.grid_bounds();
-    let mut input_domain = OwnedDomain::new(grid_bound);
-    let mut output_domain = OwnedDomain::new(grid_bound);
-    if args.write_images {
-        write_vtk3d(&input_domain, &args.frame_name(0));
-    }
 
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);
@@ -25,21 +18,40 @@ fn main() {
     // Create AP Solver
     let cutoff = 40;
     let ratio = 0.5;
-    let mut solver = APSolver::new(
+    let solver = APSolver::new(
         &bc,
         &stencil,
+        grid_bound,
+        args.steps_per_image,
+        args.plan_type,
         cutoff,
         ratio,
-        &grid_bound,
-        args.plan_type,
         args.chunk_size,
     );
+    if args.write_dot {
+        println!("WRITING DOT FILE");
+        let mut dot_path = args.output_dir.clone();
+        dot_path.push("plan.dot");
+        solver.to_dot_file(&dot_path);
+
+        let mut d_path = args.output_dir.clone();
+        d_path.push("scratch.txt");
+        solver.scratch_descriptor_file(&d_path);
+        //std::process::exit(0);
+    }
+
+    // Create domains
+    // Create domains
+    let mut buffer_1 = OwnedDomain::new(grid_bound);
+    let mut buffer_2 = OwnedDomain::new(grid_bound);
+    let mut input_domain = buffer_1.as_slice_domain();
+    let mut output_domain = buffer_2.as_slice_domain();
+    if args.write_images {
+        write_vtk3d(&input_domain, &args.frame_name(0));
+    }
+
     for t in 1..args.images {
-        solver.loop_solve(
-            &mut input_domain,
-            &mut output_domain,
-            args.steps_per_image,
-        );
+        solver.apply(&mut input_domain, &mut output_domain);
         std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {
             write_vtk3d(&input_domain, &args.frame_name(t));
@@ -47,5 +59,4 @@ fn main() {
     }
 
     args.save_wisdom();
-    */
 }
