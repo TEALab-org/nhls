@@ -1,6 +1,4 @@
 use crate::fft_solver::*;
-use crate::util::*;
-use std::mem::size_of;
 use sync_ptr::SyncConstPtr;
 
 pub type AllocationType = f64;
@@ -15,19 +13,31 @@ pub struct ScratchDescriptor {
 }
 
 pub struct ScratchSpace {
-    //scratch_descriptors: Vec<ScratchDescriptor>,
-    _scratch_allocation: AlignedVec<AllocationType>,
     scratch_ptr: SyncConstPtr<u8>,
+    size: usize,
+}
+
+impl Drop for ScratchSpace {
+    fn drop(&mut self) {
+        let alloc_layout =
+            std::alloc::Layout::from_size_align(self.size, MIN_ALIGNMENT)
+                .unwrap();
+
+        unsafe {
+            std::alloc::dealloc(
+                self.scratch_ptr.inner() as *mut u8,
+                alloc_layout,
+            );
+        }
+    }
 }
 
 impl ScratchSpace {
-    pub fn new(bytes: usize) -> Self {
-        let scratch_allocations_len = bytes / size_of::<AllocationType>();
-        let scratch_allocation = AlignedVec::new(scratch_allocations_len);
+    pub fn new(size: usize) -> Self {
+        let alloc_layout =
+            std::alloc::Layout::from_size_align(size, MIN_ALIGNMENT).unwrap();
         let scratch_ptr = unsafe {
-            SyncConstPtr::new(
-                scratch_allocation.as_slice().as_ptr() as *const u8
-            )
+            SyncConstPtr::new(std::alloc::alloc(alloc_layout) as *const u8)
         };
         debug_assert!(
             scratch_ptr.inner() as usize % MIN_ALIGNMENT == 0,
@@ -35,10 +45,7 @@ impl ScratchSpace {
             scratch_ptr.inner() as usize,
             scratch_ptr.inner() as usize % MIN_ALIGNMENT
         );
-        ScratchSpace {
-            _scratch_allocation: scratch_allocation,
-            scratch_ptr,
-        }
+        ScratchSpace { scratch_ptr, size }
     }
 
     /// offset in bytes

@@ -1,7 +1,7 @@
 pub type OpId = usize;
 pub type NodeId = usize;
 
-pub const MIN_ALIGNMENT: usize = 64;
+pub const MIN_ALIGNMENT: usize = 128;
 
 mod ap_accountant;
 mod ap_frustrum;
