@@ -294,29 +294,5 @@ mod unit_tests {
         let planner = APPlanner::new(
             &stencil, aabb, steps, plan_type, cutoff, ratio, chunk_size,
         );
-        let result = planner.finish();
-        result.plan.to_dot_file(&"test.dot");
-
-        for (i, n) in result.plan.nodes.iter().enumerate() {
-            println!("i: {}, n: {:?}", i, n);
-        }
-
-        let mut p_n = 0;
-        let mut d_n = 0;
-        let mut r_n = 0;
-        for node in &result.plan.nodes {
-            match node {
-                PlanNode::PeriodicSolve(_) => p_n += 1,
-                PlanNode::DirectSolve(_) => d_n += 1,
-                PlanNode::Repeat(_) => r_n += 1,
-            }
-        }
-        println!("n: {}", result.plan.nodes.len());
-        println!("p_n: {}", p_n);
-        println!("d_n: {}", d_n);
-        println!("r_n: {}", r_n);
-
-        let s = APAccountBuilder::node_requirements(&result.plan);
-        println!("Scratch size: {:?}", s);
     }
 }
