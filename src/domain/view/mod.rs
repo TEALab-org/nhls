@@ -10,24 +10,35 @@ use crate::util::*;
 use rayon::prelude::*;
 
 pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
+    /// Get the AABB for this domain
     fn aabb(&self) -> &AABB<GRID_DIMENSION>;
 
+    /// Set the AABB for this domain,
+    /// current buffer must be large enough!
     fn set_aabb(&mut self, aabb: AABB<GRID_DIMENSION>);
 
+    /// Get the buffer, this will be sliced to the right size for the aabb.
     fn buffer(&self) -> &[f64];
 
+    /// Get mutable access to the buffer,
+    /// this will be sliced to the right size for the aabb.
     fn buffer_mut(&mut self) -> &mut [f64];
 
+    /// Get both a const reference to the aabb
+    /// and a mutable reference to the buffer.
     fn aabb_buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]);
 
+    /// Access the value at tbe given world coord.
     fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f64;
 
+    /// Set the value at a given coordinate.
+    /// When setting all values in a domain, use par_set_values instead.
     fn set_coord(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f64);
 
-    fn par_modify_access<'a>(
-        &'a mut self,
+    fn par_modify_access(
+        &mut self,
         chunk_size: usize,
-    ) -> impl ParallelIterator<Item = DomainChunk<'a, GRID_DIMENSION>> {
+    ) -> impl ParallelIterator<Item = DomainChunk<'_, GRID_DIMENSION>> {
         let (aabb, buffer) = self.aabb_buffer_mut();
         par_modify_access_impl(buffer, aabb, chunk_size)
     }
@@ -54,7 +65,6 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
         other: &DomainType,
         chunk_size: usize,
     ) {
-        //println!("  -- par_set_subdomain, {} into {}", other.aabb(), self.aabb());
         let const_self_ref: &Self = self;
         other.buffer()[0..other.aabb().buffer_size()]
             .par_chunks(chunk_size)

@@ -26,7 +26,8 @@ impl<'a, const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
     }
 
     fn buffer(&self) -> &[f64] {
-        &self.buffer[0..self.aabb().buffer_size()]
+        let range = 0..self.aabb().buffer_size();
+        &self.buffer[range]
     }
 
     fn buffer_mut(&mut self) -> &mut [f64] {
@@ -35,7 +36,8 @@ impl<'a, const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
     }
 
     fn aabb_buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]) {
-        (&self.aabb, self.buffer)
+        let range = 0..self.aabb().buffer_size();
+        (&self.aabb, &mut self.buffer[range])
     }
 
     #[track_caller]

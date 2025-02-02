@@ -35,7 +35,6 @@ fn main() {
         let mut dot_path = args.output_dir.clone();
         dot_path.push("plan.dot");
         solver.to_dot_file(&dot_path);
-        //std::process::exit(0);
     }
 
     let mut img = None;

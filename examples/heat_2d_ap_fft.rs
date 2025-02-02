@@ -43,7 +43,6 @@ fn main() {
         let mut d_path = args.output_dir.clone();
         d_path.push("scratch.txt");
         solver.scratch_descriptor_file(&d_path);
-        //std::process::exit(0);
     }
 
     for t in 1..args.images {
