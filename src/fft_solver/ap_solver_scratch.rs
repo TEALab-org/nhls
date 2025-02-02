@@ -29,7 +29,12 @@ impl ScratchSpace {
                 scratch_allocation.as_slice().as_ptr() as *const u8
             )
         };
-        debug_assert!(scratch_ptr.inner() as usize % MIN_ALIGNMENT == 0);
+        debug_assert!(
+            scratch_ptr.inner() as usize % MIN_ALIGNMENT == 0,
+            "ERROR: scratch_ptr: {}, mod: {}",
+            scratch_ptr.inner() as usize,
+            scratch_ptr.inner() as usize % MIN_ALIGNMENT
+        );
         ScratchSpace {
             _scratch_allocation: scratch_allocation,
             scratch_ptr,
