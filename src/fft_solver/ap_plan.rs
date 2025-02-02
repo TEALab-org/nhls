@@ -123,6 +123,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
 
     /// Write out the plan as a dot language graph to specified path.
     pub fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P) {
+        println!("Writing plan dot: {:?}", path.as_ref());
         let mut writer =
             std::io::BufWriter::new(std::fs::File::create(path).unwrap());
         writeln!(writer, "digraph plan {{").unwrap();

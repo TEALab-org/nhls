@@ -2,9 +2,9 @@ use crate::domain::*;
 use nalgebra::vector;
 use vtkio::model::*;
 
-pub fn write_vtk3d<F: AsRef<std::path::Path>, DomainType: DomainView<3>>(
+pub fn write_vtk3d<P: AsRef<std::path::Path>, DomainType: DomainView<3>>(
     domain: &DomainType,
-    s: &F,
+    s: &P,
 ) {
     println!("Writing vtk: {:?}", s.as_ref());
     let aabb = domain.aabb();

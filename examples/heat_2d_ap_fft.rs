@@ -36,7 +36,6 @@ fn main() {
         &planner_params,
     );
     if args.write_dot {
-        println!("WRITING DOT FILE");
         let mut dot_path = args.output_dir.clone();
         dot_path.push("plan.dot");
         solver.to_dot_file(&dot_path);

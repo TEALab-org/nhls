@@ -27,11 +27,6 @@ pub fn find_periodic_solve<const DIMENSION: usize>(
         params.stencil_slopes,
         params.max_steps,
     );
-    /*
-        println!(
-            "Found fft solve, steps: {}, region: {:?}",
-            steps, output_aabb
-        );
-    */
+
     Some(PeriodicSolve { output_aabb, steps })
 }

@@ -416,7 +416,7 @@ mod unit_tests {
             assert!(coord_set.contains(&c));
         }
 
-        println!("{}", coord_set.len());
+        assert_eq!(bounds.buffer_size(), coord_set.len());
     }
 
     #[test]
@@ -490,18 +490,6 @@ mod unit_tests {
                 c,
                 (max_steps, AABB::new(matrix![24, 80; 16, 88; 8, 36]))
             );
-        }
-    }
-
-    #[test]
-    fn found_bug_aabb_1() {
-        let aabb = AABB::new(matrix![0, 999; 0, 999]);
-        let solve = AABB::new(matrix![40, 959; 40, 959]);
-        let ds = aabb.decomposition(&solve);
-        for [d1, d2] in ds {
-            println!("{}", d1);
-            println!("{}", d2);
-            println!("-");
         }
     }
 }

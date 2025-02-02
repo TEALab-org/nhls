@@ -286,7 +286,6 @@ mod unit_tests {
         {
             let stencil_slopes = Bounds::from_element(1);
             let aabb = AABB::new(matrix![0, 10]);
-            println!("aabb: {:?}", aabb);
             let f1 = APFrustrum::new(aabb, 0, Side::Min, 2);
             let d1 = f1.decompose(&stencil_slopes);
             assert_eq!(d1.len(), 1);

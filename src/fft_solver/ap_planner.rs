@@ -258,7 +258,6 @@ where
 
         let n = self.steps / central_solve_steps;
         let remainder = self.steps % central_solve_steps;
-        //println!("n: {}, remainder: {}", n, remainder);
         let mut next = None;
         if remainder != 0 {
             let (remainder_solve_node, remainder_solve_steps) =
@@ -300,46 +299,6 @@ mod unit_tests {
     use crate::standard_stencils::*;
 
     #[test]
-    fn test_gen_1d() {
-        let stencil = heat_1d(1.0, 1.0, 0.5);
-        let aabb = AABB::new(matrix![0, 100]);
-        let cutoff = 20;
-        let ratio = 0.5;
-        let steps = 100;
-        let plan_type = PlanType::Estimate;
-        let chunk_size = 10;
-
-        let planner = APPlanner::new(
-            &stencil, aabb, steps, plan_type, cutoff, ratio, chunk_size,
-        );
-
-        let result = planner.finish();
-        result.plan.to_dot_file(&"test.dot");
-
-        for (i, n) in result.plan.nodes.iter().enumerate() {
-            println!("i: {}, n: {:?}", i, n);
-        }
-
-        let mut p_n = 0;
-        let mut d_n = 0;
-        let mut r_n = 0;
-        for node in &result.plan.nodes {
-            match node {
-                PlanNode::PeriodicSolve(_) => p_n += 1,
-                PlanNode::DirectSolve(_) => d_n += 1,
-                PlanNode::Repeat(_) => r_n += 1,
-            }
-        }
-        println!("n: {}", result.plan.nodes.len());
-        println!("p_n: {}", p_n);
-        println!("d_n: {}", d_n);
-        println!("r_n: {}", r_n);
-
-        let s = APAccountBuilder::node_requirements(&result.plan);
-        println!("Scratch size: {:?}", s);
-    }
-
-    #[test]
     fn create_ap_plan_test() {
         let planner_params = PlannerParameters {
             cutoff: 20,
@@ -374,8 +333,7 @@ mod unit_tests {
                 Stencil::new([[-1], [0], [4]], |args: &[f64; 3]| args[0]);
             let aabb = AABB::new(matrix![54, 5234]);
             let steps = 10000;
-            let result = create_ap_plan(&stencil, aabb, steps, &planner_params);
-            result.plan.to_dot_file(&"offside.dot");
+            create_ap_plan(&stencil, aabb, steps, &planner_params);
         }
     }
 }
