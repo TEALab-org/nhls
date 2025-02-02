@@ -12,6 +12,10 @@ impl<const GRID_DIMENSION: usize> OwnedDomain<GRID_DIMENSION> {
         let buffer = AlignedVec::new(aabb.buffer_size());
         OwnedDomain { aabb, buffer }
     }
+
+    pub fn as_slice_domain(&mut self) -> SliceDomain<'_, GRID_DIMENSION> {
+        SliceDomain::new(self.aabb, &mut self.buffer)
+    }
 }
 
 impl<const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
@@ -28,17 +32,42 @@ impl<const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
     }
 
     fn buffer(&self) -> &[f64] {
-        &self.buffer
+        let range = 0..self.aabb().buffer_size();
+        &self.buffer[range]
     }
 
-    fn buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]) {
-        (&self.aabb, &mut self.buffer)
+    fn buffer_mut(&mut self) -> &mut [f64] {
+        let range = 0..self.aabb().buffer_size();
+        &mut self.buffer[range]
     }
 
+    fn aabb_buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]) {
+        let range = 0..self.aabb().buffer_size();
+        (&self.aabb, &mut self.buffer[range])
+    }
+
+    #[track_caller]
     fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f64 {
-        debug_assert!(self.aabb.contains(world_coord));
+        debug_assert!(
+            self.aabb.contains(world_coord),
+            "{:?} does not contain {:?}",
+            self.aabb,
+            world_coord
+        );
         let index = self.aabb.coord_to_linear(world_coord);
         self.buffer[index]
+    }
+
+    #[track_caller]
+    fn set_coord(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f64) {
+        debug_assert!(
+            self.aabb.contains(world_coord),
+            "{:?} does not contain {:?}",
+            self.aabb,
+            world_coord
+        );
+        let index = self.aabb.coord_to_linear(world_coord);
+        self.buffer[index] = value;
     }
 }
 

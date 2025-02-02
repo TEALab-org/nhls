@@ -8,7 +8,7 @@ pub struct SliceDomain<'a, const GRID_DIMENSION: usize> {
 
 impl<'a, const GRID_DIMENSION: usize> SliceDomain<'a, GRID_DIMENSION> {
     pub fn new(aabb: AABB<GRID_DIMENSION>, buffer: &'a mut [f64]) -> Self {
-        debug_assert_eq!(buffer.len(), aabb.buffer_size());
+        debug_assert!(buffer.len() >= aabb.buffer_size());
         SliceDomain { aabb, buffer }
     }
 }
@@ -22,21 +22,45 @@ impl<'a, const GRID_DIMENSION: usize> DomainView<GRID_DIMENSION>
 
     fn set_aabb(&mut self, aabb: AABB<GRID_DIMENSION>) {
         debug_assert!(aabb.buffer_size() <= self.buffer.len());
-        // TODO: should we re-slice here?
         self.aabb = aabb;
     }
 
     fn buffer(&self) -> &[f64] {
-        self.buffer
+        let range = 0..self.aabb().buffer_size();
+        &self.buffer[range]
     }
 
-    fn buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]) {
-        (&self.aabb, self.buffer)
+    fn buffer_mut(&mut self) -> &mut [f64] {
+        let range = 0..self.aabb().buffer_size();
+        &mut self.buffer[range]
     }
 
+    fn aabb_buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]) {
+        let range = 0..self.aabb().buffer_size();
+        (&self.aabb, &mut self.buffer[range])
+    }
+
+    #[track_caller]
     fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f64 {
-        debug_assert!(self.aabb.contains(world_coord));
+        debug_assert!(
+            self.aabb.contains(world_coord),
+            "{:?} does not contain {:?}",
+            self.aabb,
+            world_coord
+        );
         let index = self.aabb.coord_to_linear(world_coord);
         self.buffer[index]
+    }
+
+    #[track_caller]
+    fn set_coord(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f64) {
+        debug_assert!(
+            self.aabb.contains(world_coord),
+            "{:?} does not contain {:?}",
+            self.aabb,
+            world_coord
+        );
+        let index = self.aabb.coord_to_linear(world_coord);
+        self.buffer[index] = value;
     }
 }

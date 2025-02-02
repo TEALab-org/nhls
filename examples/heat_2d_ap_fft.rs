@@ -1,11 +1,12 @@
 use nhls::domain::*;
 use nhls::fft_solver::*;
-use nhls::image_1d_example::*;
+use nhls::image::*;
+use nhls::image_2d_example::*;
 
 fn main() {
-    let (args, output_image_path) = Args::cli_parse("heat_1d_ap_fft");
+    let args = Args::cli_parse("heat_2d_ap_fft");
 
-    let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
+    let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
 
     // Create domains
     let grid_bound = args.grid_bounds();
@@ -13,6 +14,9 @@ fn main() {
     let mut buffer_2 = OwnedDomain::new(grid_bound);
     let mut input_domain = buffer_1.as_slice_domain();
     let mut output_domain = buffer_2.as_slice_domain();
+    if args.write_images {
+        image2d(&input_domain, &args.frame_name(0));
+    }
 
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);
@@ -28,32 +32,25 @@ fn main() {
         &bc,
         &stencil,
         grid_bound,
-        args.steps_per_line,
+        args.steps_per_image,
         &planner_params,
     );
     if args.write_dot {
-        println!("WRITING DOT FILE");
         let mut dot_path = args.output_dir.clone();
         dot_path.push("plan.dot");
         solver.to_dot_file(&dot_path);
+
+        let mut d_path = args.output_dir.clone();
+        d_path.push("scratch.txt");
+        solver.scratch_descriptor_file(&d_path);
     }
 
-    let mut img = None;
-    if args.write_image {
-        let mut i = nhls::image::Image1D::new(grid_bound, args.lines as u32);
-        i.add_line(0, input_domain.buffer());
-        img = Some(i);
-    }
-    for t in 1..args.lines as u32 {
+    for t in 1..args.images {
         solver.apply(&mut input_domain, &mut output_domain);
         std::mem::swap(&mut input_domain, &mut output_domain);
-        if let Some(i) = img.as_mut() {
-            i.add_line(t, input_domain.buffer());
+        if args.write_images {
+            image2d(&input_domain, &args.frame_name(t));
         }
-    }
-
-    if let Some(i) = img {
-        i.write(&output_image_path);
     }
 
     args.save_wisdom();

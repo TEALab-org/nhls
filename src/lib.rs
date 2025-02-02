@@ -4,8 +4,8 @@
 // don't like this warning for this codebase.
 #![allow(clippy::needless_range_loop)]
 
-pub mod decomposition;
 pub mod domain;
+pub mod fft_solver;
 pub mod image;
 pub mod image_1d_example;
 pub mod image_2d_example;

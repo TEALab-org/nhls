@@ -1,37 +1,16 @@
 use crate::util::*;
 
-pub struct FFTSolveParams<const DIMENSION: usize> {
-    pub slopes: Bounds<DIMENSION>,
-    pub cutoff: i32,
-    pub ratio: f64,
-}
-
-pub struct FFTSolve<const DIMENSION: usize> {
-    pub solve_region: AABB<DIMENSION>,
-    pub steps: usize,
-}
-
-pub fn try_fftsolve<const DIMENSION: usize>(
-    bounds: &AABB<DIMENSION>,
-    params: &FFTSolveParams<DIMENSION>,
-    max_steps: Option<usize>,
-) -> Option<FFTSolve<DIMENSION>> {
-    if bounds.min_size_len() <= params.cutoff {
-        return None;
-    }
-
-    let (steps, solve_region) =
-        bounds.shrink(params.ratio, params.slopes, max_steps);
-
-    println!(
-        "Found fft solve, steps: {}, region: {:?}",
-        steps, solve_region
-    );
-
-    Some(FFTSolve {
-        solve_region,
-        steps,
-    })
+/// Calculate the input region for a frustrum solve
+/// based on output region size and other parameters.
+pub fn frustrum_input_aabb<const GRID_DIMENSION: usize>(
+    steps: usize,
+    output_box: &AABB<GRID_DIMENSION>,
+    sloped_sides: &Bounds<GRID_DIMENSION>,
+    stencil_slopes: &Bounds<GRID_DIMENSION>,
+) -> AABB<GRID_DIMENSION> {
+    let trapezoid_slopes =
+        slopes_to_outward_diff(&stencil_slopes.component_mul(sloped_sides));
+    output_box.add_bounds_diff(steps as i32 * trapezoid_slopes)
 }
 
 /// This needs to match logic from AABB::decomposition

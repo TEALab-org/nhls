@@ -2,9 +2,9 @@ use crate::domain::*;
 use nalgebra::vector;
 use vtkio::model::*;
 
-pub fn write_vtk3d<F: AsRef<std::path::Path>, DomainType: DomainView<3>>(
+pub fn write_vtk3d<P: AsRef<std::path::Path>, DomainType: DomainView<3>>(
     domain: &DomainType,
-    s: &F,
+    s: &P,
 ) {
     println!("Writing vtk: {:?}", s.as_ref());
     let aabb = domain.aabb();
@@ -46,6 +46,8 @@ pub fn write_vtk3d<F: AsRef<std::path::Path>, DomainType: DomainView<3>>(
         offset += 8;
     }
 
+    let data: Vec<f32> = domain.buffer().iter().map(|v| *v as f32).collect();
+
     Vtk {
         version: Version::Auto,
         title: String::new(),
@@ -67,7 +69,7 @@ pub fn write_vtk3d<F: AsRef<std::path::Path>, DomainType: DomainView<3>>(
                         num_comp: 1,
                         lookup_table: None,
                     },
-                    data: IOBuffer::F64(domain.buffer().to_vec()),
+                    data: IOBuffer::F32(data),
                 })],
                 cell: vec![],
             },

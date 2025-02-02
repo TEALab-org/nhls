@@ -17,8 +17,18 @@ pub struct AABB<const DIMENSION: usize> {
     pub bounds: Bounds<DIMENSION>,
 }
 
+impl<const GRID_DIMENSION: usize> std::fmt::Display for AABB<GRID_DIMENSION> {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> Result<(), std::fmt::Error> {
+        write!(f, "{:?}", self.bounds)
+    }
+}
+
 impl<const DIMENSION: usize> AABB<DIMENSION> {
     /// Create AABB from raw bounds.
+    #[inline]
     pub fn new(bounds: Bounds<DIMENSION>) -> Self {
         AABB { bounds }
     }
@@ -39,11 +49,13 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
     }
 
     /// Return the number of coordinates contained in the instance.
+    #[inline]
     pub fn buffer_size(&self) -> usize {
         real_buffer_size(&self.exclusive_bounds())
     }
 
     /// Return the number of complex numbers needed for a FFTW buffer.
+    #[inline]
     pub fn complex_buffer_size(&self) -> usize {
         complex_buffer_size(&self.exclusive_bounds())
     }
@@ -81,6 +93,13 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         true
     }
 
+    pub fn trim_to_aabb(&mut self, other: &Self) {
+        for d in 0..DIMENSION {
+            self.bounds[(d, 0)] = self.bounds[(d, 0)].max(other.bounds[(d, 0)]);
+            self.bounds[(d, 1)] = self.bounds[(d, 1)].min(other.bounds[(d, 1)]);
+        }
+    }
+
     /// Element wise add the bounds diff.
     pub fn add_bounds_diff(&self, diff: Bounds<DIMENSION>) -> Self {
         Self::new(self.bounds + diff)
@@ -93,7 +112,7 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         for d in 0..DIMENSION {
             let di_raw = coord[d];
             result[d] = if di_raw < self.bounds[(d, 0)] {
-                self.bounds[(d, 1)] + 1 + di_raw
+                (self.bounds[(d, 1)] + 1) - (self.bounds[(d, 0)] - di_raw)
             } else if di_raw > self.bounds[(d, 1)] {
                 self.bounds[(d, 0)] + (di_raw - self.bounds[(d, 1)] - 1)
             } else {
@@ -314,6 +333,39 @@ mod unit_tests {
                 vector![0, 100, 97, 82, 33]
             );
         }
+
+        // Mimic use in convolution op for non-origin AABB
+        {
+            let aabb = AABB::new(matrix![13, 96; 0, 40]);
+            let offsets = [
+                vector![0, 0],
+                vector![1, 0],
+                vector![-1, 0],
+                vector![0, 1],
+                vector![0, -1],
+                vector![1, 1],
+                vector![-1, 1],
+                vector![1, -1],
+                vector![-1, -1],
+            ];
+            let expected = [
+                vector![13, 0],
+                vector![14, 0],
+                vector![96, 0],
+                vector![13, 1],
+                vector![13, 40],
+                vector![14, 1],
+                vector![96, 1],
+                vector![14, 40],
+                vector![96, 40],
+            ];
+            debug_assert_eq!(offsets.len(), expected.len());
+            for (offset, expected) in offsets.iter().zip(expected.iter()) {
+                let c: Coord<2> = aabb.min() + offset;
+                let pc = aabb.periodic_coord(&c);
+                debug_assert_eq!(pc, *expected);
+            }
+        }
     }
 
     #[test]
@@ -364,7 +416,7 @@ mod unit_tests {
             assert!(coord_set.contains(&c));
         }
 
-        println!("{}", coord_set.len());
+        assert_eq!(bounds.buffer_size(), coord_set.len());
     }
 
     #[test]
@@ -384,6 +436,12 @@ mod unit_tests {
         {
             let outer = AABB::new(matrix![2, 20; 5, 19; 40, 60]);
             let center = AABB::new(matrix![6, 14; 10, 13; 47, 53]);
+            test_decomp(&outer, &center);
+        }
+
+        {
+            let outer = AABB::new(matrix![0, 999; 0, 999]);
+            let center = AABB::new(matrix![40, 959; 40, 959]);
             test_decomp(&outer, &center);
         }
     }

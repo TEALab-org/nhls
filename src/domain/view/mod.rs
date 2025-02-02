@@ -10,21 +10,36 @@ use crate::util::*;
 use rayon::prelude::*;
 
 pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
+    /// Get the AABB for this domain
     fn aabb(&self) -> &AABB<GRID_DIMENSION>;
 
+    /// Set the AABB for this domain,
+    /// current buffer must be large enough!
     fn set_aabb(&mut self, aabb: AABB<GRID_DIMENSION>);
 
+    /// Get the buffer, this will be sliced to the right size for the aabb.
     fn buffer(&self) -> &[f64];
 
-    fn buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]);
+    /// Get mutable access to the buffer,
+    /// this will be sliced to the right size for the aabb.
+    fn buffer_mut(&mut self) -> &mut [f64];
 
+    /// Get both a const reference to the aabb
+    /// and a mutable reference to the buffer.
+    fn aabb_buffer_mut(&mut self) -> (&AABB<GRID_DIMENSION>, &mut [f64]);
+
+    /// Access the value at tbe given world coord.
     fn view(&self, world_coord: &Coord<GRID_DIMENSION>) -> f64;
 
-    fn par_modify_access<'a>(
-        &'a mut self,
+    /// Set the value at a given coordinate.
+    /// When setting all values in a domain, use par_set_values instead.
+    fn set_coord(&mut self, world_coord: &Coord<GRID_DIMENSION>, value: f64);
+
+    fn par_modify_access(
+        &mut self,
         chunk_size: usize,
-    ) -> impl ParallelIterator<Item = DomainChunk<'a, GRID_DIMENSION>> {
-        let (aabb, buffer) = self.buffer_mut();
+    ) -> impl ParallelIterator<Item = DomainChunk<'_, GRID_DIMENSION>> {
+        let (aabb, buffer) = self.aabb_buffer_mut();
         par_modify_access_impl(buffer, aabb, chunk_size)
     }
 
@@ -65,7 +80,7 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
                         other.aabb().linear_to_coord(other_linear_index);
                     let self_linear_index =
                         mut_self_ref.aabb().coord_to_linear(&world_coord);
-                    mut_self_ref.buffer_mut().1[self_linear_index] =
+                    mut_self_ref.buffer_mut()[self_linear_index] =
                         other.buffer()[other_linear_index];
                 }
             });
@@ -78,6 +93,21 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
         chunk_size: usize,
     ) {
         self.par_set_values(|world_coord| other.view(&world_coord), chunk_size);
+    }
+
+    /// WARNING, obviously unsafe.
+    ///
+    /// In parallel situations, if you can gaurentee that threads are accessing
+    /// mutually exclusive coords, then use this as an escape hatch.
+    /// DO NOT modify aabb in parallel.
+    fn unsafe_mut_access(&self) -> SliceDomain<'_, GRID_DIMENSION> {
+        let buffer = self.buffer();
+        let len = buffer.len();
+        let buffer_ptr = buffer.as_ptr();
+        let buffer_ptr_mut = buffer_ptr as *mut f64;
+        let unsafe_buffer =
+            unsafe { std::slice::from_raw_parts_mut(buffer_ptr_mut, len) };
+        SliceDomain::new(*self.aabb(), unsafe_buffer)
     }
 }
 
