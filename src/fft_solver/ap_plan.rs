@@ -3,22 +3,36 @@ use crate::util::*;
 use std::io::prelude::*;
 use std::ops::Range;
 
+/// A periodic solve is defined by an input and output AABB.
+/// Note that the output AABB includes both the output of the
+/// periodic solve and the boundary solves.
+/// The boundary solve nodes are assumed to be a contiguous range of
+/// nodes.
 #[derive(Debug)]
 pub struct PeriodicSolveNode<const GRID_DIMENSION: usize> {
+    /// Required input buffer
     pub input_aabb: AABB<GRID_DIMENSION>,
+
+    /// Output buffer that keep, includes boundary solves
     pub output_aabb: AABB<GRID_DIMENSION>,
+
+    /// Which convolution operation to use (see `ConvolutionStore`).
     pub convolution_id: OpId,
+
+    /// How many steps does our convolution solve for?
     pub steps: usize,
 
-    /// calculate remaining output dections based on either
-    ///  - AABB::decomposition for central solve
-    ///  - APFrustrum::decomposition for frustrum solves
+    /// Contiguous range of boundary solve nodes
     pub boundary_nodes: Range<NodeId>,
 
-    /// Should we swap input / output and run this?
+    /// Is there a time cut following this solve
     pub time_cut: Option<NodeId>,
 }
 
+/// Direct solves have an input and output AABB,
+/// steps and sloped sides.
+/// Strictly speaking we don't need the output_aabb,
+/// but its remains useful for debugging.
 #[derive(Debug)]
 pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
     pub input_aabb: AABB<GRID_DIMENSION>,
@@ -27,7 +41,11 @@ pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
     pub steps: usize,
 }
 
-/// Used for central periodic solve, can't appear in frustrums
+/// Used for central periodic solve, can't appear in frustrums.
+/// However, the largest central periodic solve we can find may
+/// need to be repeated many times to achieve the desired number of steps.
+/// Possible followed by a single periodic solve to get the remainder
+/// of steps.
 #[derive(Debug)]
 pub struct RepeatNode {
     pub n: usize,
@@ -35,6 +53,7 @@ pub struct RepeatNode {
     pub next: Option<NodeId>,
 }
 
+/// These nodes form a tree.
 #[derive(Debug)]
 pub enum PlanNode<const GRID_DIMENSION: usize> {
     PeriodicSolve(PeriodicSolveNode<GRID_DIMENSION>),
@@ -42,16 +61,21 @@ pub enum PlanNode<const GRID_DIMENSION: usize> {
     Repeat(RepeatNode),
 }
 
+/// An `APPlan` describes an aperiodic solve over a fixed AABB
+/// for fixed number of time steps.
+/// The root node should always be the only repeat node in the tree.
 pub struct APPlan<const GRID_DIMENSION: usize> {
     pub nodes: Vec<PlanNode<GRID_DIMENSION>>,
     pub root: NodeId,
 }
 
 impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
+    /// Retrieve a node
     pub fn get_node(&self, node: NodeId) -> &PlanNode<GRID_DIMENSION> {
         &self.nodes[node]
     }
 
+    /// Retrieve periodic node at node_id, will panic if type is incorrect.
     #[track_caller]
     pub fn unwrap_periodic_node(
         &self,
@@ -64,6 +88,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         }
     }
 
+    /// Retrieve direct node at node_id, will panic if type is incorrect.
     #[track_caller]
     pub fn unwrap_direct_node(
         &self,
@@ -76,6 +101,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         }
     }
 
+    /// Retrieve repeat node at node_id, will panic if type is incorrect.
     #[track_caller]
     pub fn unwrap_repeat_node(&self, node_id: NodeId) -> &RepeatNode {
         if let PlanNode::Repeat(repeat_node) = self.get_node(node_id) {
@@ -85,14 +111,17 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         }
     }
 
+    /// Number of nodes in the plan
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
 
+    /// Check whether the plan is empty
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
     }
 
+    /// Write out the plan as a dot language graph to specified path.
     pub fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P) {
         let mut writer =
             std::io::BufWriter::new(std::fs::File::create(path).unwrap());
