@@ -1,15 +1,19 @@
-/// We track memory in terms of 128bit alignments
-/// per MIN_ALIGNMENT in fftw3 build
 use crate::fft_solver::*;
 use crate::util::*;
 use std::ops::Range;
 
+/// Used to calculate the memory requirement for each node in an `APPlan`.
+/// See the static `node_requirements` method.
+///
+/// Since we require all domains to use buffers allocated in terms of
+/// `MIN_ALIGMENT`, the `APAccountBuilder` calculates requirements in terms
+/// of `MIN_ALIGNMENT` sized blocks.
 pub struct APAccountBuilder<'a, const GRID_DIMENSION: usize> {
     plan: &'a APPlan<GRID_DIMENSION>,
 }
 
 impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
-    /// Generate the memory requirements for each node in 128bit alignment
+    /// Generate the memory requirements for each node in MIN_ALIGMENT byte alignment
     pub fn node_requirements(plan: &'a APPlan<GRID_DIMENSION>) -> Vec<usize> {
         let mut node_requirements = vec![0; plan.len()];
         let account_builder = APAccountBuilder { plan };
@@ -50,6 +54,8 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         node_requirement
     }
 
+    // Boundary solves each require their own Memory
+    // So we sum their requirements.
     fn handle_boundary_operations(
         &self,
         node_range: Range<NodeId>,
@@ -62,6 +68,8 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         sum
     }
 
+    // For boundary solves and time cuts, we don't know the operation
+    // type, only whether input / output domains are pre-allocated.
     fn handle_unknown(
         &self,
         node_id: NodeId,
@@ -84,9 +92,13 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
             }
         }
     }
-    // Allocate input / output domains, complex buffer, then handle boundary
-    // next operation doesn't need input output allocated, can use the current one
-    // maybe use handle_central_periodic for that?
+
+    // Periodic Nodes memory usage:
+    // - Input / output domains if not pre-allocated
+    // Take the max of the following, they're mutually exclusive.
+    // - Complex Buffer
+    // - Memory for boundary solves
+    // - Memory for timecut solve with pre-allocated input / output domains
     fn handle_periodic_node(
         &self,
         node_id: NodeId,
@@ -121,7 +133,8 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
         node_requirement
     }
 
-    // We just need input / output node allocated.
+    // Direct Node memory usage:
+    // - Input / output domains if not pre-allocated
     pub fn handle_direct_node(
         &self,
         node_id: NodeId,
