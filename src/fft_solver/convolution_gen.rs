@@ -10,6 +10,8 @@ struct ConvolutionDescriptor<const GRID_DIMENSION: usize> {
     steps: usize,
 }
 
+/// Used by APPlaner to create convolution operations,
+/// and assign them IDs.
 pub struct ConvolutionGenerator<
     'a,
     Operation,

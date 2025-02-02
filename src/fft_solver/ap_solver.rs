@@ -24,7 +24,7 @@ pub struct APSolver<
     pub convolution_store: ConvolutionStore,
     pub plan: APPlan<GRID_DIMENSION>,
     pub node_scratch_descriptors: Vec<ScratchDescriptor>,
-    pub scratch_space: ScratchSpace,
+    pub scratch_space: APScratch,
     pub chunk_size: usize,
 }
 

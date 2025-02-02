@@ -1,15 +1,24 @@
 use crate::fft_solver::*;
 use crate::util::*;
 
+/// `APScratchBuilder` calculates offsets and sizes for the scratch memory
+/// each node will use in terms of bytes.
+/// See `APScratchBuilder::build` method.
+/// These offsets will respect `MIN_ALIGMENT`.
+/// Note that these buffers are provided at runtime by `APScratch`,
+/// the scratch builder just creates a descriptor for each node in
+/// the plan.
 pub struct APScratchBuilder<'a, const GRID_DIMENSION: usize> {
     plan: &'a APPlan<GRID_DIMENSION>,
     node_block_requirements: Vec<usize>,
 }
 
 impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
+    /// Static method to create an `APScratch` instance
+    /// and a scratch descriptor for each node
     pub fn build(
         plan: &'a APPlan<GRID_DIMENSION>,
-    ) -> (Vec<ScratchDescriptor>, ScratchSpace) {
+    ) -> (Vec<ScratchDescriptor>, APScratch) {
         let node_block_requirements = APAccountBuilder::node_requirements(plan);
         let mut scratch_descriptors =
             vec![ScratchDescriptor::default(); plan.len()];
@@ -19,7 +28,7 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
             node_block_requirements,
         };
         builder.handle_repeat(plan.root, 0, &mut scratch_descriptors);
-        let scratch_space = ScratchSpace::new(
+        let scratch_space = APScratch::new(
             builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
         );
         (scratch_descriptors, scratch_space)
@@ -129,6 +138,7 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
         scratch_descriptor.complex_buffer_size = complex_buffer_len;
 
         // Boundary solves scratch
+        // Each boundary solve needs to allocate io buffers
         let mut boundary_offset = offset;
         for boundary_node in periodic_solve.boundary_nodes.clone() {
             self.handle_unknown(

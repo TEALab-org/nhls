@@ -1,5 +1,7 @@
 use crate::fft_solver::*;
 
+/// This stores the convolution operations in
+/// an APSolver instance.
 pub struct ConvolutionStore {
     operations: Vec<ConvolutionOperation>,
 }

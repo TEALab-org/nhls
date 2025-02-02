@@ -7,6 +7,10 @@ use fftw::array::*;
 use fftw::plan::*;
 use float_cmp::assert_approx_eq;
 
+/// The backbone of our periodic solves.
+/// This has the FFTW plans we need, as well
+/// as the stencil operation in the frequency domain to some
+/// power.
 pub struct ConvolutionOperation {
     pub forward_plan: fftw::plan::Plan<f64, c64, fftw::plan::Plan64>,
     pub backward_plan: fftw::plan::Plan<c64, f64, fftw::plan::Plan64>,

@@ -3,21 +3,32 @@ use sync_ptr::SyncConstPtr;
 
 pub type AllocationType = f64;
 
+/// Note all nodes will need all of these
+/// but we will set any values that are needed.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct ScratchDescriptor {
+    /// Offset for input domain
     pub input_offset: usize,
+
+    /// Offset for output domain
     pub output_offset: usize,
+
+    /// Size (in bytes) for input / output domains
     pub real_buffer_size: usize,
+
+    /// Offset for complex buffer
     pub complex_offset: usize,
+
+    /// Size (in bytes) for complex buffer
     pub complex_buffer_size: usize,
 }
 
-pub struct ScratchSpace {
+pub struct APScratch {
     scratch_ptr: SyncConstPtr<u8>,
     size: usize,
 }
 
-impl Drop for ScratchSpace {
+impl Drop for APScratch {
     fn drop(&mut self) {
         let alloc_layout =
             std::alloc::Layout::from_size_align(self.size, MIN_ALIGNMENT)
@@ -32,7 +43,7 @@ impl Drop for ScratchSpace {
     }
 }
 
-impl ScratchSpace {
+impl APScratch {
     pub fn new(size: usize) -> Self {
         let alloc_layout =
             std::alloc::Layout::from_size_align(size, MIN_ALIGNMENT).unwrap();
@@ -45,9 +56,11 @@ impl ScratchSpace {
             scratch_ptr.inner() as usize,
             scratch_ptr.inner() as usize % MIN_ALIGNMENT
         );
-        ScratchSpace { scratch_ptr, size }
+        APScratch { scratch_ptr, size }
     }
 
+    /// Only use this function with the values provided by APScratchBuilder
+    /// This is very unsafe!
     /// offset in bytes
     /// len in bytes
     pub fn unsafe_get_buffer<
