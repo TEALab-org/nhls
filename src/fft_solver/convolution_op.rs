@@ -63,12 +63,6 @@ impl ConvolutionOperation {
             // TODO: Why is this the case?
             let rn_i: Coord<GRID_DIMENSION> = aabb.min() + offsets[n_i] * -1;
             let periodic_coord = aabb.periodic_coord(&rn_i);
-            println!(
-                "n_i: {}, offset: {:?}, pc: {:?}",
-                n_i,
-                aabb.min() + offsets[n_i] * -1,
-                periodic_coord
-            );
             stencil_domain.set_coord(&periodic_coord, stencil_weights[n_i]);
         }
 
