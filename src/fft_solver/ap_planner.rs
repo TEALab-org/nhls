@@ -2,14 +2,54 @@ use crate::fft_solver::*;
 use crate::stencil::*;
 use crate::util::*;
 
+/// Planner recurses by finding periodic solves.
+/// These solves are configured with these parameters.
+pub struct PlannerParameters {
+    pub plan_type: PlanType,
+    pub cutoff: i32,
+    pub ratio: f64,
+    pub chunk_size: usize,
+}
+
+/// Creating a plan results in both a plan and convolution store.
+/// Someday we may separate the creation, if for example we
+/// we add support for saving APPlans to file.
 pub struct PlannerResult<const GRID_DIMENSION: usize> {
     pub plan: APPlan<GRID_DIMENSION>,
     pub convolution_store: ConvolutionStore,
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
 }
 
-// generic over stencil
-pub struct APPlanner<
+/// Given a stencil and AABB domain
+/// create an `PlannerResult`.
+/// We assume all faces of the AABB are boundary conditions.
+pub fn create_ap_plan<
+    Operation,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+>(
+    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    aabb: AABB<GRID_DIMENSION>,
+    steps: usize,
+    params: &PlannerParameters,
+) -> PlannerResult<GRID_DIMENSION>
+where
+    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
+{
+    let planner = APPlanner::new(
+        stencil,
+        aabb,
+        steps,
+        params.plan_type,
+        params.cutoff,
+        params.ratio,
+        params.chunk_size,
+    );
+    planner.finish()
+}
+
+/// Used to create an `APPlan`. See `create_ap_plan`
+struct APPlanner<
     'a,
     Operation,
     const GRID_DIMENSION: usize,
@@ -24,7 +64,7 @@ pub struct APPlanner<
     ratio: f64,
     convolution_gen:
         ConvolutionGenerator<'a, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    pub nodes: Vec<PlanNode<GRID_DIMENSION>>,
+    nodes: Vec<PlanNode<GRID_DIMENSION>>,
 }
 
 impl<
@@ -36,7 +76,7 @@ impl<
 where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
 {
-    pub fn new(
+    fn new(
         stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
@@ -60,13 +100,15 @@ where
         }
     }
 
-    pub fn add_node(&mut self, node: PlanNode<GRID_DIMENSION>) -> NodeId {
+    /// Pushes a node into the plan store and returns the id.
+    fn add_node(&mut self, node: PlanNode<GRID_DIMENSION>) -> NodeId {
         let result = self.nodes.len();
         self.nodes.push(node);
         result
     }
 
-    pub fn generate_direct_node(
+    /// Create a direct solve node for a given frustrum.
+    fn generate_direct_node(
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
     ) -> PlanNode<GRID_DIMENSION> {
@@ -80,9 +122,59 @@ where
         PlanNode::DirectSolve(direct_node)
     }
 
-    pub fn generate_frustrum(
+    fn generate_periodic_node(
         &mut self,
         mut frustrum: APFrustrum<GRID_DIMENSION>,
+        periodic_solve: PeriodicSolve<GRID_DIMENSION>,
+    ) -> PlanNode<GRID_DIMENSION> {
+        // Create the convolution operation and get the id
+        let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
+        let convolution_id = self
+            .convolution_gen
+            .get_op(&input_aabb, periodic_solve.steps);
+
+        // Do we need a time cut.
+        // If so that will trim that and create a plan for it
+        let mut time_cut = None;
+        let maybe_next_frustrum =
+            frustrum.time_cut(periodic_solve.steps, &self.stencil_slopes);
+        if let Some(next_frustrum) = maybe_next_frustrum {
+            let next_node = self.generate_frustrum(next_frustrum);
+            time_cut = Some(self.add_node(next_node));
+        }
+        debug_assert!(frustrum
+            .output_aabb
+            .contains_aabb(&periodic_solve.output_aabb));
+
+        // Generate nodes for the boundary solves
+        let boundary_frustrums = frustrum.decompose(&self.stencil_slopes);
+        let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
+        for bf in boundary_frustrums {
+            sub_nodes.push(self.generate_frustrum(bf));
+        }
+
+        // Ensure boundary solve nodes are contiguous in the plan
+        let first_node = self.nodes.len();
+        let last_node = first_node + sub_nodes.len();
+        self.nodes.extend(&mut sub_nodes.drain(..));
+
+        PlanNode::PeriodicSolve(PeriodicSolveNode {
+            input_aabb,
+            output_aabb: frustrum.output_aabb,
+            convolution_id,
+            steps: periodic_solve.steps,
+            boundary_nodes: first_node..last_node,
+            time_cut,
+        })
+    }
+
+    /// Create node, possibly by adding other nodes,
+    /// to handle a frustrum.
+    /// This is where we try to find a periodic solve, and may create
+    /// a boundary decomposition.
+    fn generate_frustrum(
+        &mut self,
+        frustrum: APFrustrum<GRID_DIMENSION>,
     ) -> PlanNode<GRID_DIMENSION> {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
@@ -94,56 +186,23 @@ where
         debug_assert!(self.aabb.contains_aabb(&input_aabb));
 
         // Can we do a periodic solve or do we direct solve?
-        let result_node: PlanNode<GRID_DIMENSION>;
         let maybe_periodic_solve =
             find_periodic_solve(&input_aabb, &solve_params);
         if maybe_periodic_solve.is_none() {
-            result_node = self.generate_direct_node(frustrum);
+            self.generate_direct_node(frustrum)
         } else {
             let periodic_solve = maybe_periodic_solve.unwrap();
-            let convolution_id = self
-                .convolution_gen
-                .get_op(&input_aabb, periodic_solve.steps);
-
-            // Do we need a time cut.
-            // If so that will "trim" frustrum
-            let mut time_cut = None;
-            let maybe_next_frustrum =
-                frustrum.time_cut(periodic_solve.steps, &self.stencil_slopes);
-            if let Some(next_frustrum) = maybe_next_frustrum {
-                let next_node = self.generate_frustrum(next_frustrum);
-                time_cut = Some(self.add_node(next_node));
-            }
-
-            debug_assert!(frustrum
-                .output_aabb
-                .contains_aabb(&periodic_solve.output_aabb));
-            let boundary_frustrums = frustrum.decompose(&self.stencil_slopes);
-
-            let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
-            for bf in boundary_frustrums {
-                sub_nodes.push(self.generate_frustrum(bf));
-            }
-
-            // add the nodes, find the range
-            let first_node = self.nodes.len();
-            let last_node = first_node + sub_nodes.len();
-            self.nodes.extend(&mut sub_nodes.drain(..));
-
-            result_node = PlanNode::PeriodicSolve(PeriodicSolveNode {
-                input_aabb,
-                output_aabb: frustrum.output_aabb,
-                convolution_id,
-                steps: periodic_solve.steps,
-                boundary_nodes: first_node..last_node,
-                time_cut,
-            });
+            self.generate_periodic_node(frustrum, periodic_solve)
         }
-
-        result_node
     }
 
-    pub fn generate_central(&mut self, max_steps: usize) -> (NodeId, usize) {
+    /// The root AABB requires special treatment.
+    /// This function creates a plan for the larges periodic solve
+    /// it can find within the box and max_steps.
+    ///
+    /// Note also that the boundary solve decomposition
+    /// is based on `AABB` and not `APFrustrum`.
+    fn generate_central(&mut self, max_steps: usize) -> (NodeId, usize) {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -157,9 +216,6 @@ where
         let convolution_id = self
             .convolution_gen
             .get_op(&self.aabb, periodic_solve.steps);
-
-        //println!("aabb: {:?}", self.aabb);
-        //println!("output: {:?}", periodic_solve.output_aabb);
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
@@ -194,7 +250,8 @@ where
         (root_node, periodic_solve.steps)
     }
 
-    pub fn generate(&mut self) -> NodeId {
+    /// Create the root repeat node.
+    fn generate(&mut self) -> NodeId {
         // generate central once,
         let (central_solve_node, central_solve_steps) =
             self.generate_central(self.steps);
@@ -219,7 +276,8 @@ where
         self.add_node(PlanNode::Repeat(repeat_node))
     }
 
-    pub fn finish(mut self) -> PlannerResult<GRID_DIMENSION> {
+    /// Package up the results
+    fn finish(mut self) -> PlannerResult<GRID_DIMENSION> {
         let root = self.generate();
         let convolution_store = self.convolution_gen.finish();
         let stencil_slopes = self.stencil_slopes;
@@ -282,17 +340,42 @@ mod unit_tests {
     }
 
     #[test]
-    fn test_gen_2d() {
-        let stencil = heat_2d(1.0, 1.0, 1.0, 1.0, 0.5);
-        let aabb = AABB::new(matrix![0, 100; 0, 100]);
-        let cutoff = 20;
-        let ratio = 0.5;
-        let steps = 100;
-        let plan_type = PlanType::Estimate;
-        let chunk_size = 10;
+    fn create_ap_plan_test() {
+        let planner_params = PlannerParameters {
+            cutoff: 20,
+            ratio: 0.5,
+            plan_type: PlanType::Estimate,
+            chunk_size: 1000,
+        };
 
-        let planner = APPlanner::new(
-            &stencil, aabb, steps, plan_type, cutoff, ratio, chunk_size,
-        );
+        {
+            let stencil = heat_1d(1.0, 1.0, 0.5);
+            let aabb = AABB::new(matrix![54, 5234]);
+            let steps = 10000;
+            create_ap_plan(&stencil, aabb, steps, &planner_params);
+        }
+
+        {
+            let stencil = heat_2d(1.0, 1.0, 1.0, 1.0, 0.5);
+            let aabb = AABB::new(matrix![0, 100; 0, 100]);
+            let steps = 100;
+            create_ap_plan(&stencil, aabb, steps, &planner_params);
+        }
+
+        {
+            let stencil = heat_2d(1.0, 1.0, 1.0, 1.0, 0.5);
+            let aabb = AABB::new(matrix![555, 1234; -1234, -343]);
+            let steps = 1000;
+            create_ap_plan(&stencil, aabb, steps, &planner_params);
+        }
+
+        {
+            let stencil =
+                Stencil::new([[-1], [0], [4]], |args: &[f64; 3]| args[0]);
+            let aabb = AABB::new(matrix![54, 5234]);
+            let steps = 10000;
+            let result = create_ap_plan(&stencil, aabb, steps, &planner_params);
+            result.plan.to_dot_file(&"offside.dot");
+        }
     }
 }

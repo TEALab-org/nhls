@@ -44,16 +44,10 @@ where
         stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
-        plan_type: PlanType,
-        cutoff: i32,
-        ratio: f64,
-        chunk_size: usize,
+        params: &PlannerParameters,
     ) -> Self {
         // Create our plan and convolution_store
-        let planner = APPlanner::new(
-            stencil, aabb, steps, plan_type, cutoff, ratio, chunk_size,
-        );
-        let planner_result = planner.finish();
+        let planner_result = create_ap_plan(stencil, aabb, steps, params);
         let plan = planner_result.plan;
         let convolution_store = planner_result.convolution_store;
         let stencil_slopes = planner_result.stencil_slopes;
@@ -65,7 +59,7 @@ where
             bc,
             stencil,
             stencil_slopes,
-            chunk_size,
+            chunk_size: params.chunk_size,
         };
 
         APSolver {
@@ -74,7 +68,7 @@ where
             plan,
             node_scratch_descriptors,
             scratch_space,
-            chunk_size,
+            chunk_size: params.chunk_size,
         }
     }
 

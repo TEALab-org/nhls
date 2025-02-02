@@ -33,13 +33,14 @@ fn heat_1d_ap_compare() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let cutoff = 40;
-    let ratio = 0.5;
-    let plan_type = PlanType::Estimate;
-    let fft_solver = APSolver::new(
-        &bc, &stencil, grid_bound, n_steps, plan_type, cutoff, ratio,
+    let planner_params = PlannerParameters {
+        plan_type: PlanType::Estimate,
+        cutoff: 40,
+        ratio: 0.5,
         chunk_size,
-    );
+    };
+    let fft_solver =
+        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain);
 
     box_apply(
@@ -89,13 +90,14 @@ fn heat_2d_ap_compare() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let cutoff = 40;
-    let ratio = 0.5;
-    let plan_type = PlanType::Estimate;
-    let fft_solver = APSolver::new(
-        &bc, &stencil, grid_bound, n_steps, plan_type, cutoff, ratio,
+    let planner_params = PlannerParameters {
+        plan_type: PlanType::Estimate,
+        cutoff: 40,
+        ratio: 0.5,
         chunk_size,
-    );
+    };
+    let fft_solver =
+        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain);
 
     box_apply(

@@ -18,17 +18,18 @@ fn main() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let cutoff = 40;
-    let ratio = 0.5;
+    let planner_params = PlannerParameters {
+        plan_type: args.plan_type,
+        cutoff: 40,
+        ratio: 0.5,
+        chunk_size: args.chunk_size,
+    };
     let solver = APSolver::new(
         &bc,
         &stencil,
         grid_bound,
         args.steps_per_line,
-        args.plan_type,
-        cutoff,
-        ratio,
-        args.chunk_size,
+        &planner_params,
     );
     if args.write_dot {
         println!("WRITING DOT FILE");
