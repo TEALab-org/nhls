@@ -13,6 +13,7 @@ pub fn gather_args<
     bc: &BC,
     input: &DomainType,
     world_coord: &Coord<GRID_DIMENSION>,
+    global_time: usize,
 ) -> [f64; NEIGHBORHOOD_SIZE]
 where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
@@ -22,7 +23,7 @@ where
     for (i, n_i) in stencil.offsets().iter().enumerate() {
         let n_world_coord = world_coord + n_i;
         result[i] = bc
-            .check(&n_world_coord)
+            .check(&n_world_coord, global_time)
             .unwrap_or_else(|| input.view(&n_world_coord));
     }
     result
@@ -47,7 +48,7 @@ mod unit_tests {
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
             |_: &[f64; 5]| -1.0,
         );
-        let r = gather_args(&stencil, &bc, &domain, &vector![9, 9]);
+        let r = gather_args(&stencil, &bc, &domain, &vector![9, 9], 0);
         let e = [
             (9 + 3 * 8) as f64,
             -4.0,
@@ -76,7 +77,7 @@ mod unit_tests {
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
             |_: &[f64; 5]| -1.0,
         );
-        let r = gather_args(&stencil, &bc, &domain, &vector![9, 9]);
+        let r = gather_args(&stencil, &bc, &domain, &vector![9, 9], 11);
         let e = [
             (9 + 3 * 8) as f64,
             9.0,

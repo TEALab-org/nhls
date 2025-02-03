@@ -41,7 +41,7 @@ fn heat_1d_ap_compare() {
     };
     let fft_solver =
         APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params);
-    fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain);
+    fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
         &bc,
@@ -49,6 +49,7 @@ fn heat_1d_ap_compare() {
         &mut direct_input_domain,
         &mut direct_output_domain,
         n_steps,
+        0,
         chunk_size,
     );
 
@@ -98,7 +99,7 @@ fn heat_2d_ap_compare() {
     };
     let fft_solver =
         APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params);
-    fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain);
+    fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
         &bc,
@@ -106,6 +107,7 @@ fn heat_2d_ap_compare() {
         &mut direct_input_domain,
         &mut direct_output_domain,
         n_steps,
+        0,
         chunk_size,
     );
 

@@ -14,6 +14,7 @@ pub fn apply<
     stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &DomainType,
     output: &mut DomainType,
+    global_time: usize,
     chunk_size: usize,
 ) where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
@@ -27,7 +28,13 @@ pub fn apply<
                     Coord<GRID_DIMENSION>,
                     &mut f64,
                 )| {
-                    let args = gather_args(stencil, bc, input, &world_coord);
+                    let args = gather_args(
+                        stencil,
+                        bc,
+                        input,
+                        &world_coord,
+                        global_time,
+                    );
                     let result = stencil.apply(&args);
                     *value_mut = result;
                 },
@@ -53,7 +60,14 @@ mod unit_test {
             input_domain.par_set_values(|_| 1.0, chunk_size);
 
             let bc = PeriodicCheck::new(&input_domain);
-            apply(&bc, &stencil, &input_domain, &mut output_domain, chunk_size);
+            apply(
+                &bc,
+                &stencil,
+                &input_domain,
+                &mut output_domain,
+                0,
+                chunk_size,
+            );
             for x in output_domain.buffer() {
                 assert_approx_eq!(f64, *x, 1.0);
             }
@@ -65,7 +79,7 @@ mod unit_test {
             input_domain.par_set_values(|_| 2.0, chunk_size);
 
             let bc = PeriodicCheck::new(&input_domain);
-            apply(&bc, &stencil, &input_domain, &mut output_domain, 1);
+            apply(&bc, &stencil, &input_domain, &mut output_domain, 0, 1);
             for x in output_domain.buffer() {
                 assert_approx_eq!(f64, *x, 2.0);
             }
@@ -77,7 +91,7 @@ mod unit_test {
         bounds: AABB<1>,
     }
     impl BCCheck<1> for ErrorCheck {
-        fn check(&self, c: &Coord<1>) -> Option<f64> {
+        fn check(&self, c: &Coord<1>, _global_time: usize) -> Option<f64> {
             assert!(self.bounds.contains(c));
             None
         }
@@ -105,7 +119,7 @@ mod unit_test {
             bounds: input_bound,
         };
 
-        apply(&bc, &stencil, &input_domain, &mut output_domain, 2);
+        apply(&bc, &stencil, &input_domain, &mut output_domain, 0, 2);
 
         for i in output_domain.buffer() {
             assert_approx_eq!(f64, *i, 1.0);

@@ -7,16 +7,7 @@ fn main() {
     let args = Args::cli_parse("heat_2d_ap_fft");
 
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
-
-    // Create domains
     let grid_bound = args.grid_bounds();
-    let mut buffer_1 = OwnedDomain::new(grid_bound);
-    let mut buffer_2 = OwnedDomain::new(grid_bound);
-    let mut input_domain = buffer_1.as_slice_domain();
-    let mut output_domain = buffer_2.as_slice_domain();
-    if args.write_images {
-        image2d(&input_domain, &args.frame_name(0));
-    }
 
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);
@@ -45,8 +36,19 @@ fn main() {
         solver.scratch_descriptor_file(&d_path);
     }
 
+    // Create domains
+    let mut buffer_1 = OwnedDomain::new(grid_bound);
+    let mut buffer_2 = OwnedDomain::new(grid_bound);
+    let mut input_domain = buffer_1.as_slice_domain();
+    let mut output_domain = buffer_2.as_slice_domain();
+    if args.write_images {
+        image2d(&input_domain, &args.frame_name(0));
+    }
+
+    let mut global_time = 0;
     for t in 1..args.images {
-        solver.apply(&mut input_domain, &mut output_domain);
+        solver.apply(&mut input_domain, &mut output_domain, global_time);
+        global_time += args.steps_per_image;
         std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {
             image2d(&input_domain, &args.frame_name(t));

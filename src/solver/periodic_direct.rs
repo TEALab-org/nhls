@@ -2,6 +2,10 @@ use crate::domain::*;
 use crate::par_stencil;
 use crate::stencil::*;
 
+/// Global time doesn't matter for periodic solves
+/// since its only used for boundary conditions
+const GLOBAL_TIME: usize = 0;
+
 pub fn direct_periodic_apply<
     Operation,
     const GRID_DIMENSION: usize,
@@ -20,13 +24,20 @@ pub fn direct_periodic_apply<
     for _ in 0..steps - 1 {
         {
             let bc = PeriodicCheck::new(input);
-            par_stencil::apply(&bc, stencil, input, output, chunk_size);
+            par_stencil::apply(
+                &bc,
+                stencil,
+                input,
+                output,
+                GLOBAL_TIME,
+                chunk_size,
+            );
         }
         std::mem::swap(input, output);
     }
 
     let bc = PeriodicCheck::new(input);
-    par_stencil::apply(&bc, stencil, input, output, chunk_size);
+    par_stencil::apply(&bc, stencil, input, output, GLOBAL_TIME, chunk_size);
 }
 
 #[cfg(test)]

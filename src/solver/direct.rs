@@ -14,6 +14,7 @@ pub fn box_apply<
     input: &mut DomainType,
     output: &mut DomainType,
     steps: usize,
+    mut global_time: usize,
     chunk_size: usize,
 ) where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
@@ -21,10 +22,12 @@ pub fn box_apply<
 {
     debug_assert_eq!(input.aabb(), output.aabb());
     for _ in 0..steps - 1 {
-        par_stencil::apply(bc, stencil, input, output, chunk_size);
+        global_time += 1;
+        par_stencil::apply(bc, stencil, input, output, global_time, chunk_size);
         std::mem::swap(input, output);
     }
-    par_stencil::apply(bc, stencil, input, output, chunk_size);
+    global_time += 1;
+    par_stencil::apply(bc, stencil, input, output, global_time, chunk_size);
 }
 
 #[cfg(test)]
@@ -63,6 +66,7 @@ mod unit_tests {
             &mut input_domain,
             &mut output_domain,
             steps,
+            0,
             chunk_size,
         );
 
@@ -177,6 +181,7 @@ mod unit_tests {
             &mut input_domain,
             &mut output_domain,
             steps,
+            0,
             chunk_size,
         );
         for i in 0..3 {
