@@ -4,7 +4,7 @@ use nhls::image_2d_example::*;
 use nhls::init;
 
 fn main() {
-    let args = Args::cli_parse("heat_2d_p_direct");
+    let args = Args::cli_parse("heat_2d_ap_direct");
 
     // Grid size
     let grid_bound = args.grid_bounds();
@@ -26,7 +26,6 @@ fn main() {
     }
 
     // Create boundary condition
-    // TODO WHAT is this doing in periodic, shouldn't we use periodic direct solve?
     let bc = ConstantCheck::new(0.0, grid_bound);
 
     // Apply direct solver
