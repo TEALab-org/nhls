@@ -52,6 +52,14 @@ pub struct Args {
     /// Write out a dot file for the ap plan
     #[arg(long)]
     pub write_dot: bool,
+
+    /// Target ratio for fft solves
+    #[arg(long, default_value = "0.5")]
+    pub ratio: f64,
+
+    /// Cutoff for fft solves
+    #[arg(long, default_value = "40")]
+    pub cutoff: i32,
 }
 
 impl Args {

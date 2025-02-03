@@ -11,6 +11,7 @@ pub mod image_1d_example;
 pub mod image_2d_example;
 pub mod image_3d_example;
 pub mod init;
+pub mod mem_fmt;
 pub mod par_slice;
 pub mod par_stencil;
 pub mod solver;

@@ -73,8 +73,8 @@ fn main() {
     // Create AP Solver
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
-        cutoff: 40,
-        ratio: 0.5,
+        cutoff: args.cutoff,
+        ratio: args.ratio,
         chunk_size: args.chunk_size,
     };
     let solver = APSolver::new(

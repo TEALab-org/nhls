@@ -1,5 +1,6 @@
 use crate::domain::*;
 use crate::fft_solver::*;
+use crate::mem_fmt::*;
 use crate::stencil::*;
 use crate::util::*;
 use std::io::prelude::*;
@@ -70,6 +71,15 @@ where
             scratch_space,
             chunk_size: params.chunk_size,
         }
+    }
+
+    pub fn print_report(&self) {
+        println!("AP Solver Report:");
+        println!("  - plan size: {}", self.plan.len());
+        println!(
+            "  - scratch size: {}",
+            human_readable_bytes(self.scratch_space.size)
+        );
     }
 
     pub fn apply(

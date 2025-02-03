@@ -20,8 +20,8 @@ fn main() {
     // Create AP Solver
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
-        cutoff: 40,
-        ratio: 0.5,
+        cutoff: args.cutoff,
+        ratio: args.ratio,
         chunk_size: args.chunk_size,
     };
     let solver = APSolver::new(
@@ -31,6 +31,7 @@ fn main() {
         args.steps_per_line,
         &planner_params,
     );
+    solver.print_report();
     if args.write_dot {
         println!("WRITING DOT FILE");
         let mut dot_path = args.output_dir.clone();
