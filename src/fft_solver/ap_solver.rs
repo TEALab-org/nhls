@@ -76,8 +76,9 @@ where
         &self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        global_time: usize,
     ) {
-        self.solve_root(input_domain, output_domain);
+        self.solve_root(input_domain, output_domain, global_time);
     }
 
     pub fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P) {
@@ -126,15 +127,22 @@ where
         &self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        mut global_time: usize,
     ) {
         let repeat_solve = self.plan.unwrap_repeat_node(self.plan.root);
+        let repeat_periodic_solve =
+            self.plan.unwrap_periodic_node(repeat_solve.node);
+        let repeat_steps = repeat_periodic_solve.steps;
+
         for _ in 0..repeat_solve.n {
             self.periodic_solve_preallocated_io(
                 repeat_solve.node,
                 false,
                 input_domain,
                 output_domain,
+                global_time,
             );
+            global_time += repeat_steps;
             std::mem::swap(input_domain, output_domain);
         }
         if let Some(next) = repeat_solve.next {
@@ -143,6 +151,7 @@ where
                 false,
                 input_domain,
                 output_domain,
+                global_time,
             )
         } else {
             std::mem::swap(input_domain, output_domain);
@@ -154,13 +163,24 @@ where
         node_id: NodeId,
         input: &SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        global_time: usize,
     ) {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
-                self.direct_solve_allocate_io(node_id, input, output);
+                self.direct_solve_allocate_io(
+                    node_id,
+                    input,
+                    output,
+                    global_time,
+                );
             }
             PlanNode::PeriodicSolve(_) => {
-                self.periodic_solve_allocate_io(node_id, input, output);
+                self.periodic_solve_allocate_io(
+                    node_id,
+                    input,
+                    output,
+                    global_time,
+                );
             }
             PlanNode::Repeat(_) => {
                 panic!("ERROR: Not expecting repeat node");
@@ -173,14 +193,24 @@ where
         node_id: NodeId,
         input: &mut SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        global_time: usize,
     ) {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
-                self.direct_solve_preallocated_io(node_id, input, output);
+                self.direct_solve_preallocated_io(
+                    node_id,
+                    input,
+                    output,
+                    global_time,
+                );
             }
             PlanNode::PeriodicSolve(_) => {
                 self.periodic_solve_preallocated_io(
-                    node_id, true, input, output,
+                    node_id,
+                    true,
+                    input,
+                    output,
+                    global_time,
                 );
             }
             PlanNode::Repeat(_) => {
@@ -195,6 +225,7 @@ where
         resize: bool,
         input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        mut global_time: usize,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         std::mem::swap(input_domain, output_domain);
@@ -234,6 +265,7 @@ where
                             node_id,
                             input_domain_const,
                             &mut node_output,
+                            global_time,
                         );
                     });
                 }
@@ -249,11 +281,13 @@ where
 
         // call time cut if needed
         if let Some(next_id) = periodic_solve.time_cut {
+            global_time += periodic_solve.steps;
             std::mem::swap(input_domain, output_domain);
             self.unknown_solve_preallocated_io(
                 next_id,
                 input_domain,
                 output_domain,
+                global_time,
             );
         }
     }
@@ -263,6 +297,7 @@ where
         node_id: NodeId,
         input: &SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        global_time: usize,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
@@ -277,6 +312,7 @@ where
             true,
             &mut input_domain,
             &mut output_domain,
+            global_time,
         );
 
         // copy output to output
@@ -288,6 +324,7 @@ where
         node_id: NodeId,
         input: &SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        global_time: usize,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
 
@@ -301,6 +338,7 @@ where
             node_id,
             &mut input_domain,
             &mut output_domain,
+            global_time,
         );
         debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
 
@@ -313,6 +351,7 @@ where
         node_id: NodeId,
         input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        global_time: usize,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);
 
@@ -336,6 +375,7 @@ where
             output_domain,
             &direct_solve.sloped_sides,
             direct_solve.steps,
+            global_time,
         );
 
         debug_assert_eq!(

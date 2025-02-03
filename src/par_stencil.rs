@@ -14,6 +14,7 @@ pub fn apply<
     stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &DomainType,
     output: &mut DomainType,
+    global_time: usize,
     chunk_size: usize,
 ) where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
@@ -27,7 +28,13 @@ pub fn apply<
                     Coord<GRID_DIMENSION>,
                     &mut f64,
                 )| {
-                    let args = gather_args(stencil, bc, input, &world_coord);
+                    let args = gather_args(
+                        stencil,
+                        bc,
+                        input,
+                        &world_coord,
+                        global_time,
+                    );
                     let result = stencil.apply(&args);
                     *value_mut = result;
                 },

@@ -23,7 +23,11 @@ impl<
 impl<const GRID_DIMENSION: usize, DomainType: DomainView<GRID_DIMENSION>>
     BCCheck<GRID_DIMENSION> for PeriodicCheck<'_, GRID_DIMENSION, DomainType>
 {
-    fn check(&self, world_coord: &Coord<GRID_DIMENSION>) -> Option<f64> {
+    fn check(
+        &self,
+        world_coord: &Coord<GRID_DIMENSION>,
+        _global_time: usize,
+    ) -> Option<f64> {
         let p_coord = &self.domain.aabb().periodic_coord(world_coord);
         if p_coord != world_coord {
             return Some(self.domain.view(p_coord));

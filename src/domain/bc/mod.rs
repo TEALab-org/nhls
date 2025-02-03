@@ -7,5 +7,9 @@ pub use periodic::*;
 use crate::util::*;
 
 pub trait BCCheck<const GRID_DIMENSION: usize>: Sync {
-    fn check(&self, world_coord: &Coord<GRID_DIMENSION>) -> Option<f64>;
+    fn check(
+        &self,
+        world_coord: &Coord<GRID_DIMENSION>,
+        global_time: usize,
+    ) -> Option<f64>;
 }

@@ -37,6 +37,7 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         sloped_sides: &Bounds<GRID_DIMENSION>,
         steps: usize,
+        mut global_time: usize,
     ) {
         assert_eq!(input_domain.aabb(), output_domain.aabb());
 
@@ -47,6 +48,7 @@ where
 
         let mut output_box = *input_domain.aabb();
         for _ in 0..steps {
+            global_time += 1;
             output_box = output_box.add_bounds_diff(trapezoid_slopes);
             debug_assert!(
                 input_domain.aabb().buffer_size() >= output_box.buffer_size()
@@ -57,6 +59,7 @@ where
                 self.stencil,
                 input_domain,
                 output_domain,
+                global_time,
                 self.chunk_size,
             );
             std::mem::swap(input_domain, output_domain);

@@ -15,16 +15,19 @@ pub fn box_apply<
     output: &mut DomainType,
     steps: usize,
     chunk_size: usize,
+    mut global_time: usize,
 ) where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     debug_assert_eq!(input.aabb(), output.aabb());
     for _ in 0..steps - 1 {
-        par_stencil::apply(bc, stencil, input, output, chunk_size);
+        global_time += 1;
+        par_stencil::apply(bc, stencil, input, output, global_time, chunk_size);
         std::mem::swap(input, output);
     }
-    par_stencil::apply(bc, stencil, input, output, chunk_size);
+    global_time += 1;
+    par_stencil::apply(bc, stencil, input, output, global_time, chunk_size);
 }
 
 #[cfg(test)]
