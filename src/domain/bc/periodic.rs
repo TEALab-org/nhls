@@ -68,17 +68,4 @@ mod unit_tests {
             }
         }
     }
-
-    #[test]
-    fn periodic_domain_swap() {
-        let bound = AABB::new(matrix![0, 5; 0, 5]);
-        let n_r = bound.buffer_size();
-        let mut buffer_a = fftw::array::AlignedVec::new(n_r);
-        let mut buffer_b = fftw::array::AlignedVec::new(n_r);
-        for i in 0..n_r {
-            buffer_a[i] = i as f64;
-            buffer_b[i] = (n_r - i) as f64;
-        }
-        // TODO: Not sure what I wanted to do here, but clearly didn't finish
-    }
 }
