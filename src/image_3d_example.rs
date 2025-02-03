@@ -60,6 +60,10 @@ pub struct Args {
     /// Cutoff for fft solves
     #[arg(long, default_value = "40")]
     pub cutoff: i32,
+
+    /// Generate solver only, do not solve
+    #[arg(long)]
+    pub gen_only: bool,
 }
 
 impl Args {

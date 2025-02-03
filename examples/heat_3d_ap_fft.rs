@@ -34,6 +34,10 @@ fn main() {
         dot_path.push("plan.dot");
         solver.to_dot_file(&dot_path);
     }
+    if args.gen_only {
+        args.save_wisdom();
+        std::process::exit(0);
+    }
 
     // Create domains
     let mut buffer_1 = OwnedDomain::new(grid_bound);

@@ -93,6 +93,10 @@ fn main() {
         d_path.push("scratch.txt");
         solver.scratch_descriptor_file(&d_path);
     }
+    if args.gen_only {
+        args.save_wisdom();
+        std::process::exit(0);
+    }
 
     // Create domains
     let mut buffer_1 = OwnedDomain::new(grid_bound);
