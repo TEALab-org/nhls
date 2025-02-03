@@ -22,6 +22,8 @@ fn main() {
         i.add_line(0, input_domain.buffer());
         img = Some(i);
     }
+
+    let mut global_time = 0;
     for t in 1..args.lines as u32 {
         box_apply(
             &bc,
@@ -29,8 +31,10 @@ fn main() {
             &mut input_domain,
             &mut output_domain,
             args.steps_per_line,
+            global_time,
             args.chunk_size,
         );
+        global_time += args.steps_per_line;
         std::mem::swap(&mut input_domain, &mut output_domain);
         if let Some(i) = img.as_mut() {
             i.add_line(t, input_domain.buffer());

@@ -43,18 +43,18 @@ mod unit_tests {
         }
         let bc = ConstantCheck::new(-1.0, bound);
         for i in 0..n_r {
-            let v = bc.check(&vector![i as i32]);
+            let v = bc.check(&vector![i as i32], 0);
             assert_eq!(v, None);
         }
 
         {
-            let v = bc.check(&vector![-1]);
+            let v = bc.check(&vector![-1], 1);
             assert!(v.is_some());
             assert_approx_eq!(f64, v.unwrap(), -1.0);
         }
 
         {
-            let v = bc.check(&vector![11]);
+            let v = bc.check(&vector![11], 2);
             assert!(v.is_some());
             assert_approx_eq!(f64, v.unwrap(), -1.0);
         }

@@ -48,7 +48,7 @@ mod unit_tests {
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
             |_: &[f64; 5]| -1.0,
         );
-        let r = gather_args(&stencil, &bc, &domain, &vector![9, 9]);
+        let r = gather_args(&stencil, &bc, &domain, &vector![9, 9], 0);
         let e = [
             (9 + 3 * 8) as f64,
             -4.0,
@@ -77,7 +77,7 @@ mod unit_tests {
             [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]],
             |_: &[f64; 5]| -1.0,
         );
-        let r = gather_args(&stencil, &bc, &domain, &vector![9, 9]);
+        let r = gather_args(&stencil, &bc, &domain, &vector![9, 9], 11);
         let e = [
             (9 + 3 * 8) as f64,
             9.0,

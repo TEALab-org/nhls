@@ -51,18 +51,18 @@ mod unit_tests {
             domain.par_set_values(|coord| coord[0] as f64, 1);
             let bc = PeriodicCheck::new(&domain);
             for (i, _) in domain.buffer().iter().enumerate() {
-                let v = bc.check(&vector![i as i32]);
+                let v = bc.check(&vector![i as i32], 0);
                 assert_eq!(v, None);
             }
 
             {
-                let v = bc.check(&vector![-1]);
+                let v = bc.check(&vector![-1], 1);
                 assert!(v.is_some());
                 assert_approx_eq!(f64, v.unwrap(), 10.0);
             }
 
             {
-                let v = bc.check(&vector![11]);
+                let v = bc.check(&vector![11], 2);
                 assert!(v.is_some());
                 assert_approx_eq!(f64, v.unwrap(), 0.0);
             }

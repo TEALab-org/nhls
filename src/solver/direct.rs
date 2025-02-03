@@ -14,8 +14,8 @@ pub fn box_apply<
     input: &mut DomainType,
     output: &mut DomainType,
     steps: usize,
-    chunk_size: usize,
     mut global_time: usize,
+    chunk_size: usize,
 ) where
     Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
@@ -66,6 +66,7 @@ mod unit_tests {
             &mut input_domain,
             &mut output_domain,
             steps,
+            0,
             chunk_size,
         );
 
@@ -180,6 +181,7 @@ mod unit_tests {
             &mut input_domain,
             &mut output_domain,
             steps,
+            0,
             chunk_size,
         );
         for i in 0..3 {

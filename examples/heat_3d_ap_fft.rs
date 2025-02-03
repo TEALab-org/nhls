@@ -43,8 +43,10 @@ fn main() {
         write_vtk3d(&input_domain, &args.frame_name(0));
     }
 
+    let mut global_time = 0;
     for t in 1..args.images {
-        solver.apply(&mut input_domain, &mut output_domain);
+        solver.apply(&mut input_domain, &mut output_domain, global_time);
+        global_time += args.steps_per_image;
         std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {
             write_vtk3d(&input_domain, &args.frame_name(t));
