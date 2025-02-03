@@ -25,7 +25,7 @@ pub struct ScratchDescriptor {
 
 pub struct APScratch {
     scratch_ptr: SyncConstPtr<u8>,
-    size: usize,
+    pub size: usize,
 }
 
 impl Drop for APScratch {
