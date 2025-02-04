@@ -32,5 +32,9 @@ pub fn find_periodic_solve<const DIMENSION: usize>(
         params.max_steps,
     );
 
-    Some(PeriodicSolve { output_aabb, steps })
+    if steps == 0 {
+        None
+    } else {
+        Some(PeriodicSolve { output_aabb, steps })
+    }
 }
