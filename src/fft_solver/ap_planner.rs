@@ -176,6 +176,7 @@ where
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
     ) -> PlanNode<GRID_DIMENSION> {
+        println!("Generate Frustrum: {:?}", frustrum);
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -192,6 +193,7 @@ where
             self.generate_direct_node(frustrum)
         } else {
             let periodic_solve = maybe_periodic_solve.unwrap();
+            println!(" -- found solve: {:?}", periodic_solve);
             self.generate_periodic_node(frustrum, periodic_solve)
         }
     }
