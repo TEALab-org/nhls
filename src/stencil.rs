@@ -18,7 +18,8 @@ pub fn extract_weights<
     weights
 }
 
-/// Stencils are the combination of an operation and neighbors
+/// For this code base we only deal with linear stencils.
+/// We view linear stencils as a combination of neighbor offsets and weights.
 pub struct Stencil<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
 {
     pub weights: Values<NEIGHBORHOOD_SIZE>,
@@ -41,8 +42,6 @@ impl<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         }
     }
 
-    /// For linear stencils, we can extract the weight for a neighbor
-    /// by passing in 1.0 for that neighbor and 0.0 for the others.
     pub fn weights(&self) -> &Values<NEIGHBORHOOD_SIZE> {
         &self.weights
     }
