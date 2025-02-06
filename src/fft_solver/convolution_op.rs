@@ -21,22 +21,17 @@ impl ConvolutionOperation {
     #[inline]
     #[allow(clippy::too_many_arguments)]
     pub fn create<
-        Operation,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
-        stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        stencil_weights: &[f64; NEIGHBORHOOD_SIZE],
+        stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         real_buffer: &mut [f64],
         convolution_buffer: &mut [c64],
         aabb: &AABB<GRID_DIMENSION>,
         steps: usize,
         plan_type: PlanType,
         chunk_size: usize,
-    ) -> Self
-    where
-        Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
-    {
+    ) -> Self {
         {
             let b: &[f64] = real_buffer;
             for v in b {
@@ -61,13 +56,14 @@ impl ConvolutionOperation {
 
         // Place offsets in real buffer
         let offsets = stencil.offsets();
+        let weights = stencil.weights();
         for n_i in 0..NEIGHBORHOOD_SIZE {
             // I don't understand why, but we found that this mirroring operation
             // was necessary. I think it was in the paper.
             // TODO: Why is this the case?
             let rn_i: Coord<GRID_DIMENSION> = aabb.min() + offsets[n_i] * -1;
             let periodic_coord = aabb.periodic_coord(&rn_i);
-            stencil_domain.set_coord(&periodic_coord, stencil_weights[n_i]);
+            stencil_domain.set_coord(&periodic_coord, weights[n_i]);
         }
 
         // Calculate convolution of stencil

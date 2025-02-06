@@ -12,25 +12,19 @@ pub struct PeriodicSolver {
 
 impl PeriodicSolver {
     pub fn create<
-        Operation,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
-        stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         real_buffer: &mut [f64],
         aabb: &AABB<GRID_DIMENSION>,
         steps: usize,
         plan_type: PlanType,
         chunk_size: usize,
-    ) -> Self
-    where
-        Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
-    {
-        let stencil_weights = stencil.extract_weights();
+    ) -> Self {
         let mut complex_buffer = AlignedVec::new(aabb.complex_buffer_size());
         let operation = ConvolutionOperation::create(
             stencil,
-            &stencil_weights,
             real_buffer,
             &mut complex_buffer,
             aabb,
@@ -70,19 +64,16 @@ mod unit_tests {
     use nalgebra::matrix;
 
     fn test_unit_stencil<
-        Operation,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
-        stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
-    ) where
-        Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
-    {
+    ) {
         let chunk_size = 3;
         let plan_type = PlanType::Estimate;
-        assert_approx_eq!(f64, stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
+        assert_approx_eq!(f64, stencil.apply(&Values::from_element(1.0)), 1.0);
 
         let mut input_domain = OwnedDomain::new(aabb);
         let mut output_domain = OwnedDomain::new(aabb);
@@ -152,7 +143,7 @@ mod unit_tests {
 
     #[test]
     fn test_3d() {
-        let stencil = Stencil::new(
+        let stencil = Stencil::<3, 7>::new(
             [
                 [0, 0, -2],
                 [4, 5, 3],

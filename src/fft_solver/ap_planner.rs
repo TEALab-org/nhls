@@ -24,18 +24,14 @@ pub struct PlannerResult<const GRID_DIMENSION: usize> {
 /// create an `PlannerResult`.
 /// We assume all faces of the AABB are boundary conditions.
 pub fn create_ap_plan<
-    Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
 >(
-    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     aabb: AABB<GRID_DIMENSION>,
     steps: usize,
     params: &PlannerParameters,
-) -> PlannerResult<GRID_DIMENSION>
-where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
-{
+) -> PlannerResult<GRID_DIMENSION> {
     let planner = APPlanner::new(
         stencil,
         aabb,
@@ -51,33 +47,24 @@ where
 /// Used to create an `APPlan`. See `create_ap_plan`
 struct APPlanner<
     'a,
-    Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
-> where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
-{
+> {
     stencil_slopes: Bounds<GRID_DIMENSION>,
     aabb: AABB<GRID_DIMENSION>,
     steps: usize,
     cutoff: i32,
     ratio: f64,
     convolution_gen:
-        ConvolutionGenerator<'a, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        ConvolutionGenerator<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     nodes: Vec<PlanNode<GRID_DIMENSION>>,
 }
 
-impl<
-        'a,
-        Operation,
-        const GRID_DIMENSION: usize,
-        const NEIGHBORHOOD_SIZE: usize,
-    > APPlanner<'a, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
-where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
+impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    APPlanner<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 {
     fn new(
-        stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
         plan_type: PlanType,

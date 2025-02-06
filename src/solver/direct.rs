@@ -4,20 +4,18 @@ use crate::stencil::*;
 
 pub fn box_apply<
     BC,
-    Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     DomainType: DomainView<GRID_DIMENSION>,
 >(
     bc: &BC,
-    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &mut DomainType,
     output: &mut DomainType,
     steps: usize,
     mut global_time: usize,
     chunk_size: usize,
 ) where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     debug_assert_eq!(input.aabb(), output.aabb());
@@ -40,20 +38,18 @@ mod unit_tests {
 
     fn test_unit_stencil<
         BC,
-        Operation,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
-        stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bc_lookup: &BC,
         bound: &AABB<GRID_DIMENSION>,
         steps: usize,
     ) where
-        Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
         BC: BCCheck<GRID_DIMENSION>,
     {
         let chunk_size = 3;
-        assert_approx_eq!(f64, stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
+        assert_approx_eq!(f64, stencil.apply(&Values::from_element(1.0)), 1.0);
 
         let mut input_domain = OwnedDomain::new(*bound);
         let mut output_domain = OwnedDomain::new(*bound);

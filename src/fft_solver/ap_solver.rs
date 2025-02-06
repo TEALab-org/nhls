@@ -8,20 +8,13 @@ use std::io::prelude::*;
 pub struct APSolver<
     'a,
     BC: BCCheck<GRID_DIMENSION>,
-    Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
 > where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    pub direct_frustrum_solver: DirectFrustrumSolver<
-        'a,
-        BC,
-        Operation,
-        GRID_DIMENSION,
-        NEIGHBORHOOD_SIZE,
-    >,
+    pub direct_frustrum_solver:
+        DirectFrustrumSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     pub convolution_store: ConvolutionStore,
     pub plan: APPlan<GRID_DIMENSION>,
     pub node_scratch_descriptors: Vec<ScratchDescriptor>,
@@ -29,20 +22,14 @@ pub struct APSolver<
     pub chunk_size: usize,
 }
 
-impl<
-        'a,
-        BC,
-        Operation,
-        const GRID_DIMENSION: usize,
-        const NEIGHBORHOOD_SIZE: usize,
-    > APSolver<'a, BC, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+impl<'a, BC, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    APSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     pub fn new(
         bc: &'a BC,
-        stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
         params: &PlannerParameters,
