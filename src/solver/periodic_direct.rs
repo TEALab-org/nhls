@@ -7,19 +7,16 @@ use crate::stencil::*;
 const GLOBAL_TIME: usize = 0;
 
 pub fn direct_periodic_apply<
-    Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     DomainType: DomainView<GRID_DIMENSION>,
 >(
-    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &mut DomainType,
     output: &mut DomainType,
     steps: usize,
     chunk_size: usize,
-) where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
-{
+) {
     debug_assert_eq!(input.aabb(), output.aabb());
     for _ in 0..steps - 1 {
         {
@@ -48,18 +45,15 @@ mod unit_tests {
     use nalgebra::matrix;
 
     fn test_unit_stencil<
-        Operation,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     >(
-        stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         bound: &AABB<GRID_DIMENSION>,
         steps: usize,
-    ) where
-        Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
-    {
+    ) {
         let chunk_size = 3;
-        assert_approx_eq!(f64, stencil.apply(&[1.0; NEIGHBORHOOD_SIZE]), 1.0);
+        assert_approx_eq!(f64, stencil.apply(&Values::from_element(1.0)), 1.0);
 
         let mut input_domain = OwnedDomain::new(*bound);
         let mut output_domain = OwnedDomain::new(*bound);

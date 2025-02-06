@@ -1,63 +1,49 @@
 use crate::util::*;
 
-/// All stencils operations must provide an operation that adheres to this type
-pub trait StencilOperation<NumType: NumTrait, const NEIGHBORHOOD_SIZE: usize> =
-    Fn(&[NumType; NEIGHBORHOOD_SIZE]) -> NumType + Sync;
-
-pub type StencilF64<
-    Operation,
-    const GRID_DIMENSION: usize,
+/// For linear stencils, we can extract the weight for a neighbor
+/// by passing in 1.0 for that neighbor and 0.0 for the others.
+pub fn extract_weights<
     const NEIGHBORHOOD_SIZE: usize,
-> = Stencil<f64, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>;
-
-/// Stencils are the combination of an operation and neighbors
-pub struct Stencil<
-    NumType: NumTrait,
-    Operation,
-    const GRID_DIMENSION: usize,
-    const NEIGHBORHOOD_SIZE: usize,
-> where
-    Operation: StencilOperation<NumType, NEIGHBORHOOD_SIZE>,
-{
-    pub operation: Operation,
-    pub offsets: [Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE],
-    pub num_type: std::marker::PhantomData<NumType>,
+    F: Fn(&[f64; NEIGHBORHOOD_SIZE]) -> f64,
+>(
+    f: F,
+) -> Values<NEIGHBORHOOD_SIZE> {
+    let mut weights = Values::zero();
+    let mut arg_buffer = [0.0; NEIGHBORHOOD_SIZE];
+    for n in 0..NEIGHBORHOOD_SIZE {
+        arg_buffer[n] = 1.0;
+        weights[n] = f(&arg_buffer);
+        arg_buffer[n] = 0.0;
+    }
+    weights
 }
 
-impl<
-        NumType,
-        Operation,
-        const GRID_DIMENSION: usize,
-        const NEIGHBORHOOD_SIZE: usize,
-    > Stencil<NumType, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
-where
-    Operation: StencilOperation<NumType, NEIGHBORHOOD_SIZE>,
-    NumType: NumTrait,
+/// For this code base we only deal with linear stencils.
+/// We view linear stencils as a combination of neighbor offsets and weights.
+pub struct Stencil<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
 {
-    pub fn new(
+    pub weights: Values<NEIGHBORHOOD_SIZE>,
+    pub offsets: [Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE],
+}
+
+impl<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+{
+    pub fn new<F: Fn(&[f64; NEIGHBORHOOD_SIZE]) -> f64>(
         offsets: [[i32; GRID_DIMENSION]; NEIGHBORHOOD_SIZE],
-        operation: Operation,
+        operation: F,
     ) -> Self {
+        let weights = extract_weights(operation);
         Stencil {
             offsets: std::array::from_fn(|i| {
                 Coord::from_column_slice(&offsets[i])
             }),
-            operation,
-            num_type: std::marker::PhantomData,
+            weights,
         }
     }
 
-    /// For linear stencils, we can extract the weight for a neighbor
-    /// by passing in 1.0 for that neighbor and 0.0 for the others.
-    pub fn extract_weights(&self) -> [NumType; NEIGHBORHOOD_SIZE] {
-        let mut weights = [NumType::zero(); NEIGHBORHOOD_SIZE];
-        let mut arg_buffer = [NumType::zero(); NEIGHBORHOOD_SIZE];
-        for n in 0..NEIGHBORHOOD_SIZE {
-            arg_buffer[n] = NumType::one();
-            weights[n] = (self.operation)(&arg_buffer);
-            arg_buffer[n] = NumType::zero();
-        }
-        weights
+    pub fn weights(&self) -> &Values<NEIGHBORHOOD_SIZE> {
+        &self.weights
     }
 
     pub fn offsets(&self) -> &[Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE] {
@@ -79,8 +65,8 @@ where
         result
     }
 
-    pub fn apply(&self, args: &[NumType; NEIGHBORHOOD_SIZE]) -> NumType {
-        (self.operation)(args)
+    pub fn apply(&self, args: &Values<NEIGHBORHOOD_SIZE>) -> f64 {
+        self.weights.component_mul(args).sum()
     }
 }
 
@@ -94,7 +80,7 @@ mod unit_tests {
     fn extract_weights() {
         {
             let s = Stencil::new([[1]], |args: &[f64; 1]| 2.0 * args[0]);
-            let w = s.extract_weights()[0];
+            let w = s.weights()[0];
             assert_approx_eq!(f64, w, 2.0);
         }
 
@@ -102,7 +88,7 @@ mod unit_tests {
             let s = Stencil::new([[1], [2], [3]], |args: &[f64; 3]| {
                 2.0 * args[0] + 3.0 * args[1] + 5.0 * args[2]
             });
-            let w = s.extract_weights();
+            let w = s.weights();
             assert_approx_eq!(f64, w[0], 2.0, ulps = 1);
             assert_approx_eq!(f64, w[1], 3.0, ulps = 1);
             assert_approx_eq!(f64, w[2], 5.0, ulps = 1);

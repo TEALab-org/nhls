@@ -61,10 +61,6 @@ fn main() {
             0.1 * middle + 0.4 * left + 0.1 * right + 0.2 * top + 0.2 * bottom
         },
     );
-
-    let w = stencil.extract_weights();
-    let s: f64 = w.iter().sum();
-    println!("{:?}, {}", w, s);
     let grid_bound = args.grid_bounds();
 
     // Create BC

@@ -1,10 +1,6 @@
 use crate::stencil::*;
 
-pub fn heat_1d(
-    dt: f64,
-    dx: f64,
-    k: f64,
-) -> StencilF64<impl StencilOperation<f64, 3>, 1, 3> {
+pub fn heat_1d(dt: f64, dx: f64, k: f64) -> Stencil<1, 3> {
     Stencil::new([[-1], [0], [1]], move |args: &[f64; 3]| {
         let left = args[0];
         let middle = args[1];
@@ -13,13 +9,7 @@ pub fn heat_1d(
     })
 }
 
-pub fn heat_2d(
-    dt: f64,
-    dx: f64,
-    dy: f64,
-    k_x: f64,
-    k_y: f64,
-) -> StencilF64<impl StencilOperation<f64, 5>, 2, 5> {
+pub fn heat_2d(dt: f64, dx: f64, dy: f64, k_x: f64, k_y: f64) -> Stencil<2, 5> {
     Stencil::new(
         [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]],
         move |args: &[f64; 5]| {
@@ -43,7 +33,7 @@ pub fn heat_3d(
     k_x: f64,
     k_y: f64,
     k_z: f64,
-) -> StencilF64<impl StencilOperation<f64, 7>, 3, 7> {
+) -> Stencil<3, 7> {
     Stencil::new(
         [
             [0, 0, 0],

@@ -8,27 +8,20 @@ use crate::util::*;
 pub struct DirectFrustrumSolver<
     'a,
     BC,
-    Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
 > where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     pub bc: &'a BC,
-    pub stencil: &'a StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    pub stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
     pub chunk_size: usize,
 }
 
-impl<
-        BC,
-        Operation,
-        const GRID_DIMENSION: usize,
-        const NEIGHBORHOOD_SIZE: usize,
-    > DirectFrustrumSolver<'_, BC, Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+impl<BC, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    DirectFrustrumSolver<'_, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     pub fn apply<'b>(

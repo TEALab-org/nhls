@@ -5,19 +5,17 @@ use rayon::prelude::*;
 
 pub fn apply<
     BC,
-    Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     DomainType: DomainView<GRID_DIMENSION>,
 >(
     bc: &BC,
-    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     input: &DomainType,
     output: &mut DomainType,
     global_time: usize,
     chunk_size: usize,
 ) where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
     debug_assert!(input.aabb().contains_aabb(output.aabb()));

@@ -15,6 +15,16 @@ pub trait NumTrait = Num + Copy + Send + Sync;
 pub type Coord<const GRID_DIMENSION: usize> =
     nalgebra::SVector<i32, { GRID_DIMENSION }>;
 
+/// Raw type used for AABB,
+/// an n by 2 matrix, where
+/// column 0 is the min corner
+/// and column 1 is the max corner
+pub type Bounds<const DIMENSION: usize> =
+    nalgebra::SMatrix<i32, { DIMENSION }, 2>;
+
+pub type Values<const NEIGHBORHOOD_SIZE: usize> =
+    nalgebra::SMatrix<f64, { NEIGHBORHOOD_SIZE }, 1>;
+
 #[inline]
 pub fn flip_sloped<const GRID_DIMENSION: usize>(
     sloped: &Bounds<GRID_DIMENSION>,

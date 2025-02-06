@@ -4,22 +4,20 @@ use crate::util::*;
 
 pub fn gather_args<
     BC,
-    Operation,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     DomainType: DomainView<GRID_DIMENSION>,
 >(
-    stencil: &StencilF64<Operation, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     bc: &BC,
     input: &DomainType,
     world_coord: &Coord<GRID_DIMENSION>,
     global_time: usize,
-) -> [f64; NEIGHBORHOOD_SIZE]
+) -> Values<NEIGHBORHOOD_SIZE>
 where
-    Operation: StencilOperation<f64, NEIGHBORHOOD_SIZE>,
     BC: BCCheck<GRID_DIMENSION>,
 {
-    let mut result = [0.0; NEIGHBORHOOD_SIZE];
+    let mut result = Values::zero();
     for (i, n_i) in stencil.offsets().iter().enumerate() {
         let n_world_coord = world_coord + n_i;
         result[i] = bc
