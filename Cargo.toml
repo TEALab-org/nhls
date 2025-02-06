@@ -18,6 +18,7 @@ rand = "0.8.5"
 vtkio = "0.7.0-rc1"
 sync-ptr = "0.1.1"
 float-cmp = "0.10.0"
+gperftools = "0.2.0"
 
 [dev-dependencies]
 

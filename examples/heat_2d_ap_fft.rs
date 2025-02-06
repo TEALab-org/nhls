@@ -50,6 +50,7 @@ fn main() {
         image2d(&input_domain, &args.frame_name(0));
     }
 
+    gperftools::profiler::PROFILER.lock().unwrap().start("./my-prof.prof").unwrap();
     let mut global_time = 0;
     for t in 1..args.images {
         solver.apply(&mut input_domain, &mut output_domain, global_time);
@@ -59,6 +60,6 @@ fn main() {
             image2d(&input_domain, &args.frame_name(t));
         }
     }
-
+gperftools::profiler::PROFILER.lock().unwrap().stop().unwrap();
     args.save_wisdom();
 }

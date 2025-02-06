@@ -20,6 +20,7 @@ fn main() {
 
     // Create boundary condition
     let bc = ConstantCheck::new(0.0, grid_bound);
+    gperftools::profiler::PROFILER.lock().unwrap().start("./debug_direct.prof").unwrap();
 
     // Apply direct solver
     let mut global_time = 0;
@@ -39,4 +40,6 @@ fn main() {
             image2d(&input_domain, &args.frame_name(t));
         }
     }
+    gperftools::profiler::PROFILER.lock().unwrap().stop().unwrap();
+
 }
