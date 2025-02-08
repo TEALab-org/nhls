@@ -4,6 +4,9 @@
 # macOS stuff
 *.DS_STORE
 
+# Profiling
+*.prof
+
 # Misc stuff
 *.png
 *.mp4

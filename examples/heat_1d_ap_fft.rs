@@ -32,12 +32,11 @@ fn main() {
         &planner_params,
     );
     solver.print_report();
+
     if args.write_dot {
-        println!("WRITING DOT FILE");
-        let mut dot_path = args.output_dir.clone();
-        dot_path.push("plan.dot");
-        solver.to_dot_file(&dot_path);
+        solver.to_dot_file(&args.dot_path());
     }
+
     if args.gen_only {
         args.save_wisdom();
         std::process::exit(0);

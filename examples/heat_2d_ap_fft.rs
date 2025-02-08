@@ -27,15 +27,11 @@ fn main() {
         &planner_params,
     );
     solver.print_report();
-    if args.write_dot {
-        let mut dot_path = args.output_dir.clone();
-        dot_path.push("plan.dot");
-        solver.to_dot_file(&dot_path);
 
-        let mut d_path = args.output_dir.clone();
-        d_path.push("scratch.txt");
-        solver.scratch_descriptor_file(&d_path);
+    if args.write_dot {
+        solver.to_dot_file(&args.dot_path());
     }
+
     if args.gen_only {
         args.save_wisdom();
         std::process::exit(0);
