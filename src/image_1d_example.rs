@@ -77,6 +77,7 @@ impl Args {
 
         if args.build_info {
             build_info::print_report(name);
+            std::process::exit(0);
         }
 
         if let Some(output_dir) = &args.output_dir {
