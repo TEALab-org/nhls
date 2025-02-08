@@ -4,6 +4,7 @@
 // don't like this warning for this codebase.
 #![allow(clippy::needless_range_loop)]
 
+pub mod build_info;
 pub mod domain;
 pub mod fft_solver;
 pub mod image;

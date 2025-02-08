@@ -1,3 +1,4 @@
+use crate::build_info;
 use crate::fft_solver::PlanType;
 use crate::util::*;
 use clap::Parser;
@@ -30,7 +31,7 @@ pub struct Args {
     pub domain_size: usize,
 
     /// Write out image, WARNING: we do not check image size, so be reasonable.
-    #[arg(short, long)]
+    #[arg(short, long, requires("output_dir"))]
     pub write_images: bool,
 
     /// The number of threads to use.
@@ -50,7 +51,7 @@ pub struct Args {
     pub rand_init: bool,
 
     /// Write out a dot file for the ap plan
-    #[arg(long)]
+    #[arg(long, requires("output_dir"))]
     pub write_dot: bool,
 
     /// Target ratio for fft solves
@@ -64,14 +65,19 @@ pub struct Args {
     /// Generate solver only, do not solve
     #[arg(long)]
     pub gen_only: bool,
+
+    /// Print build information and quit
+    #[arg(long)]
+    pub build_info: bool,
 }
 
 impl Args {
     pub fn cli_parse(name: &str) -> Self {
-        println!("EXAMPLE: {}", name);
-        println!("GIT DESCRIBE: {}", env!("GIT_DESCRIBE"));
-        println!("GIT HASH: {}", env!("GIT_HASH"));
         let args = Args::parse();
+
+        if args.build_info {
+            build_info::print_report(name);
+        }
 
         let output_dir = args.output_dir.to_str().unwrap();
         let _ = std::fs::remove_dir_all(output_dir);
