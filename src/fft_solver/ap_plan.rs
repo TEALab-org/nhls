@@ -53,12 +53,19 @@ pub struct RepeatNode {
     pub next: Option<NodeId>,
 }
 
+/// Use for root node in time-varying solvers
+#[derive(Debug)]
+pub struct RangeNode {
+    pub range: Range<NodeId>,
+}
+
 /// These nodes form a tree.
 #[derive(Debug)]
 pub enum PlanNode<const GRID_DIMENSION: usize> {
     PeriodicSolve(PeriodicSolveNode<GRID_DIMENSION>),
     DirectSolve(DirectSolveNode<GRID_DIMENSION>),
     Repeat(RepeatNode),
+    Range(RangeNode),
 }
 
 /// An `APPlan` describes an aperiodic solve over a fixed AABB
@@ -163,6 +170,14 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
                     )
                     .unwrap();
                 }
+                PlanNode::Range(_) => {
+                    writeln!(
+                        writer,
+                        " n_{id} [label=\"n_{id}: RANGE\"];",
+                        id = i,
+                    )
+                    .unwrap();
+                }
             }
         }
 
@@ -184,6 +199,12 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
                         .unwrap();
                     if let Some(r2) = r.next {
                         writeln!(writer, " n_{} -> n_{} [color=black];", i, r2)
+                            .unwrap();
+                    }
+                }
+                PlanNode::Range(r) => {
+                    for r in r.range.clone() {
+                        writeln!(writer, " n_{} -> n_{} [color=green];", i, r)
                             .unwrap();
                     }
                 }

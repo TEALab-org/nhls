@@ -182,6 +182,9 @@ where
             PlanNode::Repeat(_) => {
                 panic!("ERROR: Not expecting repeat node");
             }
+            PlanNode::Range(_) => {
+                panic!("ERROR: Not expecting range node");
+            }
         }
     }
 
@@ -212,6 +215,9 @@ where
             }
             PlanNode::Repeat(_) => {
                 panic!("ERROR: Not expecting repeat node");
+            }
+            PlanNode::Range(_) => {
+                panic!("ERROR: Not expecting range node");
             }
         }
     }
