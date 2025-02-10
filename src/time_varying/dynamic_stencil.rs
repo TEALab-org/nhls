@@ -1,15 +1,13 @@
-use std::collections::HashMap;
 use crate::stencil::*;
 use crate::util::*;
+use std::collections::HashMap;
 
 /// Like base stencil class, but with dynamic neighborhood size
 pub struct DynamicLinearStencil<const GRID_DIMENSION: usize> {
     pub offset_weights: Vec<(Coord<GRID_DIMENSION>, f64)>,
 }
 
-impl<const GRID_DIMENSION: usize>
-    DynamicLinearStencil<GRID_DIMENSION>
-{
+impl<const GRID_DIMENSION: usize> DynamicLinearStencil<GRID_DIMENSION> {
     pub fn new(offset_weights: Vec<(Coord<GRID_DIMENSION>, f64)>) -> Self {
         DynamicLinearStencil { offset_weights }
     }
@@ -78,7 +76,7 @@ mod unit_tests {
             assert_eq!(rs.offset_weights().len(), 1);
             assert_eq!(rs.offset_weights()[0], (vector![-2], 1.0))
         }
-    
+
         {
             let ss = crate::standard_stencils::heat_1d(1.0, 1.0, 0.3);
             let ds = DynamicLinearStencil::from_static_stencil(&ss);
@@ -88,5 +86,4 @@ mod unit_tests {
             assert_eq!(rs.slopes(), matrix![2, 2]);
         }
     }
-
 }

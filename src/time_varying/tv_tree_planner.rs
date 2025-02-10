@@ -7,12 +7,12 @@ pub type TVOpId = usize;
 pub struct TVOpDescriptor<const GRID_DIMENSION: usize> {
     pub step_min: usize,
     pub step_max: usize,
-    pub exclusive_bounds: Coord<GRID_DIMENSION>
+    pub exclusive_bounds: Coord<GRID_DIMENSION>,
 }
 
 pub struct TVTreePlanner<const GRID_DIMENSION: usize> {
-   descriptor_map: HashMap<TVOpDescriptor<GRID_DIMENSION>, TVOpId>, 
-   next_id: usize,
+    descriptor_map: HashMap<TVOpDescriptor<GRID_DIMENSION>, TVOpId>,
+    next_id: usize,
 }
 
 impl<const GRID_DIMENSION: usize> TVTreePlanner<GRID_DIMENSION> {
@@ -23,7 +23,10 @@ impl<const GRID_DIMENSION: usize> TVTreePlanner<GRID_DIMENSION> {
         }
     }
 
-    pub fn get_op_id(&mut self, descriptor: TVOpDescriptor<GRID_DIMENSION>) -> TVOpId {
+    pub fn get_op_id(
+        &mut self,
+        descriptor: TVOpDescriptor<GRID_DIMENSION>,
+    ) -> TVOpId {
         if let Some(id) = self.descriptor_map.get(&descriptor) {
             *id
         } else {

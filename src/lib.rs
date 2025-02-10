@@ -18,6 +18,6 @@ pub mod par_stencil;
 pub mod solver;
 pub mod standard_stencils;
 pub mod stencil;
+pub mod time_varying;
 pub mod util;
 pub mod vtk;
-pub mod time_varying;

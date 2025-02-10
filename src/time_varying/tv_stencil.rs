@@ -1,7 +1,8 @@
 use crate::stencil::*;
 use crate::util::*;
 
-pub trait TVStencil<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>: Send + Sync
+pub trait TVStencil<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>:
+    Send + Sync
 {
     fn weights(&self, global_time: usize) -> Values<NEIGHBORHOOD_SIZE>;
 
@@ -22,7 +23,11 @@ pub trait TVStencil<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         result
     }
 
-    fn apply(&self, args: &Values<NEIGHBORHOOD_SIZE>, global_time: usize) -> f64 {
+    fn apply(
+        &self,
+        args: &Values<NEIGHBORHOOD_SIZE>,
+        global_time: usize,
+    ) -> f64 {
         self.weights(global_time).component_mul(args).sum()
     }
 }
@@ -31,8 +36,8 @@ impl<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
     TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>
     for Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 {
-    fn weights(&self, _global_time: usize) -> &Values<NEIGHBORHOOD_SIZE> {
-        self.weights()
+    fn weights(&self, _global_time: usize) -> Values<NEIGHBORHOOD_SIZE> {
+        *self.weights()
     }
 
     fn offsets(&self) -> &[Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE] {

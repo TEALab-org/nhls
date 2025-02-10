@@ -17,7 +17,7 @@ pub struct TVPlannerResult<const GRID_DIMENSION: usize> {
 pub fn create_tv_ap_plan<
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
-    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
     stencil: &StencilType,
     aabb: AABB<GRID_DIMENSION>,
@@ -37,24 +37,21 @@ pub fn create_tv_ap_plan<
 }
 
 /// Used to create an `APPlan`. See `create_ap_plan`
-struct TVPlanner<
-    const GRID_DIMENSION: usize,
-> {
+struct TVPlanner<const GRID_DIMENSION: usize> {
     stencil_slopes: Bounds<GRID_DIMENSION>,
     aabb: AABB<GRID_DIMENSION>,
     steps: usize,
     cutoff: i32,
     ratio: f64,
-    tree_planner:
-        TVTreePlanner<GRID_DIMENSION>,
+    tree_planner: TVTreePlanner<GRID_DIMENSION>,
     nodes: Vec<PlanNode<GRID_DIMENSION>>,
 }
 
-impl< const GRID_DIMENSION: usize>
-    TVPlanner<GRID_DIMENSION>
-{
-    fn new
-    <const NEIGHBORHOOD_SIZE: usize, StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>>(
+impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
+    fn new<
+        const NEIGHBORHOOD_SIZE: usize,
+        StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    >(
         stencil: &StencilType,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
@@ -121,7 +118,8 @@ impl< const GRID_DIMENSION: usize>
         let maybe_next_frustrum =
             frustrum.time_cut(periodic_solve.steps, &self.stencil_slopes);
         if let Some(next_frustrum) = maybe_next_frustrum {
-            let next_node = self.generate_frustrum(next_frustrum, rel_time_post);
+            let next_node =
+                self.generate_frustrum(next_frustrum, rel_time_post);
             time_cut = Some(self.add_node(next_node));
         }
         debug_assert!(frustrum
@@ -185,7 +183,11 @@ impl< const GRID_DIMENSION: usize>
     ///
     /// Note also that the boundary solve decomposition
     /// is based on `AABB` and not `APFrustrum`.
-    fn generate_central(&mut self, max_steps: usize, rel_time_0: usize) -> (PlanNode<GRID_DIMENSION>, usize) {
+    fn generate_central(
+        &mut self,
+        max_steps: usize,
+        rel_time_0: usize,
+    ) -> (PlanNode<GRID_DIMENSION>, usize) {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -208,12 +210,15 @@ impl< const GRID_DIMENSION: usize>
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
         for d in 0..GRID_DIMENSION {
             for side in [Side::Min, Side::Max] {
-                sub_nodes.push(self.generate_frustrum(APFrustrum::new(
-                    decomposition[d][side.outer_index()],
-                    d,
-                    side,
-                    periodic_solve.steps,
-                ), rel_time_0));
+                sub_nodes.push(self.generate_frustrum(
+                    APFrustrum::new(
+                        decomposition[d][side.outer_index()],
+                        d,
+                        side,
+                        periodic_solve.steps,
+                    ),
+                    rel_time_0,
+                ));
             }
         }
 
@@ -231,7 +236,10 @@ impl< const GRID_DIMENSION: usize>
             time_cut: None,
         };
 
-        (PlanNode::PeriodicSolve(periodic_solve_node), periodic_solve.steps)
+        (
+            PlanNode::PeriodicSolve(periodic_solve_node),
+            periodic_solve.steps,
+        )
     }
 
     /// Create the root repeat node.
@@ -252,8 +260,6 @@ impl< const GRID_DIMENSION: usize>
         let first_node = self.nodes.len();
         let last_node = first_node + root_solves.len();
         self.nodes.extend(&mut root_solves.drain(..));
-
-
 
         let range_node = RangeNode {
             range: first_node..last_node,

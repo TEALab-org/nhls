@@ -1,10 +1,9 @@
 use crate::domain::*;
+use crate::par_slice;
 use crate::time_varying::*;
 use crate::util::*;
-use crate::par_slice;
-use fftw::plan::*;
 use fftw::array::*;
-
+use fftw::plan::*;
 
 pub fn fft_mul<const GRID_DIMENSION: usize>(
     s1: &DynamicLinearStencil<GRID_DIMENSION>,
@@ -24,50 +23,57 @@ pub fn fft_mul<const GRID_DIMENSION: usize>(
     let size = aabb.exclusive_bounds();
     let plan_size = size.try_cast::<usize>().unwrap();
     let forward_plan = fftw::plan::R2CPlan64::aligned(
-            plan_size.as_slice(),
-            fftw::types::Flag::ESTIMATE,
-        )
+        plan_size.as_slice(),
+        fftw::types::Flag::ESTIMATE,
+    )
+    .unwrap();
+    let backward_plan = fftw::plan::C2RPlan64::aligned(
+        plan_size.as_slice(),
+        fftw::types::Flag::ESTIMATE,
+    )
+    .unwrap();
+
+    // Create FFT of s1
+    let mut domain1 = OwnedDomain::new(aabb);
+    for (offset, weight) in s1.offset_weights() {
+        // I don't understand why, but we found that this mirroring operation
+        // was necessary. I think it was in the paper.
+        // TODO: Why is this the case?
+        let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+        let periodic_coord = aabb.periodic_coord(&rn_i);
+        domain1.set_coord(&periodic_coord, *weight);
+    }
+    let mut complex1: AlignedVec<c64> =
+        AlignedVec::new(aabb.complex_buffer_size());
+    forward_plan
+        .r2c(domain1.buffer_mut(), &mut complex1)
         .unwrap();
-        let backward_plan = fftw::plan::C2RPlan64::aligned(
-            plan_size.as_slice(),
-            fftw::types::Flag::ESTIMATE,
-        )
+
+    // Create FFT of s2
+    let mut domain2 = OwnedDomain::new(aabb);
+    for (offset, weight) in s2.offset_weights() {
+        // I don't understand why, but we found that this mirroring operation
+        // was necessary. I think it was in the paper.
+        // TODO: Why is this the case?
+        let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+        let periodic_coord = aabb.periodic_coord(&rn_i);
+        domain2.set_coord(&periodic_coord, *weight);
+    }
+    let mut complex2: AlignedVec<c64> =
+        AlignedVec::new(aabb.complex_buffer_size());
+    forward_plan
+        .r2c(domain2.buffer_mut(), &mut complex2)
         .unwrap();
 
-   
-        // Create FFT of s1
-        let mut domain1 = OwnedDomain::new(aabb);
-        for (offset, weight) in s1.offset_weights() {
-            // I don't understand why, but we found that this mirroring operation
-            // was necessary. I think it was in the paper.
-            // TODO: Why is this the case?
-            let rn_i: Coord<GRID_DIMENSION> = offset * -1;
-            let periodic_coord = aabb.periodic_coord(&rn_i);
-            domain1.set_coord(&periodic_coord, *weight);
-        }
-        let mut complex1: AlignedVec<c64> = AlignedVec::new(aabb.complex_buffer_size());
-        forward_plan.r2c(domain1.buffer_mut(), &mut complex1).unwrap();
-
-        // Create FFT of s2
-        let mut domain2 = OwnedDomain::new(aabb);
-        for (offset, weight) in s2.offset_weights() {
-            // I don't understand why, but we found that this mirroring operation
-            // was necessary. I think it was in the paper.
-            // TODO: Why is this the case?
-            let rn_i: Coord<GRID_DIMENSION> = offset * -1;
-            let periodic_coord = aabb.periodic_coord(&rn_i);
-            domain2.set_coord(&periodic_coord, *weight);
-        }
-        let mut complex2: AlignedVec<c64> = AlignedVec::new(aabb.complex_buffer_size());
-        forward_plan.r2c(domain2.buffer_mut(), &mut complex2).unwrap();
-
-        // multiply and get result
-        par_slice::multiply_by(&mut complex1, &complex2, chunk_size);
-        backward_plan.c2r(&mut complex1, domain1.buffer_mut()).unwrap();
-        let n_r = aabb.buffer_size();
-        par_slice::div(domain1.buffer_mut(), n_r as f64, chunk_size);
-        println!("bounds: {}", aabb);
-        println!("{:?}", domain1.buffer());
+    // multiply and get result
+    par_slice::multiply_by(&mut complex1, &complex2, chunk_size);
+    backward_plan
+        .c2r(&mut complex1, domain1.buffer_mut())
+        .unwrap();
+    let n_r = aabb.buffer_size();
+    par_slice::div(domain1.buffer_mut(), n_r as f64, chunk_size);
+    println!("bounds: {}", aabb);
+    println!("{:?}", domain1.buffer());
 }
 
 #[cfg(test)]
