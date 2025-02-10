@@ -1,14 +1,16 @@
 use crate::domain::*;
 use crate::stencil::*;
 use crate::util::*;
+use crate::time_varying::TVStencil;
 
 pub fn gather_args<
     BC,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     DomainType: DomainView<GRID_DIMENSION>,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
-    stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &StencilType,
     bc: &BC,
     input: &DomainType,
     world_coord: &Coord<GRID_DIMENSION>,
