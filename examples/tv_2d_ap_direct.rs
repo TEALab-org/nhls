@@ -43,10 +43,10 @@ impl TVStencil<2, 5> for RotatingAdvectionStencil {
         &self.offsets
     }
 
-    // Model rotational distribution with
+    // Model advection distribution with
     // *(0.5 sin(a + time * frequency) + 1.0) / 2Pi
-    // That integrates to 1.0
-    // So each of the neighbors gets an quadrant,
+    // That integrates to 1.0 over unit circle.
+    // So each of the neighbors gets a quadrant,
     // i.e. integrate that for a in (0, Pi / 2) for quadrant 1
     // Did that with sympy
     // and got these equations
