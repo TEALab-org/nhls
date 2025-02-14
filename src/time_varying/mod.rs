@@ -5,6 +5,7 @@ mod tv_direct;
 mod tv_periodic_solver;
 mod tv_planner;
 mod tv_stencil;
+mod tv_tree;
 mod tv_tree_planner;
 
 pub use circ_stencil::*;
@@ -14,4 +15,5 @@ pub use tv_direct::*;
 pub use tv_periodic_solver::*;
 pub use tv_planner::*;
 pub use tv_stencil::*;
+pub use tv_tree::*;
 pub use tv_tree_planner::*;
