@@ -32,7 +32,7 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
         let rn_i: Coord<GRID_DIMENSION> = offset * -1;
         let periodic_coord = self.domain.aabb().periodic_coord(&rn_i);
         self.domain.set_coord(&periodic_coord, weight);
-        println!("    --- view: {:?} -> {}, s: {}", periodic_coord, self.domain.view(&periodic_coord), self.domain.buffer().iter().sum::<f64>());
+        //println!("    --- view: {:?} -> {}, s: {}", periodic_coord, self.domain.view(&periodic_coord), self.domain.buffer().iter().sum::<f64>());
     }
 
     pub fn add_tv_stencil<
@@ -82,7 +82,7 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
                 let o = -(((domain_coord[d] + self.slopes[(d, 0)]) % d_max) - self.slopes[(d, 0)]);
                 offset[d] = o;
             }
-            println!("domainc: {:?} -> {:?}, {:?}", domain_coord, offset, total_width);
+            //println!("domainc: {:?} -> {:?}, {:?}", domain_coord, offset, total_width);
             (offset, weight)
         })
     }
@@ -131,13 +131,11 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
             .unwrap();
 
         println!(
-            "  -- convolve: s1: {}, s2: {}, cs1: {}, cs2: {}, c1: {}, c2: {}",
+            "  -- convolve: s1: {}, s2: {}, cs1: {}, cs2: {}",
             s1.domain.buffer().iter().sum::<f64>(),
             s2.domain.buffer().iter().sum::<f64>(),
             cs1.domain.buffer().iter().sum::<f64>(),
             cs2.domain.buffer().iter().sum::<f64>(),
-            complex1.iter().sum::<c64>(),
-            complex2.iter().sum::<c64>(),
         );
 
         // Convolve and backward pass
@@ -145,6 +143,8 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
         backward_plan
             .c2r(&mut complex1, cs1.domain.buffer_mut())
             .unwrap();
+        let n_r = cs1.domain.aabb().buffer_size();
+        par_slice::div(cs1.domain.buffer_mut(), n_r as f64, chunk_size);
 
         cs1
     }

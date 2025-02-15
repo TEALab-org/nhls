@@ -107,6 +107,9 @@ impl<
         self.backward_plan
             .c2r(&mut self.s_complex_buffer, output.buffer_mut())
             .unwrap();
+
+        let n_r = output.aabb().buffer_size();
+        par_slice::div(output.buffer_mut(), n_r as f64, self.chunk_size);
     }
 }
 
