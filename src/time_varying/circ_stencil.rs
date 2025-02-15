@@ -7,8 +7,8 @@ use fftw::array::*;
 use fftw::plan::*;
 
 pub struct CircStencil<const GRID_DIMENSION: usize> {
-    slopes: Bounds<GRID_DIMENSION>,
-    domain: OwnedDomain<GRID_DIMENSION>,
+    pub slopes: Bounds<GRID_DIMENSION>,
+    pub domain: OwnedDomain<GRID_DIMENSION>,
 }
 
 impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
@@ -32,6 +32,7 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
         let rn_i: Coord<GRID_DIMENSION> = offset * -1;
         let periodic_coord = self.domain.aabb().periodic_coord(&rn_i);
         self.domain.set_coord(&periodic_coord, weight);
+        println!("    --- view: {:?} -> {}, s: {}", periodic_coord, self.domain.view(&periodic_coord), self.domain.buffer().iter().sum::<f64>());
     }
 
     pub fn add_tv_stencil<
@@ -72,20 +73,24 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
         &'a self,
     ) -> impl Iterator<Item = (Coord<GRID_DIMENSION>, f64)> + 'a {
         let total_width = self.slopes.column(0) + self.slopes.column(1);
+        //let max: Coord<GRID_DIMENSION> = self.slopes.column(1);
         self.domain.aabb().coord_iter().map(move |domain_coord| {
             let weight = self.domain.view(&domain_coord);
             let mut offset = Coord::zero();
             for d in 0..GRID_DIMENSION {
-                let d_max = total_width[d];
-                let o = -((domain_coord[d] + d_max) % d_max) - d_max;
+                let d_max = total_width[d] + 1;
+                let o = -(((domain_coord[d] + self.slopes[(d, 0)]) % d_max) - self.slopes[(d, 0)]);
                 offset[d] = o;
             }
+            println!("domainc: {:?} -> {:?}, {:?}", domain_coord, offset, total_width);
             (offset, weight)
         })
     }
 
     pub fn add_circ_stencil(&mut self, other: &Self) {
+        println!("  --- add_circ pre add size: {}", self.domain.aabb());
         self.add_offset_weights(other.to_offset_weights());
+        println!("  --- add_circ post add sum: {}", self.domain.buffer().iter().sum::<f64>());
     }
 
     pub fn convolve(s1: &Self, s2: &Self) -> Self {
@@ -125,11 +130,22 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
             .r2c(cs2.domain.buffer_mut(), &mut complex2)
             .unwrap();
 
+        println!(
+            "  -- convolve: s1: {}, s2: {}, cs1: {}, cs2: {}, c1: {}, c2: {}",
+            s1.domain.buffer().iter().sum::<f64>(),
+            s2.domain.buffer().iter().sum::<f64>(),
+            cs1.domain.buffer().iter().sum::<f64>(),
+            cs2.domain.buffer().iter().sum::<f64>(),
+            complex1.iter().sum::<c64>(),
+            complex2.iter().sum::<c64>(),
+        );
+
         // Convolve and backward pass
         par_slice::multiply_by(&mut complex1, &complex2, chunk_size);
         backward_plan
             .c2r(&mut complex1, cs1.domain.buffer_mut())
             .unwrap();
+
         cs1
     }
 }
@@ -140,13 +156,13 @@ mod unit_tests {
 
     #[test]
     fn index_testing() {
-        let min: i32 = -1;
-        let max = 2;
-        let c = min.abs() + max + 1;
-        println!("min: {}, max: {}, c: {}", min, max, c);
-        for i in 0..c {
-            let r = ((i + max) % c) - max;
-            println!("i: {}, r: {}", i, -r);
+        let slopes = matrix![2, 2];
+        let s = CircStencil::new(slopes);
+        let mut coord_set = std::collections::HashSet::new();
+        for (o, _w) in s.to_offset_weights() {
+            assert!(!coord_set.contains(&o));
+            coord_set.insert(o);
+            println!("Coord: {:?}", o);
         }
     }
 }
