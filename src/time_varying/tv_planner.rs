@@ -1,13 +1,12 @@
 use crate::fft_solver::*;
 use crate::time_varying::*;
 use crate::util::*;
-
 /// Creating a plan results in both a plan and convolution store.
 /// Someday we may separate the creation, if for example we
 /// we add support for saving APPlans to file.
 pub struct TVPlannerResult<const GRID_DIMENSION: usize> {
     pub plan: APPlan<GRID_DIMENSION>,
-    pub tree_planner: TVTreePlanner<GRID_DIMENSION>,
+    pub tree_query_collector: TVTreeQueryCollector<GRID_DIMENSION>,
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
 }
 
@@ -43,7 +42,7 @@ struct TVPlanner<const GRID_DIMENSION: usize> {
     steps: usize,
     cutoff: i32,
     ratio: f64,
-    tree_planner: TVTreePlanner<GRID_DIMENSION>,
+    tree_query_collector: TVTreeQueryCollector<GRID_DIMENSION>,
     nodes: Vec<PlanNode<GRID_DIMENSION>>,
 }
 
@@ -61,7 +60,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         //chunk_size: usize,
     ) -> Self {
         let stencil_slopes = stencil.slopes();
-        let tree_planner = TVTreePlanner::new();
+        let tree_query_collector = TVTreeQueryCollector::new();
         let nodes = Vec::new();
         TVPlanner {
             stencil_slopes,
@@ -69,7 +68,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             steps,
             cutoff,
             ratio,
-            tree_planner,
+            tree_query_collector,
             nodes,
         }
     }
@@ -110,7 +109,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             step_max: rel_time_post,
             exclusive_bounds: input_aabb.exclusive_bounds(),
         };
-        let convolution_id = self.tree_planner.get_op_id(op_descriptor);
+        let convolution_id = self.tree_query_collector.get_op_id(op_descriptor);
 
         // Do we need a time cut.
         // If so that will trim that and create a plan for it
@@ -203,7 +202,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             step_max: rel_time_0 + periodic_solve.steps,
             exclusive_bounds: self.aabb.exclusive_bounds(),
         };
-        let convolution_id = self.tree_planner.get_op_id(op_descriptor);
+        let convolution_id = self.tree_query_collector.get_op_id(op_descriptor);
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
@@ -279,7 +278,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
 
         TVPlannerResult {
             plan,
-            tree_planner: self.tree_planner,
+            tree_query_collector: self.tree_query_collector,
             stencil_slopes,
         }
     }

@@ -79,7 +79,8 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
             let mut offset = Coord::zero();
             for d in 0..GRID_DIMENSION {
                 let d_max = total_width[d] + 1;
-                let o = -(((domain_coord[d] + self.slopes[(d, 0)]) % d_max) - self.slopes[(d, 0)]);
+                let o = -(((domain_coord[d] + self.slopes[(d, 0)]) % d_max)
+                    - self.slopes[(d, 0)]);
                 offset[d] = o;
             }
             //println!("domainc: {:?} -> {:?}, {:?}", domain_coord, offset, total_width);
@@ -90,7 +91,10 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
     pub fn add_circ_stencil(&mut self, other: &Self) {
         println!("  --- add_circ pre add size: {}", self.domain.aabb());
         self.add_offset_weights(other.to_offset_weights());
-        println!("  --- add_circ post add sum: {}", self.domain.buffer().iter().sum::<f64>());
+        println!(
+            "  --- add_circ post add sum: {}",
+            self.domain.buffer().iter().sum::<f64>()
+        );
     }
 
     pub fn convolve(s1: &Self, s2: &Self) -> Self {

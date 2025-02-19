@@ -225,6 +225,17 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
             .set_column(1, &cell_bounds.bounds.column(1).add_scalar(-1));
         cell_bounds
     }
+
+    pub fn ex_greater_than(&self, other: &Self) -> bool {
+        let exclusive_bounds = self.exclusive_bounds();
+        let o_ex = other.exclusive_bounds();
+        for d in 0..DIMENSION {
+            if exclusive_bounds[d] > o_ex[d] {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 #[cfg(test)]
@@ -490,6 +501,16 @@ mod unit_tests {
                 c,
                 (max_steps, AABB::new(matrix![24, 80; 16, 88; 8, 36]))
             );
+        }
+    }
+
+    #[test]
+    fn ex_greater_than_test() {
+        {
+            let a1 = AABB::new(matrix![0, 9]);
+            let a2 = AABB::new(matrix![0, 2]);
+            assert!(a1.ex_greater_than(&a2));
+            assert!(!a2.ex_greater_than(&a1));
         }
     }
 }

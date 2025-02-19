@@ -77,7 +77,9 @@ impl<
     ) {
         debug_assert_eq!(*input.aabb(), self.tree.aabb);
         debug_assert_eq!(*output.aabb(), self.tree.aabb);
-        let s = self.tree.build_range(global_time, global_time + self.steps);
+        let s = self
+            .tree
+            .build_range(global_time, global_time + self.steps, 0);
         let aabb = self.tree.aabb;
         let mut s_domain = OwnedDomain::new(aabb);
         for (offset, weight) in s.to_offset_weights() {

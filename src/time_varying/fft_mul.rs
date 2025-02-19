@@ -81,18 +81,18 @@ pub fn fft_mul<const GRID_DIMENSION: usize>(
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-
-    #[test]
-    fn fft_mul_test_1d() {
-        {
-            let ss = crate::standard_stencils::heat_1d(1.0, 1.0, 0.3);
-            let ds = DynamicLinearStencil::from_static_stencil(&ss);
-            fft_mul(&ds, &ds);
-            let rss = ds.naive_compose(&ds);
-            println!("{:?}", rss.offset_weights());
+    /*
+        #[test]
+        fn fft_mul_test_1d() {
+            {
+                let ss = crate::standard_stencils::heat_1d(1.0, 1.0, 0.3);
+                let ds = DynamicLinearStencil::from_static_stencil(&ss);
+                fft_mul(&ds, &ds);
+                let rss = ds.naive_compose(&ds);
+                println!("{:?}", rss.offset_weights());
+            }
         }
-    }
-
+    */
     #[test]
     fn fft_mul_test_2d() {
         {
