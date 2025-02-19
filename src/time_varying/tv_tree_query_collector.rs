@@ -1,5 +1,6 @@
 use crate::util::*;
 use std::collections::HashMap;
+use std::io::prelude::*;
 
 pub type TVOpId = usize;
 
@@ -34,6 +35,16 @@ impl<const GRID_DIMENSION: usize> TVTreeQueryCollector<GRID_DIMENSION> {
             self.next_id += 1;
             self.descriptor_map.insert(descriptor, id);
             id
+        }
+    }
+
+    pub fn write_query_file<P: AsRef<std::path::Path>>(&self, path: &P) {
+        println!("Writing query file: {:?}", path.as_ref());
+        let mut writer =
+            std::io::BufWriter::new(std::fs::File::create(path).unwrap());
+        writeln!(writer, "QUERY PLAN: {}", self.descriptor_map.len()).unwrap();
+        for (i, (key, value)) in self.descriptor_map.iter().enumerate() {
+            writeln!(writer, "i: {}, {:?} -> {}", i, key, value).unwrap();
         }
     }
 }

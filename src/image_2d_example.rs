@@ -126,6 +126,12 @@ impl Args {
         dot_path
     }
 
+    pub fn query_file_path(&self) -> PathBuf {
+        let mut dot_path = self.output_dir.as_ref().unwrap().clone();
+        dot_path.push("tree_query_file.txt");
+        dot_path
+    }
+
     pub fn save_wisdom(&self) {
         if let Some(ref wisdom_path) = self.wisdom_file {
             fftw::wisdom::export_wisdom_file_f64(&wisdom_path).unwrap();
