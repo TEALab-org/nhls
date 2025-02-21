@@ -1,6 +1,9 @@
 mod circ_stencil;
 mod dynamic_stencil;
+mod fft_gen;
 mod fft_mul;
+mod fft_pair;
+mod fft_store;
 mod tv_direct;
 mod tv_periodic_solver;
 mod tv_planner;
@@ -11,7 +14,10 @@ mod tv_tree_query_collector;
 
 pub use circ_stencil::*;
 pub use dynamic_stencil::*;
+pub use fft_gen::*;
 pub use fft_mul::*;
+pub use fft_pair::*;
+pub use fft_store::*;
 pub use tv_direct::*;
 pub use tv_periodic_solver::*;
 pub use tv_planner::*;

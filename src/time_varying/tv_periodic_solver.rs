@@ -5,11 +5,6 @@ use crate::time_varying::*;
 use crate::util::*;
 use fftw::plan::*;
 
-pub struct FFTPlanPair {
-    pub forward_plan: fftw::plan::Plan<f64, c64, fftw::plan::Plan64>,
-    pub backward_plan: fftw::plan::Plan<c64, f64, fftw::plan::Plan64>,
-}
-
 pub struct TVPeriodicSolver<
     'a,
     const GRID_DIMENSION: usize,
