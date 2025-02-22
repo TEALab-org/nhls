@@ -192,7 +192,7 @@ impl<
         fft_gen.get_op(self.aabb.exclusive_bounds(), threads);
 
         // Build FFT Solver
-        for (layer, layer_nodes) in self.nodes.iter_mut().enumerate() {
+        for layer_nodes in self.nodes.iter_mut() {
             let plan_threads = 1.max(threads / layer_nodes.len());
             /*
             println!(
@@ -202,7 +202,7 @@ impl<
                 plan_threads
             );
             */
-            for (_, node) in layer_nodes.iter_mut().enumerate() {
+            for node in layer_nodes.iter_mut() {
                 match node {
                     IntermediateNode::Base1(_) => {}
                     IntermediateNode::Base2(n) => {
