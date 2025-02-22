@@ -1,6 +1,5 @@
 use crate::domain::*;
 use crate::par_slice;
-use crate::stencil;
 use crate::time_varying::*;
 use crate::util::*;
 use fftw::array::*;
@@ -19,6 +18,10 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
 
     pub fn slopes(&self) -> Bounds<GRID_DIMENSION> {
         self.slopes
+    }
+
+    pub fn clear(&mut self) {
+        par_slice::set_value(self.domain.buffer_mut(), 0.0, 10000);
     }
 
     pub fn add_offset_weight(
@@ -89,12 +92,14 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
     }
 
     pub fn add_circ_stencil(&mut self, other: &Self) {
-        println!("  --- add_circ pre add size: {}", self.domain.aabb());
+        //println!("  --- add_circ pre add size: {}", self.domain.aabb());
         self.add_offset_weights(other.to_offset_weights());
+        /*
         println!(
             "  --- add_circ post add sum: {}",
             self.domain.buffer().iter().sum::<f64>()
         );
+        */
     }
 
     pub fn convolve(s1: &Self, s2: &Self) -> Self {
@@ -133,15 +138,15 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
         forward_plan
             .r2c(cs2.domain.buffer_mut(), &mut complex2)
             .unwrap();
-
-        println!(
-            "  -- convolve: s1: {}, s2: {}, cs1: {}, cs2: {}",
-            s1.domain.buffer().iter().sum::<f64>(),
-            s2.domain.buffer().iter().sum::<f64>(),
-            cs1.domain.buffer().iter().sum::<f64>(),
-            cs2.domain.buffer().iter().sum::<f64>(),
-        );
-
+        /*
+                println!(
+                    "  -- convolve: s1: {}, s2: {}, cs1: {}, cs2: {}",
+                    s1.domain.buffer().iter().sum::<f64>(),
+                    s2.domain.buffer().iter().sum::<f64>(),
+                    cs1.domain.buffer().iter().sum::<f64>(),
+                    cs2.domain.buffer().iter().sum::<f64>(),
+                );
+        */
         // Convolve and backward pass
         par_slice::multiply_by(&mut complex1, &complex2, chunk_size);
         backward_plan

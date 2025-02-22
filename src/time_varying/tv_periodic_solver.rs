@@ -4,6 +4,197 @@ use crate::par_slice;
 use crate::time_varying::*;
 use crate::util::*;
 use fftw::plan::*;
+use rayon::prelude::*;
+
+pub fn solve_base2_node<
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+>(
+    node: &mut Base2Node<GRID_DIMENSION>,
+    stencil: &StencilType,
+    global_time: usize,
+    fft_store: &FFTStore,
+    chunk_size: usize,
+) {
+    node.s1.add_tv_stencil(stencil, global_time + node.t1);
+    node.s2.add_tv_stencil(stencil, global_time + node.t2);
+
+    // fft both
+    let fft_pair = fft_store.get(node.plan_id);
+    fft_pair
+        .forward_plan
+        .r2c(node.s1.domain.buffer_mut(), &mut node.c1)
+        .unwrap();
+    fft_pair
+        .forward_plan
+        .r2c(node.s2.domain.buffer_mut(), &mut node.c2)
+        .unwrap();
+
+    // Multiply in freq, return result to s1
+    par_slice::multiply_by(&mut node.c1, &node.c2, chunk_size);
+    fft_pair
+        .backward_plan
+        .c2r(&mut node.c1, node.s1.domain.buffer_mut())
+        .unwrap();
+    let n_r = node.s1.domain.aabb().buffer_size();
+    par_slice::div(node.s1.domain.buffer_mut(), n_r as f64, chunk_size);
+}
+
+/// Helper function for solve_convolve_node
+pub fn add_node_to_circ_stencil<
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+>(
+    s: &mut CircStencil<GRID_DIMENSION>,
+    id: usize,
+    layer: &[IntermediateNode<GRID_DIMENSION>],
+    stencil: &StencilType,
+    global_time: usize,
+) {
+    match &layer[id] {
+        IntermediateNode::Base1(n) => {
+            s.add_tv_stencil(stencil, global_time + n.t);
+        }
+        IntermediateNode::Base2(n) => {
+            s.add_circ_stencil(&n.s1);
+        }
+        IntermediateNode::Convolve(n) => {
+            s.add_circ_stencil(&n.s1);
+        }
+    }
+}
+
+pub fn solve_convolve_node<
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+>(
+    node: &mut ConvolveNode<GRID_DIMENSION>,
+    prev_layer: &[IntermediateNode<GRID_DIMENSION>],
+    stencil: &StencilType,
+    global_time: usize,
+    fft_store: &FFTStore,
+    chunk_size: usize,
+) {
+    add_node_to_circ_stencil(
+        &mut node.s1,
+        node.n1,
+        prev_layer,
+        stencil,
+        global_time,
+    );
+    add_node_to_circ_stencil(
+        &mut node.s2,
+        node.n2,
+        prev_layer,
+        stencil,
+        global_time,
+    );
+
+    // fft both
+    let fft_pair = fft_store.get(node.plan_id);
+    fft_pair
+        .forward_plan
+        .r2c(node.s1.domain.buffer_mut(), &mut node.c1)
+        .unwrap();
+    fft_pair
+        .forward_plan
+        .r2c(node.s2.domain.buffer_mut(), &mut node.c2)
+        .unwrap();
+
+    // Multiply in freq, return result to s1
+    par_slice::multiply_by(&mut node.c1, &node.c2, chunk_size);
+    fft_pair
+        .backward_plan
+        .c2r(&mut node.c1, node.s1.domain.buffer_mut())
+        .unwrap();
+    let n_r = node.s1.domain.aabb().buffer_size();
+    par_slice::div(node.s1.domain.buffer_mut(), n_r as f64, chunk_size);
+}
+
+pub fn solve_base_layer<
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+>(
+    stencil: &StencilType,
+    threads: usize,
+    global_time: usize,
+    layer_nodes: &mut [IntermediateNode<GRID_DIMENSION>],
+    fft_store: &FFTStore,
+) {
+    // TODO clear
+    let chunk_size = 1.max(layer_nodes.len() / (threads * 2));
+    layer_nodes
+        .par_chunks_mut(chunk_size)
+        .for_each(|layer_node_chunk| {
+            for node in layer_node_chunk.iter_mut() {
+                match node {
+                    IntermediateNode::Base1(_) => {}
+                    IntermediateNode::Base2(n) => {
+                        solve_base2_node(
+                            n,
+                            stencil,
+                            global_time,
+                            fft_store,
+                            10000,
+                        );
+                    }
+                    IntermediateNode::Convolve(_) => {
+                        panic!(
+                            "ERROR: shouldn't be convolve nodes in base layer"
+                        );
+                    }
+                }
+            }
+        });
+}
+
+pub fn solve_middle_layer<
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+>(
+    stencil: &StencilType,
+    threads: usize,
+    global_time: usize,
+    layer_nodes: &mut [IntermediateNode<GRID_DIMENSION>],
+    prev_layer_nodes: &[IntermediateNode<GRID_DIMENSION>],
+    fft_store: &FFTStore,
+) {
+    // TODO clear
+    let chunk_size = 1.max(layer_nodes.len() / (threads * 2));
+    layer_nodes
+        .par_chunks_mut(chunk_size)
+        .for_each(|layer_node_chunk| {
+            for node in layer_node_chunk {
+                match node {
+                    IntermediateNode::Base1(_) => {}
+                    IntermediateNode::Base2(n) => {
+                        solve_base2_node(
+                            n,
+                            stencil,
+                            global_time,
+                            fft_store,
+                            chunk_size,
+                        );
+                    }
+                    IntermediateNode::Convolve(n) => {
+                        solve_convolve_node(
+                            n,
+                            prev_layer_nodes,
+                            stencil,
+                            global_time,
+                            fft_store,
+                            chunk_size,
+                        );
+                    }
+                }
+            }
+        });
+}
 
 pub struct TVPeriodicSolver<
     'a,
@@ -11,14 +202,14 @@ pub struct TVPeriodicSolver<
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 > {
-    tree: TVTree<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>,
-    steps: usize,
-    threads: usize,
-    pub forward_plan: fftw::plan::Plan<f64, c64, fftw::plan::Plan64>,
-    pub backward_plan: fftw::plan::Plan<c64, f64, fftw::plan::Plan64>,
-    s_complex_buffer: AlignedVec<c64>,
-    i_complex_buffer: AlignedVec<c64>,
-    chunk_size: usize,
+    pub stencil: &'a StencilType,
+    pub c1: AlignedVec<c64>,
+    pub c2: AlignedVec<c64>,
+    pub fft_plans: FFTStore,
+    pub intermediate_nodes: Vec<Vec<IntermediateNode<GRID_DIMENSION>>>,
+    pub chunk_size: usize,
+    pub threads: usize,
+    pub aabb: AABB<GRID_DIMENSION>,
 }
 
 impl<
@@ -34,34 +225,9 @@ impl<
         plan_type: PlanType,
         aabb: AABB<GRID_DIMENSION>,
         threads: usize,
-        chunk_size: usize,
     ) -> Self {
-        let size = aabb.exclusive_bounds();
-        let plan_size = size.try_cast::<usize>().unwrap();
-        let forward_plan = fftw::plan::R2CPlan64::aligned(
-            plan_size.as_slice(),
-            plan_type.to_fftw3_flag(),
-        )
-        .unwrap();
-        let backward_plan = fftw::plan::C2RPlan64::aligned(
-            plan_size.as_slice(),
-            plan_type.to_fftw3_flag(),
-        )
-        .unwrap();
-
-        let s_complex_buffer = AlignedVec::new(aabb.complex_buffer_size());
-        let i_complex_buffer = AlignedVec::new(aabb.complex_buffer_size());
-
-        TVPeriodicSolver {
-            tree: TVTree::new(stencil, aabb),
-            steps,
-            threads,
-            forward_plan,
-            backward_plan,
-            s_complex_buffer,
-            i_complex_buffer,
-            chunk_size,
-        }
+        let builder = TVPeriodicSolveBuilder::new(stencil, aabb);
+        builder.build_solver(steps, threads, plan_type)
     }
 
     pub fn apply<DomainType: DomainView<GRID_DIMENSION>>(
@@ -70,43 +236,152 @@ impl<
         output: &mut DomainType,
         global_time: usize,
     ) {
-        debug_assert_eq!(*input.aabb(), self.tree.aabb);
-        debug_assert_eq!(*output.aabb(), self.tree.aabb);
-        let s = self
-            .tree
-            .build_range(global_time, global_time + self.steps, 0);
-        let aabb = self.tree.aabb;
-        let mut s_domain = OwnedDomain::new(aabb);
-        for (offset, weight) in s.to_offset_weights() {
-            let rn_i: Coord<GRID_DIMENSION> = aabb.min() + offset * -1;
-            let periodic_coord = aabb.periodic_coord(&rn_i);
-            s_domain.set_coord(&periodic_coord, weight);
+        debug_assert_eq!(*input.aabb(), self.aabb);
+        debug_assert_eq!(*output.aabb(), self.aabb);
+
+        // Build intermediate tree layers
+        let base_layer_id = self.intermediate_nodes.len() - 1;
+        solve_base_layer(
+            self.stencil,
+            self.threads,
+            global_time,
+            &mut self.intermediate_nodes[base_layer_id],
+            &self.fft_plans,
+        );
+        for layer_id in (0..base_layer_id).rev() {
+            let (new, old) = self.intermediate_nodes.split_at_mut(layer_id + 1);
+            solve_middle_layer(
+                self.stencil,
+                self.threads,
+                global_time,
+                new.last_mut().unwrap(),
+                &old[0],
+                &self.fft_plans,
+            );
         }
 
-        // forward pass s_domain
-        self.forward_plan
-            .r2c(s_domain.buffer_mut(), &mut self.s_complex_buffer)
-            .unwrap();
+        // Convolve all final nodes
+        par_slice::set_value(
+            &mut self.c1,
+            c64 { re: 1.0, im: 1.0 },
+            self.chunk_size,
+        );
+        par_slice::set_value(output.buffer_mut(), 0.0, self.chunk_size);
+        for node in &self.intermediate_nodes[0] {
+            match node {
+                IntermediateNode::Base1(n) => {
+                    // Add stencil offsets to output
+                    let weights = self.stencil.weights(global_time + n.t);
+                    for i in 0..NEIGHBORHOOD_SIZE {
+                        let offset = self.stencil.offsets()[i];
+                        let weight = weights[i];
+                        let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                        let periodic_coord = self.aabb.periodic_coord(&rn_i);
+                        output.set_coord(&periodic_coord, weight);
+                    }
 
-        // forward pass input
-        self.forward_plan
-            .r2c(input.buffer_mut(), &mut self.i_complex_buffer)
+                    // Run forward pass
+                    self.fft_plans
+                        .get(0)
+                        .forward_plan
+                        .r2c(output.buffer_mut(), &mut self.c2)
+                        .unwrap();
+                    par_slice::multiply_by(
+                        &mut self.c1,
+                        &self.c2,
+                        self.chunk_size,
+                    );
+
+                    // Remove stencil offsets
+                    for i in 0..NEIGHBORHOOD_SIZE {
+                        let offset = self.stencil.offsets()[i];
+                        let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                        let periodic_coord = self.aabb.periodic_coord(&rn_i);
+                        output.set_coord(&periodic_coord, 0.0);
+                    }
+                }
+                IntermediateNode::Base2(n) => {
+                    // Add stencil offsets to output
+                    for (offset, weight) in n.s1.to_offset_weights() {
+                        let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                        let periodic_coord = self.aabb.periodic_coord(&rn_i);
+                        output.set_coord(&periodic_coord, weight);
+                    }
+
+                    // Run forward pass
+                    self.fft_plans
+                        .get(0)
+                        .forward_plan
+                        .r2c(output.buffer_mut(), &mut self.c2)
+                        .unwrap();
+                    par_slice::multiply_by(
+                        &mut self.c1,
+                        &self.c2,
+                        self.chunk_size,
+                    );
+
+                    // Remove stencil offsets
+                    for (offset, _) in n.s1.to_offset_weights() {
+                        let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                        let periodic_coord = self.aabb.periodic_coord(&rn_i);
+                        output.set_coord(&periodic_coord, 0.0);
+                    }
+                }
+                IntermediateNode::Convolve(n) => {
+                    // Add stencil offsets to output
+                    for (offset, weight) in n.s1.to_offset_weights() {
+                        let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                        let periodic_coord = self.aabb.periodic_coord(&rn_i);
+                        output.set_coord(&periodic_coord, weight);
+                    }
+
+                    // Run forward pass
+                    self.fft_plans
+                        .get(0)
+                        .forward_plan
+                        .r2c(output.buffer_mut(), &mut self.c2)
+                        .unwrap();
+                    par_slice::multiply_by(
+                        &mut self.c1,
+                        &self.c2,
+                        self.chunk_size,
+                    );
+
+                    // Remove stencil offsets
+                    for (offset, _) in n.s1.to_offset_weights() {
+                        let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                        let periodic_coord = self.aabb.periodic_coord(&rn_i);
+                        output.set_coord(&periodic_coord, 0.0);
+                    }
+                }
+            }
+
+            par_slice::multiply_by(&mut self.c1, &self.c2, self.chunk_size);
+        }
+
+        // Apply global convolution
+        self.fft_plans
+            .get(0)
+            .forward_plan
+            .r2c(input.buffer_mut(), &mut self.c1)
             .unwrap();
 
         // mul
-        par_slice::multiply_by(
-            &mut self.s_complex_buffer,
-            &self.i_complex_buffer,
-            self.chunk_size,
-        );
+        par_slice::multiply_by(&mut self.c1, &self.c2, self.chunk_size);
 
         // backward pass output
-        self.backward_plan
-            .c2r(&mut self.s_complex_buffer, output.buffer_mut())
+        self.fft_plans
+            .get(0)
+            .backward_plan
+            .c2r(&mut self.c1, output.buffer_mut())
             .unwrap();
 
         let n_r = output.aabb().buffer_size();
         par_slice::div(output.buffer_mut(), n_r as f64, self.chunk_size);
+
+        for layer in self.intermediate_nodes.iter_mut() {
+            layer.par_iter_mut().for_each(|n| n.clear_stencils());
+        }
     }
 }
 

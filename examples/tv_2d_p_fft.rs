@@ -108,7 +108,6 @@ fn main() {
         args.plan_type,
         grid_bound,
         args.threads,
-        args.chunk_size,
     );
 
     // Apply direct solver

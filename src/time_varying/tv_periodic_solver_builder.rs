@@ -1,9 +1,7 @@
 use crate::domain::*;
 use crate::fft_solver::*;
-use crate::par_slice;
 use crate::time_varying::*;
 use crate::util::*;
-use fftw::plan::*;
 use std::io::prelude::*;
 
 // create layers, bottom up,
@@ -24,33 +22,49 @@ use std::io::prelude::*;
 pub const NONSENSE: usize = 99999999;
 
 pub struct Base1Node {
-    t: usize,
+    pub t: usize,
 }
 
 pub struct Base2Node<const GRID_DIMENSION: usize> {
-    t1: usize,
-    t2: usize,
-    s1: CircStencil<GRID_DIMENSION>,
-    s2: CircStencil<GRID_DIMENSION>,
-    c1: AlignedVec<c64>,
-    c2: AlignedVec<c64>,
-    plan_id: FFTPairId,
+    pub t1: usize,
+    pub t2: usize,
+    pub s1: CircStencil<GRID_DIMENSION>,
+    pub s2: CircStencil<GRID_DIMENSION>,
+    pub c1: AlignedVec<c64>,
+    pub c2: AlignedVec<c64>,
+    pub plan_id: FFTPairId,
 }
 
 pub struct ConvolveNode<const GRID_DIMENSION: usize> {
-    n1: usize,
-    n2: usize,
-    s1: CircStencil<GRID_DIMENSION>,
-    s2: CircStencil<GRID_DIMENSION>,
-    c1: AlignedVec<c64>,
-    c2: AlignedVec<c64>,
-    plan_id: FFTPairId,
+    pub n1: usize,
+    pub n2: usize,
+    pub s1: CircStencil<GRID_DIMENSION>,
+    pub s2: CircStencil<GRID_DIMENSION>,
+    pub c1: AlignedVec<c64>,
+    pub c2: AlignedVec<c64>,
+    pub plan_id: FFTPairId,
 }
 
 pub enum IntermediateNode<const GRID_DIMENSION: usize> {
     Base1(Base1Node),
     Base2(Base2Node<GRID_DIMENSION>),
     Convolve(ConvolveNode<GRID_DIMENSION>),
+}
+
+impl<const GRID_DIMENSION: usize> IntermediateNode<GRID_DIMENSION> {
+    pub fn clear_stencils(&mut self) {
+        match self {
+            IntermediateNode::Base1(_) => {}
+            IntermediateNode::Base2(n) => {
+                n.s1.clear();
+                n.s2.clear();
+            }
+            IntermediateNode::Convolve(n) => {
+                n.s1.clear();
+                n.s2.clear();
+            }
+        }
+    }
 }
 
 pub struct TVPeriodicSolveBuilder<
@@ -161,6 +175,65 @@ impl<
                 plan_id: NONSENSE,
             });
             self.add_node(node, layer)
+        }
+    }
+
+    pub fn build_solver(
+        mut self,
+        steps: usize,
+        threads: usize,
+        plan_type: PlanType,
+    ) -> TVPeriodicSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+    {
+        self.build_range(0, steps, 0);
+        let mut fft_gen = FFTGen::new(plan_type);
+
+        // Add whole domain op as 0
+        fft_gen.get_op(self.aabb.exclusive_bounds(), threads);
+
+        // Build FFT Solver
+        for (layer, layer_nodes) in self.nodes.iter_mut().enumerate() {
+            let plan_threads = 1.max(threads / layer_nodes.len());
+            /*
+            println!(
+                "Layer: {}, size: {}, plan_threads: {}",
+                layer,
+                layer_nodes.len(),
+                plan_threads
+            );
+            */
+            for (_, node) in layer_nodes.iter_mut().enumerate() {
+                match node {
+                    IntermediateNode::Base1(_) => {}
+                    IntermediateNode::Base2(n) => {
+                        let size = n.s1.domain.aabb().exclusive_bounds();
+                        let plan_id = fft_gen.get_op(size, plan_threads);
+                        n.plan_id = plan_id;
+                    }
+                    IntermediateNode::Convolve(n) => {
+                        let size = n.s1.domain.aabb().exclusive_bounds();
+                        let plan_id = fft_gen.get_op(size, plan_threads);
+                        n.plan_id = plan_id;
+                    }
+                }
+            }
+        }
+        let fft_plans = fft_gen.finish();
+
+        let c_n = self.aabb.complex_buffer_size();
+        let c1 = AlignedVec::new(c_n);
+        let c2 = AlignedVec::new(c_n);
+        let chunk_size = c_n / (2 * threads);
+
+        TVPeriodicSolver {
+            c1,
+            c2,
+            fft_plans,
+            intermediate_nodes: self.nodes,
+            chunk_size,
+            aabb: self.aabb,
+            stencil: self.stencil,
+            threads,
         }
     }
 
