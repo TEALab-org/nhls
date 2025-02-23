@@ -2,17 +2,15 @@ use crate::domain::*;
 use crate::par_slice;
 use crate::time_varying::*;
 use crate::util::*;
-use fftw::array::*;
-use fftw::plan::*;
 
-pub struct CircStencil<const GRID_DIMENSION: usize> {
+pub struct CircStencil<'a, const GRID_DIMENSION: usize> {
     pub slopes: Bounds<GRID_DIMENSION>,
-    pub domain: OwnedDomain<GRID_DIMENSION>,
+    pub domain: SliceDomain<'a, GRID_DIMENSION>,
 }
 
-impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
-    pub fn new(slopes: Bounds<GRID_DIMENSION>) -> Self {
-        let domain = OwnedDomain::new(slopes_to_circ_aabb(&slopes));
+impl<'a, const GRID_DIMENSION: usize> CircStencil<'a, GRID_DIMENSION> {
+    pub fn new(slopes: Bounds<GRID_DIMENSION>, buffer: &'a mut [f64]) -> Self {
+        let domain = SliceDomain::new(slopes_to_circ_aabb(&slopes), buffer);
         CircStencil { slopes, domain }
     }
 
@@ -72,7 +70,7 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
         }
     }
 
-    pub fn to_offset_weights<'a>(
+    pub fn to_offset_weights(
         &'a self,
     ) -> impl Iterator<Item = (Coord<GRID_DIMENSION>, f64)> + 'a {
         let total_width = self.slopes.column(0) + self.slopes.column(1);
@@ -100,78 +98,5 @@ impl<const GRID_DIMENSION: usize> CircStencil<GRID_DIMENSION> {
             self.domain.buffer().iter().sum::<f64>()
         );
         */
-    }
-
-    pub fn convolve(s1: &Self, s2: &Self) -> Self {
-        let chunk_size = 10000;
-        let c = s1.slopes() + s2.slopes();
-        let aabb = slopes_to_circ_aabb(&c);
-
-        // Create CircStencils of proper size
-        let mut cs1 = CircStencil::new(c);
-        cs1.add_circ_stencil(s1);
-        let mut cs2 = CircStencil::new(c);
-        cs2.add_circ_stencil(s2);
-
-        // Setup FFT plans
-        let size = aabb.exclusive_bounds();
-        let plan_size = size.try_cast::<usize>().unwrap();
-        let forward_plan = fftw::plan::R2CPlan64::aligned(
-            plan_size.as_slice(),
-            fftw::types::Flag::ESTIMATE,
-        )
-        .unwrap();
-        let backward_plan = fftw::plan::C2RPlan64::aligned(
-            plan_size.as_slice(),
-            fftw::types::Flag::ESTIMATE,
-        )
-        .unwrap();
-
-        // Forward pass on stencils
-        let mut complex1: AlignedVec<c64> =
-            AlignedVec::new(aabb.complex_buffer_size());
-        forward_plan
-            .r2c(cs1.domain.buffer_mut(), &mut complex1)
-            .unwrap();
-        let mut complex2: AlignedVec<c64> =
-            AlignedVec::new(aabb.complex_buffer_size());
-        forward_plan
-            .r2c(cs2.domain.buffer_mut(), &mut complex2)
-            .unwrap();
-        /*
-                println!(
-                    "  -- convolve: s1: {}, s2: {}, cs1: {}, cs2: {}",
-                    s1.domain.buffer().iter().sum::<f64>(),
-                    s2.domain.buffer().iter().sum::<f64>(),
-                    cs1.domain.buffer().iter().sum::<f64>(),
-                    cs2.domain.buffer().iter().sum::<f64>(),
-                );
-        */
-        // Convolve and backward pass
-        par_slice::multiply_by(&mut complex1, &complex2, chunk_size);
-        backward_plan
-            .c2r(&mut complex1, cs1.domain.buffer_mut())
-            .unwrap();
-        let n_r = cs1.domain.aabb().buffer_size();
-        par_slice::div(cs1.domain.buffer_mut(), n_r as f64, chunk_size);
-
-        cs1
-    }
-}
-
-#[cfg(test)]
-mod unit_tests {
-    use super::*;
-
-    #[test]
-    fn index_testing() {
-        let slopes = matrix![2, 2];
-        let s = CircStencil::new(slopes);
-        let mut coord_set = std::collections::HashSet::new();
-        for (o, _w) in s.to_offset_weights() {
-            assert!(!coord_set.contains(&o));
-            coord_set.insert(o);
-            println!("Coord: {:?}", o);
-        }
     }
 }

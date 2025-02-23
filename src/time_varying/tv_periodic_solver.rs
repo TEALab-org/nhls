@@ -6,6 +6,52 @@ use crate::util::*;
 use fftw::plan::*;
 use rayon::prelude::*;
 
+pub struct Base1Node {
+    pub t: usize,
+}
+
+pub struct Base2Node<'a, const GRID_DIMENSION: usize> {
+    pub t1: usize,
+    pub t2: usize,
+    pub s1: CircStencil<'a, GRID_DIMENSION>,
+    pub s2: CircStencil<'a, GRID_DIMENSION>,
+    pub c1: &'a mut [c64],
+    pub c2: &'a mut [c64],
+    pub plan_id: FFTPairId,
+}
+
+pub struct ConvolveNode<'a, const GRID_DIMENSION: usize> {
+    pub n1: usize,
+    pub n2: usize,
+    pub s1: CircStencil<'a, GRID_DIMENSION>,
+    pub s2: CircStencil<'a, GRID_DIMENSION>,
+    pub c1: &'a mut [c64],
+    pub c2: &'a mut [c64],
+    pub plan_id: FFTPairId,
+}
+
+pub enum IntermediateNode<'a, const GRID_DIMENSION: usize> {
+    Base1(Base1Node),
+    Base2(Base2Node<'a, GRID_DIMENSION>),
+    Convolve(ConvolveNode<'a, GRID_DIMENSION>),
+}
+
+impl<'a, const GRID_DIMENSION: usize> IntermediateNode<'a, GRID_DIMENSION> {
+    pub fn clear_stencils(&mut self) {
+        match self {
+            IntermediateNode::Base1(_) => {}
+            IntermediateNode::Base2(n) => {
+                n.s1.clear();
+                n.s2.clear();
+            }
+            IntermediateNode::Convolve(n) => {
+                n.s1.clear();
+                n.s2.clear();
+            }
+        }
+    }
+}
+
 pub fn solve_base2_node<
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
@@ -43,13 +89,15 @@ pub fn solve_base2_node<
 
 /// Helper function for solve_convolve_node
 pub fn add_node_to_circ_stencil<
+    'b,
+    'a,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
-    s: &mut CircStencil<GRID_DIMENSION>,
+    s: &'b mut CircStencil<'a, GRID_DIMENSION>,
     id: usize,
-    layer: &[IntermediateNode<GRID_DIMENSION>],
+    layer: &'b [IntermediateNode<'a, GRID_DIMENSION>],
     stencil: &StencilType,
     global_time: usize,
 ) {
@@ -67,13 +115,18 @@ pub fn add_node_to_circ_stencil<
 }
 
 pub fn solve_convolve_node<
+    'solver_life,
+    'node_borrow,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
-    node: &mut ConvolveNode<GRID_DIMENSION>,
-    prev_layer: &[IntermediateNode<GRID_DIMENSION>],
-    stencil: &StencilType,
+    node: &'node_borrow mut ConvolveNode<'solver_life, GRID_DIMENSION>,
+    prev_layer: &'node_borrow [IntermediateNode<
+        'solver_life,
+        GRID_DIMENSION,
+    >],
+    stencil: &'node_borrow StencilType,
     global_time: usize,
     fft_store: &FFTStore,
     chunk_size: usize,
@@ -153,15 +206,23 @@ pub fn solve_base_layer<
 }
 
 pub fn solve_middle_layer<
+    'solver_life,
+    'node_borrow,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
-    stencil: &StencilType,
+    stencil: &'node_borrow StencilType,
     threads: usize,
     global_time: usize,
-    layer_nodes: &mut [IntermediateNode<GRID_DIMENSION>],
-    prev_layer_nodes: &[IntermediateNode<GRID_DIMENSION>],
+    layer_nodes: &'node_borrow mut [IntermediateNode<
+        'solver_life,
+        GRID_DIMENSION,
+    >],
+    prev_layer_nodes: &'node_borrow [IntermediateNode<
+        'solver_life,
+        GRID_DIMENSION,
+    >],
     fft_store: &FFTStore,
 ) {
     // TODO clear
@@ -202,11 +263,12 @@ pub struct TVPeriodicSolver<
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 > {
+    pub scratch: APScratch,
     pub stencil: &'a StencilType,
-    pub c1: AlignedVec<c64>,
-    pub c2: AlignedVec<c64>,
+    pub c1: &'a mut [c64],
+    pub c2: &'a mut [c64],
     pub fft_plans: FFTStore,
-    pub intermediate_nodes: Vec<Vec<IntermediateNode<GRID_DIMENSION>>>,
+    pub intermediate_nodes: Vec<Vec<IntermediateNode<'a, GRID_DIMENSION>>>,
     pub chunk_size: usize,
     pub threads: usize,
     pub aabb: AABB<GRID_DIMENSION>,
@@ -230,8 +292,8 @@ impl<
         builder.build_solver(steps, threads, plan_type)
     }
 
-    pub fn apply<DomainType: DomainView<GRID_DIMENSION>>(
-        &mut self,
+    pub fn apply<'b, DomainType: DomainView<GRID_DIMENSION>>(
+        &'b mut self,
         input: &mut DomainType,
         output: &mut DomainType,
         global_time: usize,
@@ -264,7 +326,7 @@ impl<
         println!("Solver: build convolution");
         // Convolve all final nodes
         par_slice::set_value(
-            &mut self.c1,
+            self.c1,
             c64 { re: 1.0, im: 1.0 },
             self.chunk_size,
         );
@@ -286,13 +348,9 @@ impl<
                     self.fft_plans
                         .get(0)
                         .forward_plan
-                        .r2c(output.buffer_mut(), &mut self.c2)
+                        .r2c(output.buffer_mut(), self.c2)
                         .unwrap();
-                    par_slice::multiply_by(
-                        &mut self.c1,
-                        &self.c2,
-                        self.chunk_size,
-                    );
+                    par_slice::multiply_by(self.c1, self.c2, self.chunk_size);
 
                     // Remove stencil offsets
                     for i in 0..NEIGHBORHOOD_SIZE {
