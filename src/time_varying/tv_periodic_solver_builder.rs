@@ -235,7 +235,7 @@ impl<
         for (layer, ir_layer_nodes) in self.nodes.iter().enumerate() {
             let mut layer_nodes = Vec::with_capacity(self.nodes[layer].len());
             let plan_threads = 1.max(
-                threads / ir_layer_nodes.len()
+                (threads as f64 / ir_layer_nodes.len() as f64).ceil() as usize
             );
             println!(
                 "Layer: {}, size: {}, plan_threads: {}",
