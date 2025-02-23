@@ -60,6 +60,7 @@ fn main() {
     );
 
     if args.gen_only {
+        args.save_wisdom();
         std::process::exit(0);
     }
 

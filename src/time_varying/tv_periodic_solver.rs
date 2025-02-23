@@ -238,7 +238,7 @@ impl<
     ) {
         debug_assert_eq!(*input.aabb(), self.aabb);
         debug_assert_eq!(*output.aabb(), self.aabb);
-
+        println!("Solver: Build base layer");
         // Build intermediate tree layers
         let base_layer_id = self.intermediate_nodes.len() - 1;
         solve_base_layer(
@@ -249,6 +249,7 @@ impl<
             &self.fft_plans,
         );
         for layer_id in (0..base_layer_id).rev() {
+            println!("Solver: build layer: {}", layer_id);
             let (new, old) = self.intermediate_nodes.split_at_mut(layer_id + 1);
             solve_middle_layer(
                 self.stencil,
@@ -260,6 +261,7 @@ impl<
             );
         }
 
+        println!("Solver: build convolution");
         // Convolve all final nodes
         par_slice::set_value(
             &mut self.c1,
@@ -358,6 +360,8 @@ impl<
 
             par_slice::multiply_by(&mut self.c1, &self.c2, self.chunk_size);
         }
+
+        println!("Solver: apply convolution");
 
         // Apply global convolution
         self.fft_plans

@@ -12,14 +12,8 @@ pub struct TVHeat1D {
 
 impl TVHeat1D {
     pub fn new() -> Self {
-        let offsets = [
-            vector![1],
-            vector![-1],
-            vector![0],
-        ];
-        TVHeat1D {
-            offsets,
-        }
+        let offsets = [vector![1], vector![-1], vector![0]];
+        TVHeat1D { offsets }
     }
 }
 
@@ -59,6 +53,7 @@ fn main() {
     );
 
     if args.gen_only {
+        args.save_wisdom();
         std::process::exit(0);
     }
 
