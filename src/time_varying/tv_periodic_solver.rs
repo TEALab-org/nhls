@@ -372,11 +372,11 @@ impl<
                     self.fft_plans
                         .get(0)
                         .forward_plan
-                        .r2c(output.buffer_mut(), &mut self.c2)
+                        .r2c(output.buffer_mut(), self.c2)
                         .unwrap();
                     par_slice::multiply_by(
-                        &mut self.c1,
-                        &self.c2,
+                        self.c1,
+                        self.c2,
                         self.chunk_size,
                     );
 
@@ -399,11 +399,11 @@ impl<
                     self.fft_plans
                         .get(0)
                         .forward_plan
-                        .r2c(output.buffer_mut(), &mut self.c2)
+                        .r2c(output.buffer_mut(), self.c2)
                         .unwrap();
                     par_slice::multiply_by(
-                        &mut self.c1,
-                        &self.c2,
+                        self.c1,
+                        self.c2,
                         self.chunk_size,
                     );
 

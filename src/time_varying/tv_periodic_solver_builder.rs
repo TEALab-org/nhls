@@ -315,8 +315,8 @@ impl<
         let fft_plans = fft_gen.finish();
 
         let c_n = self.aabb.complex_buffer_size();
-        let c1 = scratch.unsafe_get_buffer(c1_offset, c_size);
-        let c2 = scratch.unsafe_get_buffer(c2_offset, c_size);
+        let c1 = &mut scratch.unsafe_get_buffer(c1_offset, c_size)[0..c_n];
+        let c2 = &mut scratch.unsafe_get_buffer(c2_offset, c_size)[0..c_n];
         let chunk_size = c_n / (2 * threads);
 
         TVPeriodicSolver {
