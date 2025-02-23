@@ -25,15 +25,13 @@ fn main() {
         image2d(&input_domain, &args.frame_name(0));
     }
 
-    let mut p = TVTreePlanner::new(&stencil, grid_bound);
-    p.build_range(0, args.steps_per_image, 0);
-
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
     };
+
     let tv_result = create_tv_ap_plan(
         &stencil,
         grid_bound,
@@ -42,15 +40,14 @@ fn main() {
     );
 
     if args.write_dot {
-        p.to_dot_file(&args.tree_dot_path());
         tv_result.plan.to_dot_file(&args.dot_path());
         tv_result
             .tree_query_collector
             .write_query_file(&args.query_file_path());
-        println!("max layer: {}", p.max_layer);
     }
 
     if args.gen_only {
+        args.save_wisdom();
         std::process::exit(0);
     }
 }

@@ -20,6 +20,7 @@ use std::io::prelude::*;
 // rest, divide layer by threads execute
 //
 pub const NONSENSE: usize = 99999999;
+pub type TVNodeId = usize;
 
 pub struct Base1Node {
     pub t: usize,

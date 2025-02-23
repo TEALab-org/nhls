@@ -89,19 +89,6 @@ fn main() {
         image2d(&input_domain, &args.frame_name(0));
     }
 
-    let mut p = TVTreePlanner::new(&stencil, grid_bound);
-    p.build_range(0, args.steps_per_image, 0);
-    p.to_dot_file(&args.tree_dot_path());
-
-    let mut tpb = TVPeriodicSolveBuilder::new(&stencil, grid_bound);
-    tpb.build_range(0, args.steps_per_image, 0);
-    tpb.to_debug_file(&args.tpb_debug_path());
-    println!("max layer: {}", p.max_layer);
-
-    if args.gen_only {
-        std::process::exit(0);
-    }
-
     let mut periodic_solver = TVPeriodicSolver::new(
         &stencil,
         args.steps_per_image,
@@ -109,6 +96,11 @@ fn main() {
         grid_bound,
         args.threads,
     );
+
+    if args.gen_only {
+        args.save_wisdom();
+        std::process::exit(0);
+    }
 
     // Apply direct solver
     let mut global_time = 0;

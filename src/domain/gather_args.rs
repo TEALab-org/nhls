@@ -31,6 +31,7 @@ where
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+    use crate::stencil::*;
     use float_cmp::assert_approx_eq;
     use nalgebra::{matrix, vector};
 
