@@ -140,6 +140,7 @@ impl Args {
 
     pub fn save_wisdom(&self) {
         if let Some(ref wisdom_path) = self.wisdom_file {
+            println!("Saving wisdom: {:?}", wisdom_path);
             fftw::wisdom::export_wisdom_file_f64(&wisdom_path).unwrap();
         }
     }
