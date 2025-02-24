@@ -374,11 +374,7 @@ impl<
                         .forward_plan
                         .r2c(output.buffer_mut(), self.c2)
                         .unwrap();
-                    par_slice::multiply_by(
-                        self.c1,
-                        self.c2,
-                        self.chunk_size,
-                    );
+                    par_slice::multiply_by(self.c1, self.c2, self.chunk_size);
 
                     // Remove stencil offsets
                     for (offset, _) in n.s1.to_offset_weights() {
@@ -401,11 +397,7 @@ impl<
                         .forward_plan
                         .r2c(output.buffer_mut(), self.c2)
                         .unwrap();
-                    par_slice::multiply_by(
-                        self.c1,
-                        self.c2,
-                        self.chunk_size,
-                    );
+                    par_slice::multiply_by(self.c1, self.c2, self.chunk_size);
 
                     // Remove stencil offsets
                     for (offset, _) in n.s1.to_offset_weights() {

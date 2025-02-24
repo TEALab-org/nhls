@@ -5,6 +5,7 @@ use nhls::image_1d_example::*;
 use nhls::init::*;
 use nhls::time_varying::*;
 use nhls::util::*;
+use std::time::*;
 
 pub struct TVHeat1D {
     offsets: [Coord<1>; 3],
@@ -67,11 +68,17 @@ fn main() {
     // Apply direct solver
     let mut global_time = 0;
     for t in 1..args.lines {
+        let now = Instant::now();
+
         periodic_solver.apply(
             &mut input_domain,
             &mut output_domain,
             global_time,
         );
+
+        let elapsed_time = now.elapsed();
+
+        eprintln!("{}", elapsed_time.as_nanos() as f64 / 1000000000.0);
         global_time += args.steps_per_line;
         std::mem::swap(&mut input_domain, &mut output_domain);
         if let Some(i) = img.as_mut() {
