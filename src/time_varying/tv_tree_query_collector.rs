@@ -9,6 +9,7 @@ pub struct TVOpDescriptor<const GRID_DIMENSION: usize> {
     pub step_min: usize,
     pub step_max: usize,
     pub exclusive_bounds: Coord<GRID_DIMENSION>,
+    pub threads: usize,
 }
 
 pub struct TVTreeQueryCollector<const GRID_DIMENSION: usize> {

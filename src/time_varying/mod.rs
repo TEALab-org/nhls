@@ -9,6 +9,7 @@ mod tv_periodic_solver_builder;
 mod tv_planner;
 mod tv_stencil;
 mod tv_tree_query_collector;
+mod tv_tree_planner;
 
 pub use circ_stencil::*;
 pub use dynamic_stencil::*;
@@ -21,3 +22,4 @@ pub use tv_periodic_solver_builder::*;
 pub use tv_planner::*;
 pub use tv_stencil::*;
 pub use tv_tree_query_collector::*;
+pub use tv_tree_planner::*;

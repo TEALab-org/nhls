@@ -21,6 +21,7 @@ pub fn create_tv_ap_plan<
     stencil: &StencilType,
     aabb: AABB<GRID_DIMENSION>,
     steps: usize,
+    threads: usize,
     params: &PlannerParameters,
 ) -> TVPlannerResult<GRID_DIMENSION> {
     let planner = TVPlanner::new(
@@ -32,7 +33,7 @@ pub fn create_tv_ap_plan<
         params.ratio,
         //params.chunk_size,
     );
-    planner.finish()
+    planner.finish(threads)
 }
 
 /// Used to create an `APPlan`. See `create_ap_plan`
@@ -100,6 +101,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         mut frustrum: APFrustrum<GRID_DIMENSION>,
         periodic_solve: PeriodicSolve<GRID_DIMENSION>,
         rel_time_0: usize,
+        threads: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         // Create the convolution operation and get the id
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
@@ -108,6 +110,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             step_min: rel_time_0,
             step_max: rel_time_post,
             exclusive_bounds: input_aabb.exclusive_bounds(),
+            threads,
         };
         let convolution_id = self.tree_query_collector.get_op_id(op_descriptor);
 
@@ -118,7 +121,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             frustrum.time_cut(periodic_solve.steps, &self.stencil_slopes);
         if let Some(next_frustrum) = maybe_next_frustrum {
             let next_node =
-                self.generate_frustrum(next_frustrum, rel_time_post);
+                self.generate_frustrum(next_frustrum, rel_time_post, threads);
             time_cut = Some(self.add_node(next_node));
         }
         debug_assert!(frustrum
@@ -128,8 +131,14 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         // Generate nodes for the boundary solves
         let boundary_frustrums = frustrum.decompose(&self.stencil_slopes);
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
+        let sub_threads = 1
+            .max((threads as f64 / boundary_frustrums.len() as f64).ceil() as usize);
+        println!(
+            "Generate frustrum threads: {}, sub_threads: {}",
+            threads, sub_threads
+        );
         for bf in boundary_frustrums {
-            sub_nodes.push(self.generate_frustrum(bf, rel_time_0));
+            sub_nodes.push(self.generate_frustrum(bf, rel_time_0, sub_threads));
         }
 
         // Ensure boundary solve nodes are contiguous in the plan
@@ -155,6 +164,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
         rel_time_0: usize,
+        threads: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
@@ -172,7 +182,12 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             self.generate_direct_node(frustrum)
         } else {
             let periodic_solve = maybe_periodic_solve.unwrap();
-            self.generate_periodic_node(frustrum, periodic_solve, rel_time_0)
+            self.generate_periodic_node(
+                frustrum,
+                periodic_solve,
+                rel_time_0,
+                threads,
+            )
         }
     }
 
@@ -186,6 +201,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         &mut self,
         max_steps: usize,
         rel_time_0: usize,
+        threads: usize,
     ) -> (PlanNode<GRID_DIMENSION>, usize) {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
@@ -201,12 +217,21 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             step_min: rel_time_0,
             step_max: rel_time_0 + periodic_solve.steps,
             exclusive_bounds: self.aabb.exclusive_bounds(),
+            threads,
         };
         let convolution_id = self.tree_query_collector.get_op_id(op_descriptor);
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
+        let sub_threads =
+            1.max(
+                (threads as f64 / (GRID_DIMENSION * 2) as f64).ceil() as usize
+            );
+        println!(
+            "Plan Central: threads: {}, sub_threads: {}",
+            threads, sub_threads
+        );
         for d in 0..GRID_DIMENSION {
             for side in [Side::Min, Side::Max] {
                 sub_nodes.push(self.generate_frustrum(
@@ -217,6 +242,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
                         periodic_solve.steps,
                     ),
                     rel_time_0,
+                    sub_threads,
                 ));
             }
         }
@@ -242,13 +268,13 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
     }
 
     /// Create the root repeat node.
-    fn generate(&mut self) -> NodeId {
+    fn generate(&mut self, threads: usize) -> NodeId {
         let mut root_solves = Vec::new();
         let mut rel_time_0 = 0;
         let mut remaining_time = self.steps;
         while remaining_time > 0 {
             let (central_solve_node, central_solve_steps) =
-                self.generate_central(remaining_time, rel_time_0);
+                self.generate_central(remaining_time, rel_time_0, threads);
 
             root_solves.push(central_solve_node);
             rel_time_0 += central_solve_steps;
@@ -268,8 +294,8 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
     }
 
     /// Package up the results
-    fn finish(mut self) -> TVPlannerResult<GRID_DIMENSION> {
-        let root = self.generate();
+    fn finish(mut self, threads: usize) -> TVPlannerResult<GRID_DIMENSION> {
+        let root = self.generate(threads);
         let stencil_slopes = self.stencil_slopes;
         let plan = APPlan {
             nodes: self.nodes,
