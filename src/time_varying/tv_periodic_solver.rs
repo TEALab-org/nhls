@@ -416,7 +416,7 @@ impl<
                 }
             }
 
-            par_slice::multiply_by(&mut self.c1, &self.c2, self.chunk_size);
+            par_slice::multiply_by(self.c1, self.c2, self.chunk_size);
         }
 
         println!("Solver: apply convolution");
@@ -425,17 +425,17 @@ impl<
         self.fft_plans
             .get(0)
             .forward_plan
-            .r2c(input.buffer_mut(), &mut self.c1)
+            .r2c(input.buffer_mut(), self.c1)
             .unwrap();
 
         // mul
-        par_slice::multiply_by(&mut self.c1, &self.c2, self.chunk_size);
+        par_slice::multiply_by(self.c1, self.c2, self.chunk_size);
 
         // backward pass output
         self.fft_plans
             .get(0)
             .backward_plan
-            .c2r(&mut self.c1, output.buffer_mut())
+            .c2r(self.c1, output.buffer_mut())
             .unwrap();
 
         let n_r = output.aabb().buffer_size();
