@@ -317,7 +317,7 @@ impl<
         let c_n = self.aabb.complex_buffer_size();
         let c1 = &mut scratch.unsafe_get_buffer(c1_offset, c_size)[0..c_n];
         let c2 = &mut scratch.unsafe_get_buffer(c2_offset, c_size)[0..c_n];
-        let chunk_size = c_n / (2 * threads);
+        let chunk_size = 1.max(c_n / (2 * threads));
 
         TVPeriodicSolver {
             c1,

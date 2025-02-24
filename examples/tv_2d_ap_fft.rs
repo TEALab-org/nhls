@@ -1,12 +1,10 @@
-use core::f64;
-
 use nhls::domain::*;
 use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
 use nhls::time_varying::*;
-use nhls::util::*;
+//use nhls::util::*;
 
 fn main() {
     let args = Args::cli_parse("tv_2d_ap_fft");
@@ -18,7 +16,7 @@ fn main() {
 
     // Create domains
     let mut input_domain = OwnedDomain::new(grid_bound);
-    let mut output_domain = OwnedDomain::new(grid_bound);
+    //let mut output_domain = OwnedDomain::new(grid_bound);
     normal_ic_2d(&mut input_domain, args.chunk_size);
 
     if args.write_images {
