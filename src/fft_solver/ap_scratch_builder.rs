@@ -90,6 +90,9 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
             PlanNode::Repeat(_) => {
                 panic!("ERROR: Not expecting repeat node");
             }
+            PlanNode::Range(_) => {
+                panic!("ERROR: Not expecting range node");
+            }
         }
     }
 
