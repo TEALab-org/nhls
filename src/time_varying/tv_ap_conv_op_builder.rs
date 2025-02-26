@@ -3,61 +3,16 @@ use crate::fft_solver::*;
 use crate::mem_fmt::*;
 use crate::time_varying::*;
 use crate::util::*;
+use std::collections::HashMap;
 
-// create layers, bottom up,
-//
-// note full ops?
-//
-// Maybe scan through, add to layer as we find them?
-//
-// We need two domain sized complex buffers, one domain sized real buffer
-// We need two circstencils / complex buffers for all intermediate nodes
-//
-// So when we execute we first compute all circ stencil convolutions
-// Then we move all of those into the complex domain
-//
-// Lets build ffts last? Make domain one root, full threads
-// rest, divide layer by threads execute
-//
-pub const NONSENSE: usize = 99999999;
-
-pub struct IRBase1Node {
-    pub t: usize,
+struct OpOffsets {
+    real_domain_offset: usize,
+    real_domain_size: usize,
+    op_buffer_offset: usize,
+    op_buffer_size: usize,
 }
 
-pub struct IRBase2Node<const GRID_DIMENSION: usize> {
-    pub t1: usize,
-    pub t2: usize,
-    pub s_slopes: Bounds<GRID_DIMENSION>,
-    pub s_size: usize,
-    pub s1_offset: usize,
-    pub s2_offset: usize,
-    pub c_size: usize,
-    pub cn: usize,
-    pub c1_offset: usize,
-    pub c2_offset: usize,
-}
-
-pub struct IRConvolveNode<const GRID_DIMENSION: usize> {
-    pub n1: usize,
-    pub n2: usize,
-    pub s_slopes: Bounds<GRID_DIMENSION>,
-    pub s_size: usize,
-    pub s1_offset: usize,
-    pub s2_offset: usize,
-    pub c_size: usize,
-    pub cn: usize,
-    pub c1_offset: usize,
-    pub c2_offset: usize,
-}
-
-pub enum IRIntermediateNode<const GRID_DIMENSION: usize> {
-    Base1(IRBase1Node),
-    Base2(IRBase2Node<GRID_DIMENSION>),
-    Convolve(IRConvolveNode<GRID_DIMENSION>),
-}
-
-pub struct TVPeriodicSolveBuilder<
+pub struct TVAPOpCalcBuilder<
     'a,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
@@ -67,6 +22,8 @@ pub struct TVPeriodicSolveBuilder<
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
     pub aabb: AABB<GRID_DIMENSION>,
     pub nodes: Vec<Vec<IRIntermediateNode<GRID_DIMENSION>>>,
+    // map (start_time, end_time) -> (layer, node_id)
+    pub node_map: HashMap<(usize, usize), (usize, usize)>,
 }
 
 impl<
@@ -74,22 +31,24 @@ impl<
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    >
-    TVPeriodicSolveBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+    > TVAPOpCalcBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
 {
     pub fn new(stencil: &'a StencilType, aabb: AABB<GRID_DIMENSION>) -> Self {
         let stencil_slopes = stencil.slopes();
 
-        TVPeriodicSolveBuilder {
+        TVAPOpCalcBuilder {
             stencil,
             stencil_slopes,
             aabb,
             nodes: Vec::new(),
+            node_map: HashMap::new(),
         }
     }
 
     pub fn add_node(
         &mut self,
+        start_time: usize,
+        end_time: usize,
         node: IRIntermediateNode<GRID_DIMENSION>,
         layer: usize,
     ) -> usize {
@@ -99,6 +58,8 @@ impl<
 
         let result = self.nodes[layer].len();
         self.nodes[layer].push(node);
+        self.node_map
+            .insert((start_time, end_time), (layer, result));
         result
     }
 
@@ -153,12 +114,12 @@ impl<
                 c1_offset,
                 c2_offset,
             });
-            return self.add_node(node, layer);
+            return self.add_node(start_time, end_time, node, layer);
         }
 
         if end_time - start_time == 1 {
             let node = IRIntermediateNode::Base1(IRBase1Node { t: start_time });
-            return self.add_node(node, layer);
+            return self.add_node(start_time, end_time, node, layer);
         }
 
         let combined_slopes =
@@ -198,35 +159,66 @@ impl<
                 c1_offset,
                 c2_offset,
             });
-            self.add_node(node, layer)
+            self.add_node(start_time, end_time, node, layer)
         }
     }
 
-    pub fn build_solver(
+    fn build_op_offsets(
+        &self,
+        tree_queries: &[TVOpDescriptor<GRID_DIMENSION>],
+        offset: &mut usize,
+    ) -> Vec<OpOffsets> {
+        // Add complex buffers for solver
+        let mut op_offsets = Vec::with_capacity(tree_queries.len());
+        for op in tree_queries.iter() {
+            let query_aabb = AABB::from_exclusive_bounds(&op.exclusive_bounds);
+            // real domain,
+            let real_domain_offset = *offset;
+            let real_domain_size =
+                Self::real_domain_size(query_aabb.buffer_size());
+            *offset += real_domain_size;
+
+            // op_buffer,
+            let op_buffer_offset = *offset;
+            let op_buffer_size =
+                Self::complex_buffer_size(query_aabb.complex_buffer_size());
+            let op_offset = OpOffsets {
+                real_domain_offset,
+                real_domain_size,
+                op_buffer_offset,
+                op_buffer_size,
+            };
+
+            op_offsets.push(op_offset);
+        }
+        op_offsets
+    }
+
+    pub fn build_op_calc(
         mut self,
         steps: usize,
         threads: usize,
         plan_type: PlanType,
-    ) -> TVPeriodicSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+        tree_queries: &Vec<TVOpDescriptor<GRID_DIMENSION>>,
+    ) -> TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
     {
+        // Calculate scratch space, build IR nodes
         let mut offset = 0;
         self.build_range(0, steps, 0, &mut offset);
-
-        // Add complex buffers for solver
-        let c_n = self.aabb.complex_buffer_size();
-        let c_size = Self::complex_buffer_size(c_n);
-        let c1_offset = offset;
-        offset += c_size;
-        let c2_offset = offset;
-        offset += c_size;
-
+        let op_offsets = self.build_op_offsets(tree_queries, &mut offset);
         println!("Solve builder mem req: {}", human_readable_bytes(offset));
         let scratch = APScratch::new(offset);
 
+        // Use TVOpDescriptors
+        // tree_qieru add fft ops with threads
+        // Don't need central solve
+        // fft_gen.get_op(self.aabb.exclusive_bounds(), threads);
+        // I guess I want to do this here so that we get the solver threads right?
+        // fft store should really do both threads and size, but w/e for now
+        //
+        // At any rate,
+        // we allso need to account for scratch for conv ops
         let mut fft_gen = FFTGen::new(plan_type);
-
-        // Add whole domain op as 0
-        fft_gen.get_op(self.aabb.exclusive_bounds(), threads);
 
         // Build FFT Solver
         println!("Solver Builder Report:");
@@ -311,22 +303,52 @@ impl<
             }
             result_nodes.push(layer_nodes);
         }
-        let fft_plans = fft_gen.finish();
 
-        let c_n = self.aabb.complex_buffer_size();
-        let c1 = &mut scratch.unsafe_get_buffer(c1_offset, c_size)[0..c_n];
-        let c2 = &mut scratch.unsafe_get_buffer(c2_offset, c_size)[0..c_n];
-        let chunk_size = 1.max(c_n / (2 * threads));
+        // Build ConvOp intsances
+        // TODO we need the node lookip
+        let mut conv_ops = Vec::with_capacity(tree_queries.len());
+        for (op_descriptor, op_offset) in
+            tree_queries.iter().zip(op_offsets.iter())
+        {
+            // Generate fft op, create ConvOp
+            let fft_pair_id = fft_gen
+                .get_op(op_descriptor.exclusive_bounds, op_descriptor.threads);
 
-        TVPeriodicSolver {
-            c1,
-            c2,
-            fft_plans,
-            intermediate_nodes: result_nodes,
-            chunk_size,
-            aabb: self.aabb,
+            let real_domain = scratch.unsafe_get_buffer(
+                op_offset.real_domain_offset,
+                op_offset.real_domain_size,
+            );
+
+            let op_buffer = scratch.unsafe_get_buffer(
+                op_offset.op_buffer_offset,
+                op_offset.op_buffer_size,
+            );
+
+            let node_key = (op_descriptor.step_min, op_descriptor.step_max);
+
+            let op = ConvOp {
+                real_domain: SliceDomain::new(
+                    AABB::from_exclusive_bounds(
+                        &op_descriptor.exclusive_bounds,
+                    ),
+                    real_domain,
+                ),
+                op_buffer,
+                fft_pair_id,
+                node: *self.node_map.get(&node_key).unwrap(),
+            };
+            conv_ops.push(op);
+        }
+
+        let fft_pairs = fft_gen.finish();
+
+        TVAPConvOpsCalc {
             stencil: self.stencil,
+            aabb: self.aabb,
+            intermediate_nodes: result_nodes,
+            conv_ops,
             threads,
+            fft_pairs,
             scratch,
         }
     }

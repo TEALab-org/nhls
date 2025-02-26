@@ -132,7 +132,8 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         let boundary_frustrums = frustrum.decompose(&self.stencil_slopes);
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
         let sub_threads = 1
-            .max((threads as f64 / boundary_frustrums.len() as f64).ceil() as usize);
+            .max((threads as f64 / boundary_frustrums.len() as f64).ceil()
+                as usize);
         println!(
             "Generate frustrum threads: {}, sub_threads: {}",
             threads, sub_threads

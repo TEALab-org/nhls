@@ -1,11 +1,11 @@
 use core::f64;
 
 use nhls::domain::*;
+use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
 use nhls::time_varying::*;
-use nhls::fft_solver::*;
 use nhls::util::*;
 use std::time::*;
 
@@ -72,7 +72,9 @@ fn main() {
         &planner_params,
     );
     planner_result.plan.to_dot_file(&args.dot_path());
-    planner_result.tree_query_collector.write_query_file(&args.query_file_path());
+    planner_result
+        .tree_query_collector
+        .write_query_file(&args.query_file_path());
 
     let mut tv_tree = TVTreePlanner::new(&stencil, grid_bound);
     tv_tree.build_range(0, args.steps_per_image, 0);
