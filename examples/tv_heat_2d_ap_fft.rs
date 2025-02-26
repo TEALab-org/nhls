@@ -72,10 +72,11 @@ fn main() {
         &planner_params,
     );
     planner_result.plan.to_dot_file(&args.dot_path());
-    planner_result
-        .tree_query_collector
-        .write_query_file(&args.query_file_path());
-
+    /*
+        planner_result
+            .tree_query_collector
+            .write_query_file(&args.query_file_path());
+    */
     let mut tv_tree = TVTreePlanner::new(&stencil, grid_bound);
     tv_tree.build_range(0, args.steps_per_image, 0);
     tv_tree.to_dot_file(&args.tree_dot_path());
