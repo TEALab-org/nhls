@@ -6,7 +6,8 @@ use crate::util::*;
 /// we add support for saving APPlans to file.
 pub struct TVPlannerResult<const GRID_DIMENSION: usize> {
     pub plan: APPlan<GRID_DIMENSION>,
-    pub tree_query_collector: TVTreeQueryCollector<GRID_DIMENSION>,
+    pub op_descriptors: Vec<TVOpDescriptor<GRID_DIMENSION>>,
+    pub remainder_op_descriptors: Option<Vec<TVOpDescriptor<GRID_DIMENSION>>>,
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
 }
 
@@ -201,9 +202,9 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
     fn generate_central(
         &mut self,
         max_steps: usize,
-        rel_time_0: usize,
         threads: usize,
-    ) -> (PlanNode<GRID_DIMENSION>, usize) {
+    ) -> (NodeId, usize) {
+        let rel_time_0 = 0;
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -215,8 +216,8 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             find_periodic_solve(&self.aabb, &solve_params).unwrap();
 
         let op_descriptor = TVOpDescriptor {
-            step_min: rel_time_0,
-            step_max: rel_time_0 + periodic_solve.steps,
+            step_min: 0,
+            step_max: periodic_solve.steps,
             exclusive_bounds: self.aabb.exclusive_bounds(),
             threads,
         };
@@ -262,41 +263,50 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             time_cut: None,
         };
 
-        (
-            PlanNode::PeriodicSolve(periodic_solve_node),
-            periodic_solve.steps,
-        )
+        let root_node =
+            self.add_node(PlanNode::PeriodicSolve(periodic_solve_node));
+
+        (root_node, periodic_solve.steps)
     }
 
     /// Create the root repeat node.
-    fn generate(&mut self, threads: usize) -> NodeId {
-        let mut root_solves = Vec::new();
-        let mut rel_time_0 = 0;
-        let mut remaining_time = self.steps;
-        while remaining_time > 0 {
-            let (central_solve_node, central_solve_steps) =
-                self.generate_central(remaining_time, rel_time_0, threads);
+    fn generate(
+        &mut self,
+        threads: usize,
+    ) -> (NodeId, Option<Vec<TVOpDescriptor<GRID_DIMENSION>>>) {
+        // generate central once,
+        let (central_solve_node, central_solve_steps) =
+            self.generate_central(self.steps, threads);
 
-            root_solves.push(central_solve_node);
-            rel_time_0 += central_solve_steps;
-            remaining_time -= central_solve_steps;
+        let n = self.steps / central_solve_steps;
+        let remainder = self.steps % central_solve_steps;
+        let mut next = None;
+        let mut remainder_op_descriptors = None;
+        if remainder != 0 {
+            let (remainder_solve_node, remainder_solve_steps) =
+                self.generate_central(remainder, threads);
+            next = Some(remainder_solve_node);
+            let mut t_collector = TVTreeQueryCollector::new();
+            std::mem::swap(&mut self.tree_query_collector, &mut t_collector);
+            remainder_op_descriptors = Some(t_collector.finish());
+            self.tree_query_collector = TVTreeQueryCollector::new();
+            debug_assert_eq!(remainder_solve_steps, remainder);
         }
 
-        // add the nodes, find the range
-        let first_node = self.nodes.len();
-        let last_node = first_node + root_solves.len();
-        self.nodes.extend(&mut root_solves.drain(..));
-
-        let range_node = RangeNode {
-            range: first_node..last_node,
+        let repeat_node = RepeatNode {
+            n,
+            node: central_solve_node,
+            next,
         };
 
-        self.add_node(PlanNode::Range(range_node))
+        let root_node = self.add_node(PlanNode::Repeat(repeat_node));
+        (root_node, remainder_op_descriptors)
     }
 
     /// Package up the results
     fn finish(mut self, threads: usize) -> TVPlannerResult<GRID_DIMENSION> {
-        let root = self.generate(threads);
+        let (root, remainder_op_descriptors) = self.generate(threads);
+        let op_descriptors = self.tree_query_collector.finish();
         let stencil_slopes = self.stencil_slopes;
         let plan = APPlan {
             nodes: self.nodes,
@@ -305,7 +315,8 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
 
         TVPlannerResult {
             plan,
-            tree_query_collector: self.tree_query_collector,
+            op_descriptors,
+            remainder_op_descriptors,
             stencil_slopes,
         }
     }

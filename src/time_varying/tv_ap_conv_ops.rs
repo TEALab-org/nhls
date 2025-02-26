@@ -120,6 +120,17 @@ impl<
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     > TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
 {
+    pub fn blank(s: &'a StencilType) -> Self {
+        TVAPConvOpsCalc {
+            stencil: s,
+            aabb: AABB::new(Bounds::zero()),
+            intermediate_nodes: Vec::new(),
+            conv_ops: Vec::new(),
+            threads: 0,
+            fft_pairs: FFTStore::new(Vec::new()),
+            scratch: APScratch::new(1),
+        }
+    }
     pub fn build_ops(&mut self, global_time: usize) {
         // Build Tree like periodic solver
         println!("Solver: Build base layer");
