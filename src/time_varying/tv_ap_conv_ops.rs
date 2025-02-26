@@ -134,6 +134,10 @@ impl<
     pub fn build_ops(&mut self, global_time: usize) {
         // Build Tree like periodic solver
         println!("Solver: Build base layer");
+        for layer in self.intermediate_nodes.iter_mut() {
+            layer.par_iter_mut().for_each(|n| n.clear_stencils());
+        }
+
         // Build intermediate tree layers
         let base_layer_id = self.intermediate_nodes.len() - 1;
         solve_base_layer(

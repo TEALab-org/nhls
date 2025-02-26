@@ -37,6 +37,9 @@ fn main() {
         ratio: args.ratio,
         chunk_size: args.chunk_size,
     };
+    let mut tp = TVTreePlanner::new(&stencil, grid_bound);
+    tp.build_range(0, args.steps_per_image, 0);
+    tp.to_dot_file(&args.tree_dot_path());
 
     let mut tv_ap_solver = TVAPSolver::new(
         &bc,
@@ -46,21 +49,9 @@ fn main() {
         args.threads,
         &planner_params,
     );
-    /*
-        let tv_result = create_tv_ap_plan(
-            &stencil,
-            grid_bound,
-            args.steps_per_image,
-            &planner_params,
-        );
-
-        if args.write_dot {
-            tv_result.plan.to_dot_file(&args.dot_path());
-            tv_result
-                .tree_query_collector
-                .write_query_file(&args.query_file_path());
-        }
-    */
+    if args.write_dot {
+        tv_ap_solver.to_dot_file(&args.dot_path());
+    }
 
     if args.gen_only {
         args.save_wisdom();
@@ -71,7 +62,6 @@ fn main() {
     let mut global_time = 0;
     for t in 1..args.images {
         tv_ap_solver.apply(&mut input_domain, &mut output_domain, global_time);
-
         global_time += args.steps_per_image;
         std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {

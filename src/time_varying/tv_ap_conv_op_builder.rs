@@ -209,6 +209,11 @@ impl<
         println!("Solve builder mem req: {}", human_readable_bytes(offset));
         let scratch = APScratch::new(offset);
 
+        println!("NODE MAP");
+        for (k, j) in &self.node_map {
+            println!("{:?} -> {:?}", k, j);
+        }
+
         // Use TVOpDescriptors
         // tree_qieru add fft ops with threads
         // Don't need central solve
@@ -325,7 +330,7 @@ impl<
             );
 
             let node_key = (op_descriptor.step_min, op_descriptor.step_max);
-
+            println!("node_key: {:?}", node_key);
             let op = ConvOp {
                 real_domain: SliceDomain::new(
                     AABB::from_exclusive_bounds(
