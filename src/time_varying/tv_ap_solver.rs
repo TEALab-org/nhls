@@ -120,6 +120,7 @@ where
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        println!("Solver: Apply");
         self.solve_root(input_domain, output_domain, global_time);
     }
 
@@ -177,6 +178,7 @@ where
         let repeat_steps = repeat_periodic_solve.steps;
 
         for _ in 0..repeat_solve.n {
+            println!("Solver: solve central");
             self.conv_ops_calc.build_ops(global_time);
             self.periodic_solve_preallocated_io(
                 repeat_solve.node,
@@ -190,6 +192,7 @@ where
             std::mem::swap(input_domain, output_domain);
         }
         if let Some(next) = repeat_solve.next {
+            println!("Solver: solve remainder");
             self.remainder_ops_calc.build_ops(global_time);
             self.periodic_solve_preallocated_io(
                 next,

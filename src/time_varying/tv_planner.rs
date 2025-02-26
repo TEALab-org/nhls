@@ -135,10 +135,12 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         let sub_threads = 1
             .max((threads as f64 / boundary_frustrums.len() as f64).ceil()
                 as usize);
+        /*
         println!(
             "Generate frustrum threads: {}, sub_threads: {}",
             threads, sub_threads
         );
+        */
         for bf in boundary_frustrums {
             sub_nodes.push(self.generate_frustrum(bf, rel_time_0, sub_threads));
         }
@@ -222,6 +224,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             threads,
         };
         let convolution_id = self.tree_query_collector.get_op_id(op_descriptor);
+        println!("Generate central conv op id: {}", convolution_id);
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
@@ -273,7 +276,11 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
     fn generate(
         &mut self,
         threads: usize,
-    ) -> (NodeId, Option<Vec<TVOpDescriptor<GRID_DIMENSION>>>) {
+    ) -> (
+        NodeId,
+        Vec<TVOpDescriptor<GRID_DIMENSION>>,
+        Option<Vec<TVOpDescriptor<GRID_DIMENSION>>>,
+    ) {
         // generate central once,
         let (central_solve_node, central_solve_steps) =
             self.generate_central(self.steps, threads);
@@ -282,6 +289,11 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         let remainder = self.steps % central_solve_steps;
         let mut next = None;
         let mut remainder_op_descriptors = None;
+
+        let mut t_collector = TVTreeQueryCollector::new();
+        std::mem::swap(&mut self.tree_query_collector, &mut t_collector);
+        let op_descriptors = t_collector.finish();
+
         if remainder != 0 {
             let (remainder_solve_node, remainder_solve_steps) =
                 self.generate_central(remainder, threads);
@@ -289,7 +301,6 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             let mut t_collector = TVTreeQueryCollector::new();
             std::mem::swap(&mut self.tree_query_collector, &mut t_collector);
             remainder_op_descriptors = Some(t_collector.finish());
-            self.tree_query_collector = TVTreeQueryCollector::new();
             debug_assert_eq!(remainder_solve_steps, remainder);
         }
 
@@ -300,13 +311,13 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         };
 
         let root_node = self.add_node(PlanNode::Repeat(repeat_node));
-        (root_node, remainder_op_descriptors)
+        (root_node, op_descriptors, remainder_op_descriptors)
     }
 
     /// Package up the results
     fn finish(mut self, threads: usize) -> TVPlannerResult<GRID_DIMENSION> {
-        let (root, remainder_op_descriptors) = self.generate(threads);
-        let op_descriptors = self.tree_query_collector.finish();
+        let (root, op_descriptors, remainder_op_descriptors) =
+            self.generate(threads);
         let stencil_slopes = self.stencil_slopes;
         let plan = APPlan {
             nodes: self.nodes,
