@@ -194,17 +194,66 @@ impl<
         op_offsets
     }
 
+    fn add_nodes_for_op(
+        &mut self,
+        op: &TVOpDescriptor<GRID_DIMENSION>
+        offset: &mut usize,
+    ) {
+        let key = (op.step_min, op.step_max);
+
+        if self.node_map.contains_key(&key) {
+            return;
+        }
+
+        let mut stack = Vec::new();
+        let mut start = op.step_min;
+        while start < op.step_max {
+            let mut end = op.step_max;
+            'inner: while end > start { 
+                if let Some(v) = self.node_map.get(&(start, end)) {
+                    start = end;
+                    stack.push(v);
+                    break 'inner;
+                }
+                end -= 1;
+            }
+        }
+
+        for i in 0..stack.len() - 1 {
+            assert!(stack[i].0 < stack[i + 1].0);
+        }
+        assert!(stack.len() >= 2);
+
+        let result_node = stack[0];
+    }
+
+    fn add_op_nodes(
+        &mut self,
+        tree_queries: &[TVOpDescriptor<GRID_DIMENSION>],
+        offset: &mut usize,
+    ) {
+        for query in tree_queries.iter() {
+            self.add_nodes_for_op(query, offset);
+        }
+    }
+
+
+
     pub fn build_op_calc(
         mut self,
         steps: usize,
         threads: usize,
         plan_type: PlanType,
-        tree_queries: &Vec<TVOpDescriptor<GRID_DIMENSION>>,
+        tree_queries: &[TVOpDescriptor<GRID_DIMENSION>],
     ) -> TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
     {
         // Calculate scratch space, build IR nodes
         let mut offset = 0;
         self.build_range(0, steps, 0, &mut offset);
+        self.add_op_nodes(tree_queries, &mut offset);
+
+        // TODO make sure we add nodes for missing op stencils
+    
         let op_offsets = self.build_op_offsets(tree_queries, &mut offset);
         println!("Solve builder mem req: {}", human_readable_bytes(offset));
         let scratch = APScratch::new(offset);
