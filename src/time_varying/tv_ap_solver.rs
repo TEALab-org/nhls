@@ -54,12 +54,6 @@ where
         let planner_result =
             create_tv_ap_plan(stencil, aabb, steps, threads, params);
         let plan = planner_result.plan;
-        plan.to_dot_file(&"target/tv_2d_ap_fft/plan.dot");
-
-        println!("CONV OP DESCRIPTORS:");
-        for (i, d) in planner_result.op_descriptors.iter().enumerate() {
-            println!("{}: {:?}", i, d);
-        }
 
         let stencil_slopes = planner_result.stencil_slopes;
 

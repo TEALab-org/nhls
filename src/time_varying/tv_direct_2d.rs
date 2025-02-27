@@ -10,7 +10,7 @@ pub struct TVDirectFrustrumSolver2D<'a, StencilType: TVStencil<2, 5>> {
     pub stencil_slopes: Bounds<2>,
 }
 
-impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
+impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType> {
     pub fn new(stencil: &'a StencilType) -> Self {
         let stencil_slopes = matrix![1, 1; 1, 1];
         let expected_offsets = [
@@ -31,15 +31,15 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
         &self,
         input_domain: &mut SliceDomain<'b, 2>,
         output_domain: &mut SliceDomain<'b, 2>,
-        steps: usize,
-        threads: usize,
-        mut global_time: usize,
+        global_time: usize,
     ) {
         let input_exclusive_bounds = input_domain.aabb().exclusive_bounds();
         let output_exclusive_bounds = output_domain.aabb().exclusive_bounds();
 
         let ib = input_domain.buffer();
-        let offsets_i32 = input_domain.aabb().coord_offset_to_linear(self.stencil.offsets());
+        let offsets_i32 = input_domain
+            .aabb()
+            .coord_offset_to_linear(self.stencil.offsets());
         let offsets = [
             offsets_i32[0].unsigned_abs() as usize,
             offsets_i32[1].unsigned_abs() as usize,
@@ -59,7 +59,8 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
                     {
                         let input_linear_index: usize = 0;
                         let output_linear_index: usize = 0;
-                        *o.buffer_mut().get_unchecked_mut(output_linear_index) = w
+                        *o.buffer_mut()
+                            .get_unchecked_mut(output_linear_index) = w
                             .get_unchecked(0)
                             * ib.get_unchecked(
                                 input_linear_index + offsets.get_unchecked(0),
@@ -76,11 +77,14 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
                     // (min, max)
                     {
                         let input_linear_index: usize =
-                            (input_exclusive_bounds.get_unchecked(1) - 1) as usize;
+                            (input_exclusive_bounds.get_unchecked(1) - 1)
+                                as usize;
                         let output_linear_index: usize =
-                            (output_exclusive_bounds.get_unchecked(1) - 1) as usize;
+                            (output_exclusive_bounds.get_unchecked(1) - 1)
+                                as usize;
 
-                        *o.buffer_mut().get_unchecked_mut(output_linear_index) = w
+                        *o.buffer_mut()
+                            .get_unchecked_mut(output_linear_index) = w
                             .get_unchecked(0)
                             * ib.get_unchecked(
                                 input_linear_index + offsets.get_unchecked(0),
@@ -95,14 +99,16 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
                     }
 
                     // left sides
-                    for y in 1..(input_exclusive_bounds.get_unchecked(1) - 1) as usize
+                    for y in 1..(input_exclusive_bounds.get_unchecked(1) - 1)
+                        as usize
                     {
                         // left side
                         {
                             let input_linear_index: usize = y;
                             let output_linear_index: usize = y;
 
-                            *o.buffer_mut().get_unchecked_mut(output_linear_index) = w
+                            *o.buffer_mut()
+                                .get_unchecked_mut(output_linear_index) = w
                                 .get_unchecked(0)
                                 * ib.get_unchecked(
                                     input_linear_index
@@ -124,25 +130,220 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
                     }
                 });
 
-                let chunk_size = (*output_exclusive_bounds.get_unchecked(0) as usize
-                    - 1)
-                    / (threads * 2);
+                let chunk_size =
+                    (*output_exclusive_bounds.get_unchecked(0) as usize - 1)
+                        / (2);
                 let mut start: usize = 1;
-                while start < (output_exclusive_bounds.get_unchecked(0)) as usize {
+                while start
+                    < (*output_exclusive_bounds.get_unchecked(0)) as usize
+                {
+                    let end = (start + chunk_size).min(
+                        *output_exclusive_bounds.get_unchecked(0) as usize - 1,
+                    );
+                    s.spawn(move |_| {
+                        let mut o = const_output.unsafe_mut_access();
+
+                        // Central (on x axis)
+                        for x in start..end {
+                            let index_base = x * *output_exclusive_bounds
+                                .get_unchecked(1)
+                                as usize;
+
+                            // top
+                            {
+                                let linear_index: usize = index_base
+                                    + *output_exclusive_bounds.get_unchecked(1)
+                                        as usize
+                                    - 1;
+                                *o.buffer_mut()
+                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked(0)
+                                    * ib.get_unchecked(
+                                        linear_index + offsets.get_unchecked(0),
+                                    )
+                                    + w.get_unchecked(1)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                - offsets.get_unchecked(1),
+                                        )
+                                    + w.get_unchecked(2)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                - offsets.get_unchecked(2),
+                                        )
+                                    + w.get_unchecked(4)
+                                        * ib.get_unchecked(linear_index);
+                            }
+
+                            // bottom
+                            {
+                                let linear_index: usize = index_base;
+                                *o.buffer_mut()
+                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked(0)
+                                    * ib.get_unchecked(
+                                        linear_index + offsets.get_unchecked(0),
+                                    )
+                                    + w.get_unchecked(3)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                + offsets.get_unchecked(3),
+                                        )
+                                    + w.get_unchecked(4)
+                                        * ib.get_unchecked(linear_index);
+                            }
+
+                            // central
+                            for y in 1..*output_exclusive_bounds
+                                .get_unchecked(1)
+                                as usize
+                                - 1
+                            {
+                                let linear_index: usize = index_base + y;
+                                *o.buffer_mut()
+                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked(0)
+                                    * ib.get_unchecked(
+                                        linear_index + offsets.get_unchecked(0),
+                                    )
+                                    + w.get_unchecked(1)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                - offsets.get_unchecked(1),
+                                        )
+                                    + w.get_unchecked(2)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                - offsets.get_unchecked(2),
+                                        )
+                                    + w.get_unchecked(3)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                + offsets.get_unchecked(3),
+                                        )
+                                    + w.get_unchecked(4)
+                                        * ib.get_unchecked(linear_index);
+                            }
+                        }
+                    });
+                    start += chunk_size;
+                }
+            });
+        }
+    }
+
+    pub fn apply_x_max_step<'b>(
+        &self,
+        input_domain: &mut SliceDomain<'b, 2>,
+        output_domain: &mut SliceDomain<'b, 2>,
+        global_time: usize,
+    ) {
+        let input_exclusive_bounds = input_domain.aabb().exclusive_bounds();
+        let output_exclusive_bounds = output_domain.aabb().exclusive_bounds();
+
+        let ib = input_domain.buffer();
+        let offsets_i32 = input_domain
+            .aabb()
+            .coord_offset_to_linear(self.stencil.offsets());
+        let offsets = [
+            offsets_i32[0].unsigned_abs() as usize,
+            offsets_i32[1].unsigned_abs() as usize,
+            offsets_i32[2].unsigned_abs() as usize,
+            offsets_i32[3].unsigned_abs() as usize,
+            offsets_i32[4].unsigned_abs() as usize,
+        ];
+        let w = self.stencil.weights(global_time);
+
+        let const_output: &SliceDomain<'b, 2> = output_domain;
+        unsafe {
+            rayon::scope(|s| {
+                let mut o = const_output.unsafe_mut_access();
+                {
+                    let linear_index: usize =
+                        ((output_exclusive_bounds.get_unchecked(0) - 1)
+                            * output_exclusive_bounds.get_unchecked(1))
+                            as usize;
+
+                    *o.buffer_mut().get_unchecked_mut(linear_index) = w
+                        .get_unchecked(2)
+                        * ib.get_unchecked(
+                            linear_index - offsets.get_unchecked(2),
+                        )
+                        + w.get_unchecked(3)
+                            * ib.get_unchecked(
+                                linear_index + offsets.get_unchecked(3),
+                            )
+                        + w.get_unchecked(4) * ib.get_unchecked(linear_index);
+                }
+
+                // (max, max)
+                {
+                    let linear_index: usize =
+                        ((output_exclusive_bounds.get_unchecked(0)
+                            * output_exclusive_bounds.get_unchecked(1))
+                            - 1) as usize;
+
+                    *o.buffer_mut().get_unchecked_mut(linear_index) = w
+                        .get_unchecked(1)
+                        * ib.get_unchecked(
+                            linear_index - offsets.get_unchecked(1),
+                        )
+                        + w.get_unchecked(2)
+                            * ib.get_unchecked(
+                                linear_index - offsets.get_unchecked(2),
+                            )
+                        + w.get_unchecked(4) * ib.get_unchecked(linear_index);
+                }
+
+                // left / right Sides
+                for y in 1..(output_exclusive_bounds.get_unchecked(1) - 1) as usize {
+                    // right side
+                    {
+                        let linear_index: usize =
+                            ((output_exclusive_bounds.get_unchecked(0) - 1)
+                                * output_exclusive_bounds.get_unchecked(1)
+                                + y as i32)
+                                as usize;
+
+                        *o.buffer_mut().get_unchecked_mut(linear_index) = w
+                            .get_unchecked(1)
+                            * ib.get_unchecked(
+                                linear_index - offsets.get_unchecked(1),
+                            )
+                            + w.get_unchecked(2)
+                                * ib.get_unchecked(
+                                    linear_index
+                                        - offsets.get_unchecked(2),
+                                )
+                            + w.get_unchecked(3)
+                                * ib.get_unchecked(
+                                    linear_index
+                                        + offsets.get_unchecked(3),
+                                )
+                            + w.get_unchecked(4)
+                                * ib.get_unchecked(linear_index);
+                    }
+                }
+
+                let chunk_size = (*output_exclusive_bounds.get_unchecked(0) as usize
+                    - 2)
+                    / (2);
+                let mut start: usize = 0;
+                while start < (output_exclusive_bounds.get_unchecked(0)  -1 ) as usize {
                     let end = (start + chunk_size)
-                        .min(*exclusive_bounds.get_unchecked(0) as usize - 1);
+                        .min(*output_exclusive_bounds.get_unchecked(0) as usize - 1);
                     s.spawn(move |_| {
                         let mut o = const_output.unsafe_mut_access();
 
                         // Central (on x axis)
                         for x in start..end {
                             let index_base =
-                                x * *exclusive_bounds.get_unchecked(1) as usize;
+                                x * *output_exclusive_bounds.get_unchecked(1) as usize;
 
                             // top
                             {
                                 let linear_index: usize = index_base
-                                    + *exclusive_bounds.get_unchecked(1)
+                                    + *output_exclusive_bounds.get_unchecked(1)
                                         as usize
                                     - 1;
                                 *o.buffer_mut()
@@ -150,17 +351,17 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
                                         linear_index
-                                            + self.offsets.get_unchecked(0),
+                                            + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
                                             linear_index
-                                                - self.offsets.get_unchecked(1),
+                                                - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
                                             linear_index
-                                                - self.offsets.get_unchecked(2),
+                                                - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(4)
                                         * ib.get_unchecked(linear_index);
@@ -174,19 +375,19 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
                                         linear_index
-                                            + self.offsets.get_unchecked(0),
+                                            + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
                                             linear_index
-                                                + self.offsets.get_unchecked(3),
+                                                + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
                                         * ib.get_unchecked(linear_index);
                             }
 
                             // central
-                            for y in 1..*exclusive_bounds.get_unchecked(1)
+                            for y in 1..*output_exclusive_bounds.get_unchecked(1)
                                 as usize
                                 - 1
                             {
@@ -196,22 +397,22 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
                                         linear_index
-                                            + self.offsets.get_unchecked(0),
+                                            + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
                                             linear_index
-                                                - self.offsets.get_unchecked(1),
+                                                - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
                                             linear_index
-                                                - self.offsets.get_unchecked(2),
+                                                - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
                                             linear_index
-                                                + self.offsets.get_unchecked(3),
+                                                + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
                                         * ib.get_unchecked(linear_index);
@@ -221,36 +422,6 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
                     start += chunk_size;
                 }
             });
-
-            });
-        }
-    }
-
-    pub fn apply_x_max_step<'b>(
-        &self,
-        input_domain: &mut SliceDomain<'b, 2>,
-        output_domain: &mut SliceDomain<'b, 2>,
-        steps: usize,
-        mut global_time: usize,
-    ) {
-        let input_exclusive_bounds = input_domain.aabb().exclusive_bounds();
-        let output_exclusive_bounds = output_domain.aabb().exclusive_bounds();
-
-        let ib = input_domain.buffer();
-        let offsets_i32 = input_domain.aabb().coord_offset_to_linear(self.stencil.offsets());
-        let offsets = [
-            offsets_i32[0].unsigned_abs() as usize,
-            offsets_i32[1].unsigned_abs() as usize,
-            offsets_i32[2].unsigned_abs() as usize,
-            offsets_i32[3].unsigned_abs() as usize,
-            offsets_i32[4].unsigned_abs() as usize,
-        ];
-
-        let const_output: &SliceDomain<'b, 2> = output_domain;
-        unsafe {
-            rayon::scope(|s| {
-
-            });
         }
     }
 
@@ -258,14 +429,15 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
         &self,
         input_domain: &mut SliceDomain<'b, 2>,
         output_domain: &mut SliceDomain<'b, 2>,
-        steps: usize,
-        mut global_time: usize,
+        global_time: usize,
     ) {
         let input_exclusive_bounds = input_domain.aabb().exclusive_bounds();
         let output_exclusive_bounds = output_domain.aabb().exclusive_bounds();
 
         let ib = input_domain.buffer();
-        let offsets_i32 = input_domain.aabb().coord_offset_to_linear(self.stencil.offsets());
+        let offsets_i32 = input_domain
+            .aabb()
+            .coord_offset_to_linear(self.stencil.offsets());
         let offsets = [
             offsets_i32[0].unsigned_abs() as usize,
             offsets_i32[1].unsigned_abs() as usize,
@@ -273,11 +445,78 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
             offsets_i32[3].unsigned_abs() as usize,
             offsets_i32[4].unsigned_abs() as usize,
         ];
+        let w = self.stencil.weights(global_time);
 
         let const_output: &SliceDomain<'b, 2> = output_domain;
         unsafe {
             rayon::scope(|s| {
+                let chunk_size = (*output_exclusive_bounds.get_unchecked(0) as usize)
+                    / (2);
+                let mut start: usize = 0;
+                while start < (*output_exclusive_bounds.get_unchecked(0)) as usize {
+                    let end = (start + chunk_size)
+                        .min(*output_exclusive_bounds.get_unchecked(0) as usize - 1);
+                    s.spawn(move |_| {
+                        let mut o = const_output.unsafe_mut_access();
 
+                        // Central (on x axis)
+                        for x in start..end {
+                            let index_base =
+                                x * *output_exclusive_bounds.get_unchecked(1) as usize;
+
+                            {
+                                let linear_index: usize = index_base;
+                                *o.buffer_mut()
+                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked(0)
+                                    * ib.get_unchecked(
+                                        linear_index
+                                            + offsets.get_unchecked(0),
+                                    )
+                                    + w.get_unchecked(3)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                + offsets.get_unchecked(3),
+                                        )
+                                    + w.get_unchecked(4)
+                                        * ib.get_unchecked(linear_index);
+                            }
+
+                            // central
+                            for y in 1..*output_exclusive_bounds.get_unchecked(1)
+                                as usize
+                                - 1
+                            {
+                                let linear_index: usize = index_base + y;
+                                *o.buffer_mut()
+                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked(0)
+                                    * ib.get_unchecked(
+                                        linear_index
+                                            + offsets.get_unchecked(0),
+                                    )
+                                    + w.get_unchecked(1)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                - offsets.get_unchecked(1),
+                                        )
+                                    + w.get_unchecked(2)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                - offsets.get_unchecked(2),
+                                        )
+                                    + w.get_unchecked(3)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                + offsets.get_unchecked(3),
+                                        )
+                                    + w.get_unchecked(4)
+                                        * ib.get_unchecked(linear_index);
+                            }
+                        }
+                    });
+                    start += chunk_size;
+                }
             });
         }
     }
@@ -286,14 +525,15 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
         &self,
         input_domain: &mut SliceDomain<'b, 2>,
         output_domain: &mut SliceDomain<'b, 2>,
-        steps: usize,
-        mut global_time: usize,
+        global_time: usize,
     ) {
         let input_exclusive_bounds = input_domain.aabb().exclusive_bounds();
         let output_exclusive_bounds = output_domain.aabb().exclusive_bounds();
 
         let ib = input_domain.buffer();
-        let offsets_i32 = input_domain.aabb().coord_offset_to_linear(self.stencil.offsets());
+        let offsets_i32 = input_domain
+            .aabb()
+            .coord_offset_to_linear(self.stencil.offsets());
         let offsets = [
             offsets_i32[0].unsigned_abs() as usize,
             offsets_i32[1].unsigned_abs() as usize,
@@ -301,12 +541,11 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
             offsets_i32[3].unsigned_abs() as usize,
             offsets_i32[4].unsigned_abs() as usize,
         ];
+        let w = self.stencil.weights(global_time);
 
         let const_output: &SliceDomain<'b, 2> = output_domain;
         unsafe {
-            rayon::scope(|s| {
-
-            });
+            rayon::scope(|s| {});
         }
     }
 
@@ -318,8 +557,7 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
         mut global_time: usize,
     ) {
         let x_min: Bounds<2> = matrix![0, 1; 0, 0];
-        let mut trapezoid_slopes =
-            self.stencil_slopes.component_mul(&x_min);
+        let mut trapezoid_slopes = self.stencil_slopes.component_mul(&x_min);
         let negative_slopes = -1 * trapezoid_slopes.column(1);
         trapezoid_slopes.set_column(1, &negative_slopes);
 
@@ -332,7 +570,11 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
             );
             output_domain.set_aabb(output_box);
 
-            self.apply_x_min_step(input_domain, output_domain, steps, global_time);
+            self.apply_x_min_step(
+                input_domain,
+                output_domain,
+                global_time,
+            );
 
             std::mem::swap(input_domain, output_domain);
         }
@@ -347,8 +589,7 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
         mut global_time: usize,
     ) {
         let x_max: Bounds<2> = matrix![1, 0; 0, 0];
-        let mut trapezoid_slopes =
-            self.stencil_slopes.component_mul(&x_max);
+        let mut trapezoid_slopes = self.stencil_slopes.component_mul(&x_max);
         let negative_slopes = -1 * trapezoid_slopes.column(1);
         trapezoid_slopes.set_column(1, &negative_slopes);
 
@@ -361,7 +602,11 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
             );
             output_domain.set_aabb(output_box);
 
-            self.apply_x_max_step(input_domain, output_domain, steps, global_time);
+            self.apply_x_max_step(
+                input_domain,
+                output_domain,
+                global_time,
+            );
 
             std::mem::swap(input_domain, output_domain);
         }
@@ -376,8 +621,7 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
         mut global_time: usize,
     ) {
         let y_min: Bounds<2> = matrix![1, 1; 0, 1];
-        let mut trapezoid_slopes =
-            self.stencil_slopes.component_mul(&y_min);
+        let mut trapezoid_slopes = self.stencil_slopes.component_mul(&y_min);
         let negative_slopes = -1 * trapezoid_slopes.column(1);
         trapezoid_slopes.set_column(1, &negative_slopes);
 
@@ -390,7 +634,11 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
             );
             output_domain.set_aabb(output_box);
 
-            self.apply_y_min_step(input_domain, output_domain, steps, global_time);
+            self.apply_y_min_step(
+                input_domain,
+                output_domain,
+                global_time,
+            );
 
             std::mem::swap(input_domain, output_domain);
         }
@@ -405,8 +653,7 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
         mut global_time: usize,
     ) {
         let y_max: Bounds<2> = matrix![1, 1; 1, 0];
-        let mut trapezoid_slopes =
-            self.stencil_slopes.component_mul(&y_max);
+        let mut trapezoid_slopes = self.stencil_slopes.component_mul(&y_max);
         let negative_slopes = -1 * trapezoid_slopes.column(1);
         trapezoid_slopes.set_column(1, &negative_slopes);
 
@@ -419,7 +666,11 @@ impl<StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'_, StencilType> {
             );
             output_domain.set_aabb(output_box);
 
-           self.apply_y_max_step(input_domain, output_domain, steps, global_time);
+            self.apply_y_max_step(
+                input_domain,
+                output_domain,
+                global_time,
+            );
 
             std::mem::swap(input_domain, output_domain);
         }

@@ -14,7 +14,7 @@ mod tv_planner;
 mod tv_stencil;
 mod tv_tree_planner;
 mod tv_tree_query_collector;
-//mod tv_direct_2d;
+mod tv_direct_2d;
 
 pub use circ_stencil::*;
 pub use dynamic_stencil::*;
@@ -32,4 +32,4 @@ pub use tv_planner::*;
 pub use tv_stencil::*;
 pub use tv_tree_planner::*;
 pub use tv_tree_query_collector::*;
-//pub use tv_direct_2d::*;
+pub use tv_direct_2d::*;
