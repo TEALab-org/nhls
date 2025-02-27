@@ -1,5 +1,4 @@
 use crate::domain::*;
-use crate::stencil::*;
 use crate::time_varying::*;
 use crate::util::*;
 

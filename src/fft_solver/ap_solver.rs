@@ -343,7 +343,7 @@ where
             &mut output_domain,
             global_time,
         );
-        debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
+        //debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
 
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);

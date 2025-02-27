@@ -105,6 +105,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             output_aabb: frustrum.output_aabb,
             sloped_sides: frustrum.sloped_sides(),
             steps: frustrum.steps,
+            threads: 0,
         };
         PlanNode::DirectSolve(direct_node)
     }

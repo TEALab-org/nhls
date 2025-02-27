@@ -86,6 +86,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
     fn generate_direct_node(
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
+        threads: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
         let direct_node = DirectSolveNode {
@@ -93,6 +94,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             output_aabb: frustrum.output_aabb,
             sloped_sides: frustrum.sloped_sides(),
             steps: frustrum.steps,
+            threads,
         };
         PlanNode::DirectSolve(direct_node)
     }
@@ -183,7 +185,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         let maybe_periodic_solve =
             find_periodic_solve(&input_aabb, &solve_params);
         if maybe_periodic_solve.is_none() {
-            self.generate_direct_node(frustrum)
+            self.generate_direct_node(frustrum, threads)
         } else {
             let periodic_solve = maybe_periodic_solve.unwrap();
             self.generate_periodic_node(

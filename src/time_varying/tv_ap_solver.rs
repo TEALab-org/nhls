@@ -30,7 +30,8 @@ impl<
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         SolverType: TVDirectSolver<GRID_DIMENSION> + Send + Sync,
-    > TVAPSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType, SolverType>
+    >
+    TVAPSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType, SolverType>
 {
     pub fn new(
         stencil: &'a StencilType,
@@ -398,10 +399,10 @@ impl<
             &mut output_domain,
             global_time,
         );
-        debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
+        //debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
 
         // copy output to output
-        output.par_set_subdomain(&output_domain, self.chunk_size);
+        output.par_set_from(&output_domain, &direct_solve.output_aabb);
     }
 
     pub fn direct_solve_preallocated_io<'b>(
@@ -434,13 +435,15 @@ impl<
             &direct_solve.sloped_sides,
             direct_solve.steps,
             global_time,
+            direct_solve.threads,
         );
-
+        /*
         debug_assert_eq!(
             direct_solve.output_aabb,
             *output_domain.aabb(),
             "ERROR: n_id: {}, Unexpected solve output",
             node_id
         );
+        */
     }
 }

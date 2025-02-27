@@ -3,6 +3,7 @@ use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
+use nhls::solver::*;
 use nhls::time_varying::*;
 //use nhls::util::*;
 
@@ -28,8 +29,7 @@ fn main() {
         image2d(&input_domain, &args.frame_name(0));
     }
 
-    let solver = AP2DDirectSolver::new(
-        &stencil);
+    let solver = AP2DDirectSolver::new(&stencil);
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,

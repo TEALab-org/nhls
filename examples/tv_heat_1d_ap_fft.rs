@@ -51,6 +51,12 @@ fn main() {
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);
 
+    let direct_solver = TVDirectFrustrumSolver {
+        bc: &bc,
+        stencil: &stencil,
+        stencil_slopes: stencil.slopes(),
+        chunk_size: args.chunk_size,
+    };
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
@@ -58,12 +64,12 @@ fn main() {
         chunk_size: args.chunk_size,
     };
     let mut solver = TVAPSolver::new(
-        &bc,
         &stencil,
         grid_bound,
         args.steps_per_line,
         args.threads,
         &planner_params,
+        direct_solver,
     );
     if args.gen_only {
         args.save_wisdom();

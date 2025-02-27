@@ -24,10 +24,8 @@ impl<
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    >
-
-    TVDirectSolver<GRID_DIMENSION> for 
-    TVDirectFrustrumSolver<
+    > TVDirectSolver<GRID_DIMENSION>
+    for TVDirectFrustrumSolver<
         '_,
         BC,
         GRID_DIMENSION,

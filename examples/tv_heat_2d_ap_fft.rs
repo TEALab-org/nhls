@@ -5,6 +5,7 @@ use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
+use nhls::solver::*;
 use nhls::time_varying::*;
 use nhls::util::*;
 use std::time::*;
@@ -55,9 +56,7 @@ fn main() {
     let mut output_domain = buffer_2.as_slice_domain();
     rand(&mut input_domain, 10, args.chunk_size);
 
-    // Create BC
-    let bc = ConstantCheck::new(1.0, grid_bound);
-
+    let direct_solver = AP2DDirectSolver::new(&stencil);
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
@@ -65,12 +64,12 @@ fn main() {
         chunk_size: args.chunk_size,
     };
     let mut solver = TVAPSolver::new(
-        &bc,
         &stencil,
         grid_bound,
         args.steps_per_image,
         args.threads,
         &planner_params,
+        direct_solver,
     );
 
     if args.gen_only {
