@@ -2,6 +2,7 @@ use nhls::domain::*;
 use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
+use nhls::init;
 
 fn main() {
     let args = Args::cli_parse("heat_2d_ap_fft");
@@ -42,6 +43,13 @@ fn main() {
     let mut buffer_2 = OwnedDomain::new(grid_bound);
     let mut input_domain = buffer_1.as_slice_domain();
     let mut output_domain = buffer_2.as_slice_domain();
+
+    if args.rand_init {
+        init::rand(&mut input_domain, 1024, args.chunk_size);
+    } else {
+        init::normal_ic_2d(&mut input_domain, args.chunk_size);
+    }
+
     if args.write_images {
         image2d(&input_domain, &args.frame_name(0));
     }
