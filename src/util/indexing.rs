@@ -26,17 +26,13 @@ pub fn coord_to_linear<const GRID_DIMENSION: usize>(
     coord: &Coord<GRID_DIMENSION>,
     exclusive_bounds: &Coord<GRID_DIMENSION>,
 ) -> usize {
-    // TODO this could be better
-    let mut accumulator = 0;
-    for d in 0..GRID_DIMENSION {
-        debug_assert!(coord[d] >= 0);
-        let mut dim_accumulator = coord[d] as usize;
-        for dn in (d + 1)..GRID_DIMENSION {
-            dim_accumulator *= exclusive_bounds[dn] as usize;
-        }
-        accumulator += dim_accumulator;
+    let mut accumulator = 1;
+    let mut result = 0;
+    for d in (0..GRID_DIMENSION).rev() {
+        result += (coord[d] as usize) * accumulator;
+        accumulator *= exclusive_bounds[d] as usize;
     }
-    accumulator
+    result
 }
 
 pub fn linear_to_coord<const GRID_DIMENSION: usize>(

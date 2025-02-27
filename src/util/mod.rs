@@ -39,8 +39,18 @@ pub fn slopes_to_outward_diff<const GRID_DIMENSION: usize>(
     slopes: &Bounds<GRID_DIMENSION>,
 ) -> Bounds<GRID_DIMENSION> {
     let mut diff_slopes = *slopes;
-    let negative_slioes = -1 * diff_slopes.column(0);
-    diff_slopes.set_column(0, &negative_slioes);
+    let negative_slopes = -1 * diff_slopes.column(0);
+    diff_slopes.set_column(0, &negative_slopes);
+    diff_slopes
+}
+
+#[inline]
+pub fn slopes_to_inward_diff<const GRID_DIMENSION: usize>(
+    slopes: &Bounds<GRID_DIMENSION>,
+) -> Bounds<GRID_DIMENSION> {
+    let mut diff_slopes = *slopes;
+    let negative_slopes = -1 * diff_slopes.column(1);
+    diff_slopes.set_column(1, &negative_slopes);
     diff_slopes
 }
 

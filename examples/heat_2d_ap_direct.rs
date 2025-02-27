@@ -1,6 +1,7 @@
 use nhls::domain::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
+use nhls::init;
 
 fn main() {
     let args = Args::cli_parse("heat_2d_ap_direct");
@@ -14,6 +15,11 @@ fn main() {
     let mut input_domain = OwnedDomain::new(grid_bound);
     let mut output_domain = OwnedDomain::new(grid_bound);
 
+    if args.rand_init {
+        init::rand(&mut input_domain, 1024, args.chunk_size);
+    } else {
+        init::normal_ic_2d(&mut input_domain, args.chunk_size);
+    }
     if args.write_images {
         image2d(&input_domain, &args.frame_name(0));
     }
