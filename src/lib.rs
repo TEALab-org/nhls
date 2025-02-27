@@ -14,7 +14,6 @@ pub mod init;
 pub mod mem_fmt;
 pub mod par_slice;
 pub mod par_stencil;
-pub mod par_stencil_2;
 pub mod solver;
 pub mod standard_stencils;
 pub mod stencil;
