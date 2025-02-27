@@ -64,12 +64,14 @@ impl APScratch {
     /// offset in bytes
     /// len in bytes
     pub fn unsafe_get_buffer<
+        'a,
+        'b,
         T: bytemuck::NoUninit + bytemuck::AnyBitPattern,
     >(
-        &self,
+        &'a self,
         offset: usize,
         len: usize,
-    ) -> &mut [T] {
+    ) -> &'b mut [T] {
         debug_assert!(len > 0);
         let scratch_bytes = unsafe {
             let scratch_ptr_mut = self.scratch_ptr.add(offset) as *mut u8;

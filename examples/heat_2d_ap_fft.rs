@@ -2,6 +2,7 @@ use nhls::domain::*;
 use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
+use nhls::init;
 
 fn main() {
     let args = Args::cli_parse("heat_2d_ap_fft");
@@ -27,15 +28,11 @@ fn main() {
         &planner_params,
     );
     solver.print_report();
-    if args.write_dot {
-        let mut dot_path = args.output_dir.clone();
-        dot_path.push("plan.dot");
-        solver.to_dot_file(&dot_path);
 
-        let mut d_path = args.output_dir.clone();
-        d_path.push("scratch.txt");
-        solver.scratch_descriptor_file(&d_path);
+    if args.write_dot {
+        solver.to_dot_file(&args.dot_path());
     }
+
     if args.gen_only {
         args.save_wisdom();
         std::process::exit(0);

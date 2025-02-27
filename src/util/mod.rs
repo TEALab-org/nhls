@@ -54,6 +54,16 @@ pub fn slopes_to_inward_diff<const GRID_DIMENSION: usize>(
     diff_slopes
 }
 
+pub fn slopes_to_circ_aabb<const GRID_DIMENSION: usize>(
+    slopes: &Bounds<GRID_DIMENSION>,
+) -> AABB<GRID_DIMENSION> {
+    let total_width: Coord<GRID_DIMENSION> =
+        slopes.column(0) + slopes.column(1);
+    let mut domain_bounds: Bounds<GRID_DIMENSION> = Bounds::zero();
+    domain_bounds.set_column(1, &total_width);
+    AABB::new(domain_bounds)
+}
+
 #[cfg(test)]
 mod unit_tests {
     use super::*;

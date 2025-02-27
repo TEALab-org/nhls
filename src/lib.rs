@@ -4,6 +4,7 @@
 // don't like this warning for this codebase.
 #![allow(clippy::needless_range_loop)]
 
+pub mod build_info;
 pub mod domain;
 pub mod fft_solver;
 pub mod image;
@@ -17,5 +18,6 @@ pub mod par_stencil;
 pub mod solver;
 pub mod standard_stencils;
 pub mod stencil;
+pub mod time_varying;
 pub mod util;
 pub mod vtk;

@@ -1,5 +1,5 @@
 use crate::domain::*;
-use crate::stencil::*;
+use crate::time_varying::TVStencil;
 use crate::util::*;
 
 pub fn gather_args<
@@ -7,8 +7,9 @@ pub fn gather_args<
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     DomainType: DomainView<GRID_DIMENSION>,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
-    stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &StencilType,
     bc: &BC,
     input: &DomainType,
     world_coord: &Coord<GRID_DIMENSION>,
@@ -30,6 +31,7 @@ where
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+    use crate::stencil::*;
     use float_cmp::assert_approx_eq;
     use nalgebra::{matrix, vector};
 

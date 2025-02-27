@@ -1,8 +1,10 @@
 mod chunk;
+mod debug_io;
 mod owned;
 mod slice;
 
 pub use chunk::*;
+pub use debug_io::*;
 pub use owned::*;
 pub use slice::*;
 

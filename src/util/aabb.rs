@@ -236,6 +236,17 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
 
         linear_offsets
     }
+
+    pub fn ex_greater_than(&self, other: &Self) -> bool {
+        let exclusive_bounds = self.exclusive_bounds();
+        let o_ex = other.exclusive_bounds();
+        for d in 0..DIMENSION {
+            if exclusive_bounds[d] > o_ex[d] {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 #[cfg(test)]
@@ -539,6 +550,15 @@ mod unit_tests {
             ];
             let linear_offsets = aabb.coord_offset_to_linear(&coord_offsets);
             println!("3D: {:?}", linear_offsets);
+        }
+    }
+
+    fn ex_greater_than_test() {
+        {
+            let a1 = AABB::new(matrix![0, 9]);
+            let a2 = AABB::new(matrix![0, 2]);
+            assert!(a1.ex_greater_than(&a2));
+            assert!(!a2.ex_greater_than(&a1));
         }
     }
 }

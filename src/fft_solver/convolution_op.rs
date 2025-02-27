@@ -3,7 +3,6 @@ use crate::fft_solver::*;
 use crate::par_slice;
 use crate::stencil::*;
 use crate::util::*;
-use fftw::array::*;
 use fftw::plan::*;
 use float_cmp::assert_approx_eq;
 
