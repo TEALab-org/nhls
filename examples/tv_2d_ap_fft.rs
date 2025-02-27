@@ -28,26 +28,21 @@ fn main() {
         image2d(&input_domain, &args.frame_name(0));
     }
 
-    // Create boundary condition
-    let bc = ConstantCheck::new(0.0, grid_bound);
-
+    let solver = AP2DDirectSolver::new(
+        &stencil);
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
     };
-    let mut tp = TVTreePlanner::new(&stencil, grid_bound);
-    tp.build_range(0, args.steps_per_image, 0);
-    tp.to_dot_file(&args.tree_dot_path());
-
     let mut tv_ap_solver = TVAPSolver::new(
-        &bc,
         &stencil,
         grid_bound,
         args.steps_per_image,
         args.threads,
         &planner_params,
+        solver,
     );
     if args.write_dot {
         tv_ap_solver.to_dot_file(&args.dot_path());

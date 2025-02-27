@@ -7,21 +7,13 @@ use std::io::prelude::*;
 
 pub struct TVAPSolver<
     'a,
-    BC: BCCheck<GRID_DIMENSION>,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-> where
-    BC: BCCheck<GRID_DIMENSION>,
-{
+    SolverType: TVDirectSolver<GRID_DIMENSION> + Send + Sync,
+> {
     // TODO TV
-    pub direct_frustrum_solver: TVDirectFrustrumSolver<
-        'a,
-        BC,
-        GRID_DIMENSION,
-        NEIGHBORHOOD_SIZE,
-        StencilType,
-    >,
+    pub direct_frustrum_solver: SolverType,
     pub conv_ops_calc:
         TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>,
     pub remainder_ops_calc:
@@ -34,21 +26,19 @@ pub struct TVAPSolver<
 
 impl<
         'a,
-        BC,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    > TVAPSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
-where
-    BC: BCCheck<GRID_DIMENSION>,
+        SolverType: TVDirectSolver<GRID_DIMENSION> + Send + Sync,
+    > TVAPSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType, SolverType>
 {
     pub fn new(
-        bc: &'a BC,
         stencil: &'a StencilType,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
         threads: usize,
         params: &PlannerParameters,
+        direct_solver: SolverType,
     ) -> Self {
         // Create our plan and convolution_store
         let planner_result =
@@ -59,13 +49,6 @@ where
 
         let (node_scratch_descriptors, scratch_space) =
             APScratchBuilder::build(&plan);
-
-        let direct_frustrum_solver = TVDirectFrustrumSolver {
-            bc,
-            stencil,
-            stencil_slopes,
-            chunk_size: params.chunk_size,
-        };
 
         let conv_ops_calc_builder = TVAPOpCalcBuilder::new(stencil, aabb);
         let conv_ops_calc = conv_ops_calc_builder.build_op_calc(
@@ -89,7 +72,7 @@ where
             .unwrap_or(TVAPConvOpsCalc::blank(stencil));
 
         TVAPSolver {
-            direct_frustrum_solver,
+            direct_frustrum_solver: direct_solver,
             conv_ops_calc,
             remainder_ops_calc,
             plan,

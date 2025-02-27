@@ -25,6 +25,8 @@ impl<
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     >
+
+    TVDirectSolver<GRID_DIMENSION> for 
     TVDirectFrustrumSolver<
         '_,
         BC,
@@ -35,13 +37,14 @@ impl<
 where
     BC: BCCheck<GRID_DIMENSION>,
 {
-    pub fn apply<'b>(
+    fn apply<'b>(
         &self,
         input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         sloped_sides: &Bounds<GRID_DIMENSION>,
         steps: usize,
         mut global_time: usize,
+        _threads: usize,
     ) {
         assert_eq!(input_domain.aabb(), output_domain.aabb());
 

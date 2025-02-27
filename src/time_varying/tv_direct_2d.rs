@@ -10,7 +10,9 @@ pub struct TVDirectFrustrumSolver2D<'a, StencilType: TVStencil<2, 5>> {
     pub stencil_slopes: Bounds<2>,
 }
 
-impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType> {
+impl<'a, StencilType: TVStencil<2, 5>>
+    TVDirectFrustrumSolver2D<'a, StencilType>
+{
     pub fn new(stencil: &'a StencilType) -> Self {
         let stencil_slopes = matrix![1, 1; 1, 1];
         let expected_offsets = [
@@ -145,52 +147,69 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
 
                         // Central (on x axis)
                         for x in start..end {
-                            let index_base = x * *output_exclusive_bounds
+                            let output_index_base = x
+                                * *output_exclusive_bounds.get_unchecked(1)
+                                    as usize;
+                            let input_index_base = x * *input_exclusive_bounds
                                 .get_unchecked(1)
                                 as usize;
 
                             // top
                             {
-                                let linear_index: usize = index_base
-                                    + *output_exclusive_bounds.get_unchecked(1)
-                                        as usize
-                                    - 1;
+                                let output_linear_index: usize =
+                                    output_index_base
+                                        + *output_exclusive_bounds
+                                            .get_unchecked(1)
+                                            as usize
+                                        - 1;
+                                let input_linear_index: usize =
+                                    output_index_base
+                                        + *input_exclusive_bounds
+                                            .get_unchecked(1)
+                                            as usize
+                                        - 1;
                                 *o.buffer_mut()
-                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked_mut(output_linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index + offsets.get_unchecked(0),
+                                        input_linear_index
+                                            + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(4)
-                                        * ib.get_unchecked(linear_index);
+                                        * ib.get_unchecked(input_linear_index);
                             }
 
                             // bottom
                             {
-                                let linear_index: usize = index_base;
+                                let output_linear_index: usize =
+                                    output_index_base;
+                                let input_linear_index: usize =
+                                    input_index_base;
+
                                 *o.buffer_mut()
-                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked_mut(output_linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index + offsets.get_unchecked(0),
+                                        input_linear_index
+                                            + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
-                                        * ib.get_unchecked(linear_index);
+                                        * ib.get_unchecked(input_linear_index);
                             }
 
                             // central
@@ -199,30 +218,35 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
                                 as usize
                                 - 1
                             {
-                                let linear_index: usize = index_base + y;
+                                let output_linear_index: usize =
+                                    output_index_base + y;
+                                let input_linear_index: usize =
+                                    input_index_base + y;
+
                                 *o.buffer_mut()
-                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked_mut(output_linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index + offsets.get_unchecked(0),
+                                        input_linear_index
+                                            + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
-                                        * ib.get_unchecked(linear_index);
+                                        * ib.get_unchecked(input_linear_index);
                             }
                         }
                     });
@@ -259,163 +283,204 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
             rayon::scope(|s| {
                 let mut o = const_output.unsafe_mut_access();
                 {
-                    let linear_index: usize =
+                    let output_linear_index: usize =
                         ((output_exclusive_bounds.get_unchecked(0) - 1)
                             * output_exclusive_bounds.get_unchecked(1))
                             as usize;
+                    let input_linear_index: usize =
+                        ((input_exclusive_bounds.get_unchecked(0) - 1)
+                            * input_exclusive_bounds.get_unchecked(1))
+                            as usize;
 
-                    *o.buffer_mut().get_unchecked_mut(linear_index) = w
+                    *o.buffer_mut().get_unchecked_mut(output_linear_index) = w
                         .get_unchecked(2)
                         * ib.get_unchecked(
-                            linear_index - offsets.get_unchecked(2),
+                            input_linear_index - offsets.get_unchecked(2),
                         )
                         + w.get_unchecked(3)
                             * ib.get_unchecked(
-                                linear_index + offsets.get_unchecked(3),
+                                input_linear_index + offsets.get_unchecked(3),
                             )
-                        + w.get_unchecked(4) * ib.get_unchecked(linear_index);
+                        + w.get_unchecked(4)
+                            * ib.get_unchecked(input_linear_index);
                 }
 
                 // (max, max)
                 {
-                    let linear_index: usize =
+                    let output_linear_index: usize =
                         ((output_exclusive_bounds.get_unchecked(0)
                             * output_exclusive_bounds.get_unchecked(1))
                             - 1) as usize;
+                    let input_linear_index: usize =
+                        ((input_exclusive_bounds.get_unchecked(0)
+                            * input_exclusive_bounds.get_unchecked(1))
+                            - 1) as usize;
 
-                    *o.buffer_mut().get_unchecked_mut(linear_index) = w
+                    *o.buffer_mut().get_unchecked_mut(output_linear_index) = w
                         .get_unchecked(1)
                         * ib.get_unchecked(
-                            linear_index - offsets.get_unchecked(1),
+                            input_linear_index - offsets.get_unchecked(1),
                         )
                         + w.get_unchecked(2)
                             * ib.get_unchecked(
-                                linear_index - offsets.get_unchecked(2),
+                                input_linear_index - offsets.get_unchecked(2),
                             )
-                        + w.get_unchecked(4) * ib.get_unchecked(linear_index);
+                        + w.get_unchecked(4)
+                            * ib.get_unchecked(input_linear_index);
                 }
 
                 // left / right Sides
-                for y in 1..(output_exclusive_bounds.get_unchecked(1) - 1) as usize {
+                for y in
+                    1..(output_exclusive_bounds.get_unchecked(1) - 1) as usize
+                {
                     // right side
                     {
-                        let linear_index: usize =
+                        let output_linear_index: usize =
                             ((output_exclusive_bounds.get_unchecked(0) - 1)
                                 * output_exclusive_bounds.get_unchecked(1)
                                 + y as i32)
                                 as usize;
+                        let input_linear_index: usize =
+                            ((input_exclusive_bounds.get_unchecked(0) - 1)
+                                * input_exclusive_bounds.get_unchecked(1)
+                                + y as i32)
+                                as usize;
 
-                        *o.buffer_mut().get_unchecked_mut(linear_index) = w
+                        *o.buffer_mut()
+                            .get_unchecked_mut(output_linear_index) = w
                             .get_unchecked(1)
                             * ib.get_unchecked(
-                                linear_index - offsets.get_unchecked(1),
+                                input_linear_index - offsets.get_unchecked(1),
                             )
                             + w.get_unchecked(2)
                                 * ib.get_unchecked(
-                                    linear_index
+                                    input_linear_index
                                         - offsets.get_unchecked(2),
                                 )
                             + w.get_unchecked(3)
                                 * ib.get_unchecked(
-                                    linear_index
+                                    input_linear_index
                                         + offsets.get_unchecked(3),
                                 )
                             + w.get_unchecked(4)
-                                * ib.get_unchecked(linear_index);
+                                * ib.get_unchecked(input_linear_index);
                     }
                 }
 
-                let chunk_size = (*output_exclusive_bounds.get_unchecked(0) as usize
-                    - 2)
-                    / (2);
+                let chunk_size =
+                    (*output_exclusive_bounds.get_unchecked(0) as usize - 2)
+                        / (2);
                 let mut start: usize = 0;
-                while start < (output_exclusive_bounds.get_unchecked(0)  -1 ) as usize {
-                    let end = (start + chunk_size)
-                        .min(*output_exclusive_bounds.get_unchecked(0) as usize - 1);
+                while start
+                    < (output_exclusive_bounds.get_unchecked(0) - 1) as usize
+                {
+                    let end = (start + chunk_size).min(
+                        *output_exclusive_bounds.get_unchecked(0) as usize - 1,
+                    );
                     s.spawn(move |_| {
                         let mut o = const_output.unsafe_mut_access();
 
                         // Central (on x axis)
                         for x in start..end {
-                            let index_base =
-                                x * *output_exclusive_bounds.get_unchecked(1) as usize;
+                            let output_index_base = x
+                                * *output_exclusive_bounds.get_unchecked(1)
+                                    as usize;
+                            let input_index_base = x * *input_exclusive_bounds
+                                .get_unchecked(1)
+                                as usize;
 
                             // top
                             {
-                                let linear_index: usize = index_base
-                                    + *output_exclusive_bounds.get_unchecked(1)
+                                let output_linear_index: usize =
+                                    output_index_base
+                                        + *output_exclusive_bounds
+                                            .get_unchecked(1)
+                                            as usize
+                                        - 1;
+                                let input_linear_index: usize = input_index_base
+                                    + *input_exclusive_bounds.get_unchecked(1)
                                         as usize
                                     - 1;
+
                                 *o.buffer_mut()
-                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked_mut(output_linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index
+                                        input_linear_index
                                             + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(4)
-                                        * ib.get_unchecked(linear_index);
+                                        * ib.get_unchecked(input_linear_index);
                             }
 
                             // bottom
                             {
-                                let linear_index: usize = index_base;
+                                let output_linear_index: usize =
+                                    output_index_base;
+                                let input_linear_index: usize =
+                                    input_index_base;
+
                                 *o.buffer_mut()
-                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked_mut(output_linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index
+                                        input_linear_index
                                             + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
-                                        * ib.get_unchecked(linear_index);
+                                        * ib.get_unchecked(input_linear_index);
                             }
 
                             // central
-                            for y in 1..*output_exclusive_bounds.get_unchecked(1)
+                            for y in 1..*output_exclusive_bounds
+                                .get_unchecked(1)
                                 as usize
                                 - 1
                             {
-                                let linear_index: usize = index_base + y;
+                                let output_linear_index: usize =
+                                    output_index_base + y;
+                                let input_linear_index: usize =
+                                    input_index_base + y;
+
                                 *o.buffer_mut()
-                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked_mut(output_linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index
+                                        input_linear_index
                                             + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
-                                        * ib.get_unchecked(linear_index);
+                                        * ib.get_unchecked(input_linear_index);
                             }
                         }
                     });
@@ -450,68 +515,84 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
         let const_output: &SliceDomain<'b, 2> = output_domain;
         unsafe {
             rayon::scope(|s| {
-                let chunk_size = (*output_exclusive_bounds.get_unchecked(0) as usize)
-                    / (2);
+                let chunk_size =
+                    (*output_exclusive_bounds.get_unchecked(0) as usize) / (2);
                 let mut start: usize = 0;
-                while start < (*output_exclusive_bounds.get_unchecked(0)) as usize {
-                    let end = (start + chunk_size)
-                        .min(*output_exclusive_bounds.get_unchecked(0) as usize - 1);
+                while start
+                    < (*output_exclusive_bounds.get_unchecked(0)) as usize
+                {
+                    let end = (start + chunk_size).min(
+                        *output_exclusive_bounds.get_unchecked(0) as usize - 1,
+                    );
                     s.spawn(move |_| {
                         let mut o = const_output.unsafe_mut_access();
 
                         // Central (on x axis)
                         for x in start..end {
-                            let index_base =
-                                x * *output_exclusive_bounds.get_unchecked(1) as usize;
+                            let output_index_base = x
+                                * *output_exclusive_bounds.get_unchecked(1)
+                                    as usize;
+                            let input_index_base = x * *input_exclusive_bounds
+                                .get_unchecked(1)
+                                as usize;
 
                             {
-                                let linear_index: usize = index_base;
+                                let output_linear_index: usize =
+                                    output_index_base;
+                                let input_linear_index: usize =
+                                    input_index_base;
+
                                 *o.buffer_mut()
-                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked_mut(output_linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index
+                                        input_linear_index
                                             + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
-                                        * ib.get_unchecked(linear_index);
+                                        * ib.get_unchecked(input_linear_index);
                             }
 
                             // central
-                            for y in 1..*output_exclusive_bounds.get_unchecked(1)
+                            for y in 1..*output_exclusive_bounds
+                                .get_unchecked(1)
                                 as usize
                                 - 1
                             {
-                                let linear_index: usize = index_base + y;
+                                let output_linear_index: usize =
+                                    output_index_base + y;
+                                let input_linear_index: usize =
+                                    input_index_base + y;
+
                                 *o.buffer_mut()
-                                    .get_unchecked_mut(linear_index) = w
+                                    .get_unchecked_mut(output_linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index
+                                        input_linear_index
                                             + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
-                                            linear_index
+                                            input_linear_index
                                                 + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
-                                        * ib.get_unchecked(linear_index);
+                                        * ib.get_unchecked(input_linear_index);
                             }
                         }
                     });
@@ -545,7 +626,126 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
 
         let const_output: &SliceDomain<'b, 2> = output_domain;
         unsafe {
-            rayon::scope(|s| {});
+            rayon::scope(|s| {
+                let chunk_size =
+                    (*output_exclusive_bounds.get_unchecked(0) as usize) / (2);
+                let mut start: usize = 0;
+                while start
+                    < (*output_exclusive_bounds.get_unchecked(0)) as usize
+                {
+                    let end = (start + chunk_size).min(
+                        *output_exclusive_bounds.get_unchecked(0) as usize - 1,
+                    );
+                    s.spawn(move |_| {
+                        let mut o = const_output.unsafe_mut_access();
+
+                        // Central (on x axis)
+                        for x in start..end {
+                            let output_index_base = x
+                                * *output_exclusive_bounds.get_unchecked(1)
+                                    as usize;
+                            let input_index_base = x * *input_exclusive_bounds
+                                .get_unchecked(1)
+                                as usize;
+
+                            // top
+                            {
+                                let output_linear_index: usize =
+                                    output_index_base
+                                        + *output_exclusive_bounds
+                                            .get_unchecked(1)
+                                            as usize
+                                        - 1;
+                                let input_linear_index: usize = input_index_base
+                                    + *input_exclusive_bounds.get_unchecked(1)
+                                        as usize
+                                    - 1;
+
+                                *o.buffer_mut()
+                                    .get_unchecked_mut(output_linear_index) = w
+                                    .get_unchecked(0)
+                                    * ib.get_unchecked(
+                                        input_linear_index
+                                            + offsets.get_unchecked(0),
+                                    )
+                                    + w.get_unchecked(1)
+                                        * ib.get_unchecked(
+                                            input_linear_index
+                                                - offsets.get_unchecked(1),
+                                        )
+                                    + w.get_unchecked(2)
+                                        * ib.get_unchecked(
+                                            input_linear_index
+                                                - offsets.get_unchecked(2),
+                                        )
+                                    + w.get_unchecked(4)
+                                        * ib.get_unchecked(input_linear_index);
+                            }
+
+                            // bottom
+                            {
+                                let output_linear_index: usize =
+                                    output_index_base;
+                                let input_linear_index: usize =
+                                    input_index_base;
+
+                                *o.buffer_mut()
+                                    .get_unchecked_mut(output_linear_index) = w
+                                    .get_unchecked(0)
+                                    * ib.get_unchecked(
+                                        input_linear_index
+                                            + offsets.get_unchecked(0),
+                                    )
+                                    + w.get_unchecked(3)
+                                        * ib.get_unchecked(
+                                            input_linear_index
+                                                + offsets.get_unchecked(3),
+                                        )
+                                    + w.get_unchecked(4)
+                                        * ib.get_unchecked(input_linear_index);
+                            }
+
+                            // central
+                            for y in 1..*output_exclusive_bounds
+                                .get_unchecked(1)
+                                as usize
+                                - 1
+                            {
+                                let output_linear_index: usize =
+                                    output_index_base + y;
+                                let input_linear_index: usize =
+                                    input_index_base + y;
+
+                                *o.buffer_mut()
+                                    .get_unchecked_mut(output_linear_index) = w
+                                    .get_unchecked(0)
+                                    * ib.get_unchecked(
+                                        input_linear_index
+                                            + offsets.get_unchecked(0),
+                                    )
+                                    + w.get_unchecked(1)
+                                        * ib.get_unchecked(
+                                            input_linear_index
+                                                - offsets.get_unchecked(1),
+                                        )
+                                    + w.get_unchecked(2)
+                                        * ib.get_unchecked(
+                                            input_linear_index
+                                                - offsets.get_unchecked(2),
+                                        )
+                                    + w.get_unchecked(3)
+                                        * ib.get_unchecked(
+                                            input_linear_index
+                                                + offsets.get_unchecked(3),
+                                        )
+                                    + w.get_unchecked(4)
+                                        * ib.get_unchecked(input_linear_index);
+                            }
+                        }
+                    });
+                    start += chunk_size;
+                }
+            });
         }
     }
 
@@ -570,11 +770,7 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
             );
             output_domain.set_aabb(output_box);
 
-            self.apply_x_min_step(
-                input_domain,
-                output_domain,
-                global_time,
-            );
+            self.apply_x_min_step(input_domain, output_domain, global_time);
 
             std::mem::swap(input_domain, output_domain);
         }
@@ -602,11 +798,7 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
             );
             output_domain.set_aabb(output_box);
 
-            self.apply_x_max_step(
-                input_domain,
-                output_domain,
-                global_time,
-            );
+            self.apply_x_max_step(input_domain, output_domain, global_time);
 
             std::mem::swap(input_domain, output_domain);
         }
@@ -634,11 +826,7 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
             );
             output_domain.set_aabb(output_box);
 
-            self.apply_y_min_step(
-                input_domain,
-                output_domain,
-                global_time,
-            );
+            self.apply_y_min_step(input_domain, output_domain, global_time);
 
             std::mem::swap(input_domain, output_domain);
         }
@@ -666,24 +854,24 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
             );
             output_domain.set_aabb(output_box);
 
-            self.apply_y_max_step(
-                input_domain,
-                output_domain,
-                global_time,
-            );
+            self.apply_y_max_step(input_domain, output_domain, global_time);
 
             std::mem::swap(input_domain, output_domain);
         }
         std::mem::swap(input_domain, output_domain);
     }
+}
 
-    pub fn apply<'b>(
+impl<'a, StencilType: TVStencil<2, 5>> TVDirectSolver<2> for
+    TVDirectFrustrumSolver2D<'a, StencilType> {
+
+    fn apply<'b>(
         &self,
         input_domain: &mut SliceDomain<'b, 2>,
         output_domain: &mut SliceDomain<'b, 2>,
         sloped_sides: &Bounds<2>,
         steps: usize,
-        mut global_time: usize,
+        global_time: usize,
     ) {
         assert_eq!(input_domain.aabb(), output_domain.aabb());
 
@@ -729,25 +917,5 @@ impl<'a, StencilType: TVStencil<2, 5>> TVDirectFrustrumSolver2D<'a, StencilType>
                 panic!("Unknown sloped_sides: {:?}", s);
             }
         }
-
-        let mut trapezoid_slopes =
-            self.stencil_slopes.component_mul(sloped_sides);
-        let negative_slopes = -1 * trapezoid_slopes.column(1);
-        trapezoid_slopes.set_column(1, &negative_slopes);
-
-        let mut output_box = *input_domain.aabb();
-        for _ in 0..steps {
-            global_time += 1;
-            output_box = output_box.add_bounds_diff(trapezoid_slopes);
-            debug_assert!(
-                input_domain.aabb().buffer_size() >= output_box.buffer_size()
-            );
-            output_domain.set_aabb(output_box);
-
-            // SOLVE
-
-            std::mem::swap(input_domain, output_domain);
-        }
-        std::mem::swap(input_domain, output_domain);
     }
 }
