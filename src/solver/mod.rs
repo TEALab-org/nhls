@@ -1,7 +1,7 @@
 pub mod direct;
 mod direct_specialized;
-pub mod periodic_direct;
 mod direct_specialized_debug;
+pub mod periodic_direct;
 
 pub use direct::*;
 pub use direct_specialized::*;

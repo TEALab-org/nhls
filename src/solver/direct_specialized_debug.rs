@@ -7,7 +7,6 @@ pub struct AP2DDirectSolverDebug<'a> {
     stencil: &'a Stencil<2, 5>,
     aabb: AABB<2>,
     steps: usize,
-    threads: usize,
     offsets: [i32; 5],
 }
 
@@ -16,7 +15,7 @@ impl<'a> AP2DDirectSolverDebug<'a> {
         stencil: &'a Stencil<2, 5>,
         aabb: AABB<2>,
         steps: usize,
-        threads: usize,
+        _threads: usize,
     ) -> Self {
         let expected_offsets = [
             vector![1, 0],
@@ -33,7 +32,6 @@ impl<'a> AP2DDirectSolverDebug<'a> {
             stencil,
             aabb,
             steps,
-            threads,
             offsets,
         }
     }
@@ -215,5 +213,3 @@ impl<'a> AP2DDirectSolverDebug<'a> {
         }
     }
 }
-
-

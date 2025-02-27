@@ -553,6 +553,7 @@ mod unit_tests {
         }
     }
 
+    #[test]
     fn ex_greater_than_test() {
         {
             let a1 = AABB::new(matrix![0, 9]);

@@ -50,10 +50,10 @@ fn main() {
     );
 
     // Apply direct solver
-    let mut global_time = 0;
+    //let mut global_time = 0;
     for t in 1..args.images {
         solver.apply(&mut input_domain, &mut output_domain);
-        global_time += args.steps_per_image;
+        //global_time += args.steps_per_image;
         std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {
             image2d(&input_domain, &args.frame_name(t));

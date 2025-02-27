@@ -1,9 +1,6 @@
 use crate::domain::*;
-use crate::par_stencil;
 use crate::stencil::*;
 use crate::util::*;
-use rayon::prelude::*;
-use std::collections::HashSet;
 
 pub struct AP2DDirectSolver<'a> {
     stencil: &'a Stencil<2, 5>,
