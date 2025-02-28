@@ -33,9 +33,11 @@ where
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
         params: &PlannerParameters,
+        threads: usize,
     ) -> Self {
         // Create our plan and convolution_store
-        let planner_result = create_ap_plan(stencil, aabb, steps, params);
+        let planner_result =
+            create_ap_plan(stencil, aabb, steps, threads, params);
         let plan = planner_result.plan;
         let convolution_store = planner_result.convolution_store;
         let stencil_slopes = planner_result.stencil_slopes;

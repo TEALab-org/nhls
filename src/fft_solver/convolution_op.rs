@@ -30,6 +30,7 @@ impl ConvolutionOperation {
         steps: usize,
         plan_type: PlanType,
         chunk_size: usize,
+        threads: usize,
     ) -> Self {
         {
             let b: &[f64] = real_buffer;
@@ -37,6 +38,7 @@ impl ConvolutionOperation {
                 assert_approx_eq!(f64, *v, 0.0, epsilon = 0.0000000000001);
             }
         }
+        fftw::threading::plan_with_nthreads_f64(threads);
         let size = aabb.exclusive_bounds();
         let plan_size = size.try_cast::<usize>().unwrap();
         let forward_plan = fftw::plan::R2CPlan64::aligned(

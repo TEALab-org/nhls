@@ -30,6 +30,7 @@ fn main() {
         grid_bound,
         args.steps_per_line,
         &planner_params,
+        args.threads,
     );
     solver.print_report();
 

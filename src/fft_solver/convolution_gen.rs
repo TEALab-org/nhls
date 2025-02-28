@@ -55,6 +55,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         &mut self,
         bounds: &AABB<GRID_DIMENSION>,
         steps: usize,
+        threads: usize,
     ) -> OpId {
         let key = ConvolutionDescriptor {
             exclusive_bounds: bounds.exclusive_bounds(),
@@ -70,6 +71,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
                 steps,
                 self.plan_type,
                 self.chunk_size,
+                threads,
             ));
             result
         })

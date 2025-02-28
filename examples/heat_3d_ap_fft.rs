@@ -27,6 +27,7 @@ fn main() {
         grid_bound,
         args.steps_per_image,
         &planner_params,
+        args.threads,
     );
     solver.print_report();
     if args.write_dot {

@@ -21,6 +21,7 @@ impl PeriodicSolver {
         steps: usize,
         plan_type: PlanType,
         chunk_size: usize,
+        threads: usize,
     ) -> Self {
         let mut complex_buffer = AlignedVec::new(aabb.complex_buffer_size());
         let operation = ConvolutionOperation::create(
@@ -31,6 +32,7 @@ impl PeriodicSolver {
             steps,
             plan_type,
             chunk_size,
+            threads,
         );
 
         PeriodicSolver {
@@ -71,6 +73,7 @@ mod unit_tests {
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
     ) {
+        let threads = 1;
         let chunk_size = 3;
         let plan_type = PlanType::Estimate;
         assert_approx_eq!(f64, stencil.apply(&Values::from_element(1.0)), 1.0);
@@ -87,6 +90,7 @@ mod unit_tests {
             steps,
             plan_type,
             chunk_size,
+            threads,
         );
         solver.apply(&mut input_domain, &mut output_domain);
         for x in output_domain.buffer() {
@@ -188,6 +192,7 @@ mod unit_tests {
             n,
             plan_type,
             chunk_size,
+            1,
         );
         solver.apply(&mut input_domain, &mut output_domain);
         for i in 0..10 {

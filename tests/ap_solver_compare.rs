@@ -7,6 +7,7 @@ use nhls::util::*;
 
 #[test]
 fn heat_1d_ap_compare() {
+    let threads = 8;
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
 
@@ -39,8 +40,14 @@ fn heat_1d_ap_compare() {
         ratio: 0.5,
         chunk_size,
     };
-    let fft_solver =
-        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params);
+    let fft_solver = APSolver::new(
+        &bc,
+        &stencil,
+        grid_bound,
+        n_steps,
+        &planner_params,
+        threads,
+    );
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
@@ -98,7 +105,7 @@ fn heat_2d_ap_compare() {
         chunk_size,
     };
     let fft_solver =
-        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params);
+        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params, 8);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(

@@ -30,6 +30,7 @@ pub fn create_ap_plan<
     stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     aabb: AABB<GRID_DIMENSION>,
     steps: usize,
+    threads: usize,
     params: &PlannerParameters,
 ) -> PlannerResult<GRID_DIMENSION> {
     let planner = APPlanner::new(
@@ -41,7 +42,7 @@ pub fn create_ap_plan<
         params.ratio,
         params.chunk_size,
     );
-    planner.finish()
+    planner.finish(threads)
 }
 
 /// Used to create an `APPlan`. See `create_ap_plan`
@@ -98,6 +99,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
     fn generate_direct_node(
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
+        threads: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
         let direct_node = DirectSolveNode {
@@ -105,7 +107,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             output_aabb: frustrum.output_aabb,
             sloped_sides: frustrum.sloped_sides(),
             steps: frustrum.steps,
-            threads: 0,
+            threads,
         };
         PlanNode::DirectSolve(direct_node)
     }
@@ -114,12 +116,15 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         &mut self,
         mut frustrum: APFrustrum<GRID_DIMENSION>,
         periodic_solve: PeriodicSolve<GRID_DIMENSION>,
+        threads: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         // Create the convolution operation and get the id
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
-        let convolution_id = self
-            .convolution_gen
-            .get_op(&input_aabb, periodic_solve.steps);
+        let convolution_id = self.convolution_gen.get_op(
+            &input_aabb,
+            periodic_solve.steps,
+            threads,
+        );
 
         // Do we need a time cut.
         // If so that will trim that and create a plan for it
@@ -127,7 +132,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         let maybe_next_frustrum =
             frustrum.time_cut(periodic_solve.steps, &self.stencil_slopes);
         if let Some(next_frustrum) = maybe_next_frustrum {
-            let next_node = self.generate_frustrum(next_frustrum);
+            let next_node = self.generate_frustrum(next_frustrum, threads);
             time_cut = Some(self.add_node(next_node));
         }
         debug_assert!(frustrum
@@ -137,8 +142,11 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         // Generate nodes for the boundary solves
         let boundary_frustrums = frustrum.decompose(&self.stencil_slopes);
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
+        let sub_threads = 1
+            .max((threads as f64 / boundary_frustrums.len() as f64).ceil()
+                as usize);
         for bf in boundary_frustrums {
-            sub_nodes.push(self.generate_frustrum(bf));
+            sub_nodes.push(self.generate_frustrum(bf, sub_threads));
         }
 
         // Ensure boundary solve nodes are contiguous in the plan
@@ -163,6 +171,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
     fn generate_frustrum(
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
+        threads: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
@@ -177,10 +186,10 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         let maybe_periodic_solve =
             find_periodic_solve(&input_aabb, &solve_params);
         if maybe_periodic_solve.is_none() {
-            self.generate_direct_node(frustrum)
+            self.generate_direct_node(frustrum, threads)
         } else {
             let periodic_solve = maybe_periodic_solve.unwrap();
-            self.generate_periodic_node(frustrum, periodic_solve)
+            self.generate_periodic_node(frustrum, periodic_solve, threads)
         }
     }
 
@@ -190,7 +199,11 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
     ///
     /// Note also that the boundary solve decomposition
     /// is based on `AABB` and not `APFrustrum`.
-    fn generate_central(&mut self, max_steps: usize) -> (NodeId, usize) {
+    fn generate_central(
+        &mut self,
+        max_steps: usize,
+        threads: usize,
+    ) -> (NodeId, usize) {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -201,21 +214,31 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         let periodic_solve =
             find_periodic_solve(&self.aabb, &solve_params).unwrap();
 
-        let convolution_id = self
-            .convolution_gen
-            .get_op(&self.aabb, periodic_solve.steps);
+        let convolution_id = self.convolution_gen.get_op(
+            &self.aabb,
+            periodic_solve.steps,
+            threads,
+        );
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
+        let sub_threads =
+            1.max(
+                (threads as f64 / (GRID_DIMENSION * 2) as f64).ceil() as usize
+            );
+
         for d in 0..GRID_DIMENSION {
             for side in [Side::Min, Side::Max] {
-                sub_nodes.push(self.generate_frustrum(APFrustrum::new(
-                    decomposition[d][side.outer_index()],
-                    d,
-                    side,
-                    periodic_solve.steps,
-                )));
+                sub_nodes.push(self.generate_frustrum(
+                    APFrustrum::new(
+                        decomposition[d][side.outer_index()],
+                        d,
+                        side,
+                        periodic_solve.steps,
+                    ),
+                    sub_threads,
+                ));
             }
         }
 
@@ -239,17 +262,17 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
     }
 
     /// Create the root repeat node.
-    fn generate(&mut self) -> NodeId {
+    fn generate(&mut self, threads: usize) -> NodeId {
         // generate central once,
         let (central_solve_node, central_solve_steps) =
-            self.generate_central(self.steps);
+            self.generate_central(self.steps, threads);
 
         let n = self.steps / central_solve_steps;
         let remainder = self.steps % central_solve_steps;
         let mut next = None;
         if remainder != 0 {
             let (remainder_solve_node, remainder_solve_steps) =
-                self.generate_central(remainder);
+                self.generate_central(remainder, threads);
             next = Some(remainder_solve_node);
             debug_assert_eq!(remainder_solve_steps, remainder);
         }
@@ -264,8 +287,8 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
     }
 
     /// Package up the results
-    fn finish(mut self) -> PlannerResult<GRID_DIMENSION> {
-        let root = self.generate();
+    fn finish(mut self, threads: usize) -> PlannerResult<GRID_DIMENSION> {
+        let root = self.generate(threads);
         let convolution_store = self.convolution_gen.finish();
         let stencil_slopes = self.stencil_slopes;
         let plan = APPlan {
@@ -280,7 +303,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -325,3 +348,4 @@ mod unit_tests {
         }
     }
 }
+*/

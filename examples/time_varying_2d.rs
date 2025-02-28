@@ -79,6 +79,7 @@ fn main() {
         grid_bound,
         args.steps_per_image,
         &planner_params,
+        args.threads,
     );
 
     if args.write_dot {

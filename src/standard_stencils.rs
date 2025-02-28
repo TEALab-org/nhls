@@ -4,10 +4,10 @@ use crate::util::*;
 use core::f64;
 
 pub fn heat_1d(dt: f64, dx: f64, k: f64) -> Stencil<1, 3> {
-    Stencil::new([[-1], [0], [1]], move |args: &[f64; 3]| {
-        let left = args[0];
-        let middle = args[1];
-        let right = args[2];
+    Stencil::new([[1], [-1], [0]], move |args: &[f64; 3]| {
+        let left = args[1];
+        let middle = args[2];
+        let right = args[0];
         middle + (k * dt / (dx * dx)) * (left - 2.0 * middle + right)
     })
 }
