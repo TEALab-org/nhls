@@ -1,22 +1,13 @@
 use crate::domain::*;
-use crate::stencil::*;
+use crate::time_varying::*;
 use crate::util::*;
 
-pub struct AP2DDirectSolver<'a> {
-    stencil: &'a Stencil<2, 5>,
-    aabb: AABB<2>,
-    steps: usize,
-    threads: usize,
-    offsets: [usize; 5],
+pub struct AP2DDirectSolver<'a, StencilType: TVStencil<2, 5>> {
+    stencil: &'a StencilType,
 }
 
-impl<'a> AP2DDirectSolver<'a> {
-    pub fn new(
-        stencil: &'a Stencil<2, 5>,
-        aabb: AABB<2>,
-        steps: usize,
-        threads: usize,
-    ) -> Self {
+impl<'a, StencilType: TVStencil<2, 5>> AP2DDirectSolver<'a, StencilType> {
+    pub fn new(stencil: &'a StencilType) -> Self {
         let expected_offsets = [
             vector![1, 0],  // 0
             vector![0, -1], // 1
@@ -24,45 +15,20 @@ impl<'a> AP2DDirectSolver<'a> {
             vector![0, 1],  // 3
             vector![0, 0],  // 4
         ];
-        debug_assert_eq!(&expected_offsets, stencil.offsets());
-        let offsets_i32 = aabb.coord_offset_to_linear(stencil.offsets());
-        let offsets = [
-            offsets_i32[0].unsigned_abs() as usize,
-            offsets_i32[1].unsigned_abs() as usize,
-            offsets_i32[2].unsigned_abs() as usize,
-            offsets_i32[3].unsigned_abs() as usize,
-            offsets_i32[4].unsigned_abs() as usize,
-        ];
-        println!("offsets: {:?}", offsets);
-
-        AP2DDirectSolver {
-            stencil,
-            aabb,
-            steps,
-            threads,
-            offsets,
-        }
+        assert_eq!(&expected_offsets, stencil.offsets());
+        AP2DDirectSolver { stencil }
     }
 
-    pub fn apply<DomainType: DomainView<2> + Send>(
+    fn apply_step<DomainType: DomainView<2> + Send>(
         &self,
         input: &mut DomainType,
         output: &mut DomainType,
+        threads: usize,
+        global_time: usize,
+        offsets: [usize; 5],
+        exclusive_bounds: Coord<2>,
     ) {
-        debug_assert_eq!(input.aabb(), output.aabb());
-        for _ in 0..self.steps - 1 {
-            //global_time += 1;
-            self.apply_step(input, output);
-            std::mem::swap(input, output);
-        }
-    }
-    pub fn apply_step<DomainType: DomainView<2> + Send>(
-        &self,
-        input: &mut DomainType,
-        output: &mut DomainType,
-    ) {
-        let w = self.stencil.weights();
-        let exclusive_bounds = self.aabb.exclusive_bounds();
+        let w = self.stencil.weights(global_time);
         let ib = input.buffer();
         let const_output: &DomainType = output;
         unsafe {
@@ -76,12 +42,11 @@ impl<'a> AP2DDirectSolver<'a> {
                         *o.buffer_mut().get_unchecked_mut(linear_index) = w
                             .get_unchecked(0)
                             * ib.get_unchecked(
-                                linear_index + self.offsets.get_unchecked(0),
+                                linear_index + offsets.get_unchecked(0),
                             )
                             + w.get_unchecked(3)
                                 * ib.get_unchecked(
-                                    linear_index
-                                        + self.offsets.get_unchecked(3),
+                                    linear_index + offsets.get_unchecked(3),
                                 )
                             + w.get_unchecked(4)
                                 * ib.get_unchecked(linear_index);
@@ -97,12 +62,11 @@ impl<'a> AP2DDirectSolver<'a> {
                         *o.buffer_mut().get_unchecked_mut(linear_index) = w
                             .get_unchecked(2)
                             * ib.get_unchecked(
-                                linear_index - self.offsets.get_unchecked(2),
+                                linear_index - offsets.get_unchecked(2),
                             )
                             + w.get_unchecked(3)
                                 * ib.get_unchecked(
-                                    linear_index
-                                        + self.offsets.get_unchecked(3),
+                                    linear_index + offsets.get_unchecked(3),
                                 )
                             + w.get_unchecked(4)
                                 * ib.get_unchecked(linear_index);
@@ -116,12 +80,11 @@ impl<'a> AP2DDirectSolver<'a> {
                         *o.buffer_mut().get_unchecked_mut(linear_index) = w
                             .get_unchecked(0)
                             * ib.get_unchecked(
-                                linear_index + self.offsets.get_unchecked(0),
+                                linear_index + offsets.get_unchecked(0),
                             )
                             + w.get_unchecked(1)
                                 * ib.get_unchecked(
-                                    linear_index
-                                        - self.offsets.get_unchecked(1),
+                                    linear_index - offsets.get_unchecked(1),
                                 )
                             + w.get_unchecked(4)
                                 * ib.get_unchecked(linear_index);
@@ -137,12 +100,11 @@ impl<'a> AP2DDirectSolver<'a> {
                         *o.buffer_mut().get_unchecked_mut(linear_index) = w
                             .get_unchecked(1)
                             * ib.get_unchecked(
-                                linear_index - self.offsets.get_unchecked(1),
+                                linear_index - offsets.get_unchecked(1),
                             )
                             + w.get_unchecked(2)
                                 * ib.get_unchecked(
-                                    linear_index
-                                        - self.offsets.get_unchecked(2),
+                                    linear_index - offsets.get_unchecked(2),
                                 )
                             + w.get_unchecked(4)
                                 * ib.get_unchecked(linear_index);
@@ -158,18 +120,15 @@ impl<'a> AP2DDirectSolver<'a> {
                             *o.buffer_mut().get_unchecked_mut(linear_index) = w
                                 .get_unchecked(0)
                                 * ib.get_unchecked(
-                                    linear_index
-                                        + self.offsets.get_unchecked(0),
+                                    linear_index + offsets.get_unchecked(0),
                                 )
                                 + w.get_unchecked(1)
                                     * ib.get_unchecked(
-                                        linear_index
-                                            - self.offsets.get_unchecked(1),
+                                        linear_index - offsets.get_unchecked(1),
                                     )
                                 + w.get_unchecked(3)
                                     * ib.get_unchecked(
-                                        linear_index
-                                            + self.offsets.get_unchecked(3),
+                                        linear_index + offsets.get_unchecked(3),
                                     )
                                 + w.get_unchecked(4)
                                     * ib.get_unchecked(linear_index);
@@ -186,18 +145,15 @@ impl<'a> AP2DDirectSolver<'a> {
                             *o.buffer_mut().get_unchecked_mut(linear_index) = w
                                 .get_unchecked(1)
                                 * ib.get_unchecked(
-                                    linear_index
-                                        - self.offsets.get_unchecked(1),
+                                    linear_index - offsets.get_unchecked(1),
                                 )
                                 + w.get_unchecked(2)
                                     * ib.get_unchecked(
-                                        linear_index
-                                            - self.offsets.get_unchecked(2),
+                                        linear_index - offsets.get_unchecked(2),
                                     )
                                 + w.get_unchecked(3)
                                     * ib.get_unchecked(
-                                        linear_index
-                                            + self.offsets.get_unchecked(3),
+                                        linear_index + offsets.get_unchecked(3),
                                     )
                                 + w.get_unchecked(4)
                                     * ib.get_unchecked(linear_index);
@@ -207,7 +163,7 @@ impl<'a> AP2DDirectSolver<'a> {
 
                 let chunk_size = (*exclusive_bounds.get_unchecked(0) as usize
                     - 2)
-                    / (self.threads * 2);
+                    / (threads * 2);
                 let mut start: usize = 1;
                 while start < (exclusive_bounds.get_unchecked(0) - 1) as usize {
                     let end = (start + chunk_size)
@@ -230,18 +186,17 @@ impl<'a> AP2DDirectSolver<'a> {
                                     .get_unchecked_mut(linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index
-                                            + self.offsets.get_unchecked(0),
+                                        linear_index + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
                                             linear_index
-                                                - self.offsets.get_unchecked(1),
+                                                - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
                                             linear_index
-                                                - self.offsets.get_unchecked(2),
+                                                - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(4)
                                         * ib.get_unchecked(linear_index);
@@ -254,13 +209,12 @@ impl<'a> AP2DDirectSolver<'a> {
                                     .get_unchecked_mut(linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index
-                                            + self.offsets.get_unchecked(0),
+                                        linear_index + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
                                             linear_index
-                                                + self.offsets.get_unchecked(3),
+                                                + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
                                         * ib.get_unchecked(linear_index);
@@ -276,23 +230,22 @@ impl<'a> AP2DDirectSolver<'a> {
                                     .get_unchecked_mut(linear_index) = w
                                     .get_unchecked(0)
                                     * ib.get_unchecked(
-                                        linear_index
-                                            + self.offsets.get_unchecked(0),
+                                        linear_index + offsets.get_unchecked(0),
                                     )
                                     + w.get_unchecked(1)
                                         * ib.get_unchecked(
                                             linear_index
-                                                - self.offsets.get_unchecked(1),
+                                                - offsets.get_unchecked(1),
                                         )
                                     + w.get_unchecked(2)
                                         * ib.get_unchecked(
                                             linear_index
-                                                - self.offsets.get_unchecked(2),
+                                                - offsets.get_unchecked(2),
                                         )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
                                             linear_index
-                                                + self.offsets.get_unchecked(3),
+                                                + offsets.get_unchecked(3),
                                         )
                                     + w.get_unchecked(4)
                                         * ib.get_unchecked(linear_index);
@@ -302,6 +255,46 @@ impl<'a> AP2DDirectSolver<'a> {
                     start += chunk_size;
                 }
             });
+        }
+    }
+}
+
+impl<'a, StencilType: TVStencil<2, 5>> TVDirectSolver<2>
+    for AP2DDirectSolver<'a, StencilType>
+{
+    fn apply<'b>(
+        &self,
+        input: &mut SliceDomain<'b, 2>,
+        output: &mut SliceDomain<'b, 2>,
+        _sloped_sides: &Bounds<2>,
+        steps: usize,
+        mut global_time: usize,
+        threads: usize,
+    ) {
+        debug_assert_eq!(input.aabb(), output.aabb());
+
+        let offsets_i32 =
+            input.aabb().coord_offset_to_linear(self.stencil.offsets());
+        let offsets = [
+            offsets_i32[0].unsigned_abs() as usize,
+            offsets_i32[1].unsigned_abs() as usize,
+            offsets_i32[2].unsigned_abs() as usize,
+            offsets_i32[3].unsigned_abs() as usize,
+            offsets_i32[4].unsigned_abs() as usize,
+        ];
+
+        let exclusive_bounds = input.aabb().exclusive_bounds();
+        for _ in 0..steps - 1 {
+            self.apply_step(
+                input,
+                output,
+                threads,
+                global_time,
+                offsets,
+                exclusive_bounds,
+            );
+            global_time += 1;
+            std::mem::swap(input, output);
         }
     }
 }

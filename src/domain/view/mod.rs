@@ -61,6 +61,17 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
         );
     }
 
+    fn par_set_from<DomainType: DomainView<GRID_DIMENSION>>(
+        &mut self,
+        other: &DomainType,
+        aabb: &AABB<GRID_DIMENSION>,
+        //threads: usize,
+    ) {
+        for coord in aabb.coord_iter() {
+            self.set_coord(&coord, other.view(&coord));
+        }
+    }
+
     /// Copy other domain into self
     fn par_set_subdomain<DomainType: DomainView<GRID_DIMENSION>>(
         &mut self,

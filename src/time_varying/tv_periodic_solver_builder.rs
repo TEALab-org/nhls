@@ -158,7 +158,6 @@ impl<
 
         if end_time - start_time == 1 {
             let node = IRIntermediateNode::Base1(IRBase1Node { t: start_time });
-
             return self.add_node(node, layer);
         }
 

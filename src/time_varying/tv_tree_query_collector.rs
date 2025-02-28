@@ -4,15 +4,27 @@ use std::io::prelude::*;
 
 pub type TVOpId = usize;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TVOpDescriptor<const GRID_DIMENSION: usize> {
     pub step_min: usize,
     pub step_max: usize,
     pub exclusive_bounds: Coord<GRID_DIMENSION>,
+    pub threads: usize,
+}
+
+impl<const GRID_DIMENSION: usize> TVOpDescriptor<GRID_DIMENSION> {
+    pub fn blank() -> Self {
+        TVOpDescriptor {
+            step_min: 0,
+            step_max: 0,
+            exclusive_bounds: Coord::zeros(),
+            threads: 0,
+        }
+    }
 }
 
 pub struct TVTreeQueryCollector<const GRID_DIMENSION: usize> {
-    descriptor_map: HashMap<TVOpDescriptor<GRID_DIMENSION>, TVOpId>,
+    pub descriptor_map: HashMap<TVOpDescriptor<GRID_DIMENSION>, TVOpId>,
     next_id: usize,
 }
 
@@ -36,6 +48,16 @@ impl<const GRID_DIMENSION: usize> TVTreeQueryCollector<GRID_DIMENSION> {
             self.descriptor_map.insert(descriptor, id);
             id
         }
+    }
+
+    pub fn finish(self) -> Vec<TVOpDescriptor<GRID_DIMENSION>> {
+        let mut result =
+            vec![TVOpDescriptor::blank(); self.descriptor_map.len()];
+        // Collect
+        for (descriptor, id) in self.descriptor_map {
+            result[id] = descriptor;
+        }
+        result
     }
 
     pub fn write_query_file<P: AsRef<std::path::Path>>(&self, path: &P) {

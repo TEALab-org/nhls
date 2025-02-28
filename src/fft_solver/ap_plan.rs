@@ -39,6 +39,7 @@ pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
     pub output_aabb: AABB<GRID_DIMENSION>,
     pub sloped_sides: Bounds<GRID_DIMENSION>,
     pub steps: usize,
+    pub threads: usize,
 }
 
 /// Used for central periodic solve, can't appear in frustrums.

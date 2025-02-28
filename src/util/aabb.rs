@@ -35,6 +35,12 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         result
     }
 
+    pub fn from_exclusive_bounds(bounds: &Coord<DIMENSION>) -> Self {
+        let aabb_bounds: Bounds<DIMENSION> =
+            Bounds::from_columns(&[Coord::zero(), bounds.add_scalar(-1)]);
+        AABB::new(aabb_bounds)
+    }
+
     /// Moving min to the origin, returns the exclusie size in each direction
     /// i.e. [0, 9]  would have exclusive size of 10.
     pub fn exclusive_bounds(&self) -> Coord<DIMENSION> {

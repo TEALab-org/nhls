@@ -1,67 +1,92 @@
 use crate::domain::*;
 use crate::fft_solver::*;
 use crate::mem_fmt::*;
-use crate::stencil::*;
+use crate::time_varying::*;
 use crate::util::*;
 use std::io::prelude::*;
 
-pub struct APSolver<
+pub struct TVAPSolver<
     'a,
-    BC: BCCheck<GRID_DIMENSION>,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
-> where
-    BC: BCCheck<GRID_DIMENSION>,
-{
-    pub direct_frustrum_solver:
-        DirectFrustrumSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    pub convolution_store: ConvolutionStore,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    SolverType: TVDirectSolver<GRID_DIMENSION> + Send + Sync,
+> {
+    // TODO TV
+    pub direct_frustrum_solver: SolverType,
+    pub conv_ops_calc:
+        TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>,
+    pub remainder_ops_calc:
+        TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>,
     pub plan: APPlan<GRID_DIMENSION>,
-    pub node_scratch_descriptors: Vec<ScratchDescriptor>,
+    pub node_scratch_descriptors: Vec<TVScratchDescriptor>,
     pub scratch_space: APScratch,
     pub chunk_size: usize,
+    pub central_global_time: usize,
 }
 
-impl<'a, BC, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    APSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
-where
-    BC: BCCheck<GRID_DIMENSION>,
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+        StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        SolverType: TVDirectSolver<GRID_DIMENSION> + Send + Sync,
+    >
+    TVAPSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType, SolverType>
 {
     pub fn new(
-        bc: &'a BC,
-        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        stencil: &'a StencilType,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
+        threads: usize,
         params: &PlannerParameters,
+        direct_solver: SolverType,
     ) -> Self {
         // Create our plan and convolution_store
-        let planner_result = create_ap_plan(stencil, aabb, steps, params);
+        let planner_result =
+            create_tv_ap_plan(stencil, aabb, steps, threads, params);
         let plan = planner_result.plan;
-        let convolution_store = planner_result.convolution_store;
-        let stencil_slopes = planner_result.stencil_slopes;
+
+        //let stencil_slopes = planner_result.stencil_slopes;
 
         let (node_scratch_descriptors, scratch_space) =
-            APScratchBuilder::build(&plan);
+            TVAPScratchBuilder::build(&plan);
 
-        let direct_frustrum_solver = DirectFrustrumSolver {
-            bc,
-            stencil,
-            stencil_slopes,
-            chunk_size: params.chunk_size,
-        };
+        let conv_ops_calc_builder = TVAPOpCalcBuilder::new(stencil, aabb);
+        let conv_ops_calc = conv_ops_calc_builder.build_op_calc(
+            steps,
+            threads,
+            params.plan_type,
+            &planner_result.op_descriptors,
+        );
+        let remainder_ops_calc = planner_result
+            .remainder_op_descriptors
+            .map(|op_descriptors| {
+                let conv_ops_calc_builder =
+                    TVAPOpCalcBuilder::new(stencil, aabb);
+                conv_ops_calc_builder.build_op_calc(
+                    steps,
+                    threads,
+                    params.plan_type,
+                    &op_descriptors,
+                )
+            })
+            .unwrap_or(TVAPConvOpsCalc::blank(stencil));
 
-        APSolver {
-            direct_frustrum_solver,
-            convolution_store,
+        TVAPSolver {
+            direct_frustrum_solver: direct_solver,
+            conv_ops_calc,
+            remainder_ops_calc,
             plan,
             node_scratch_descriptors,
             scratch_space,
             chunk_size: params.chunk_size,
+            central_global_time: 0,
         }
     }
 
     pub fn print_report(&self) {
-        println!("AP Solver Report:");
+        println!("TV AP Solver Report:");
         println!("  - plan size: {}", self.plan.len());
         println!(
             "  - scratch size: {}",
@@ -70,11 +95,13 @@ where
     }
 
     pub fn apply(
-        &self,
+        &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        println!("Solver: Apply");
+        self.central_global_time = global_time;
         self.solve_root(input_domain, output_domain, global_time);
     }
 
@@ -112,16 +139,24 @@ where
         (input_domain, output_domain)
     }
 
-    fn get_complex(&self, node_id: usize) -> &mut [c64] {
+    fn get_domain_complex(&self, node_id: usize) -> &mut [c64] {
         let scratch_descriptor = &self.node_scratch_descriptors[node_id];
         self.scratch_space.unsafe_get_buffer(
-            scratch_descriptor.complex_offset,
+            scratch_descriptor.domain_complex_offset,
+            scratch_descriptor.complex_buffer_size,
+        )
+    }
+
+    fn get_op_complex(&self, node_id: usize) -> &mut [c64] {
+        let scratch_descriptor = &self.node_scratch_descriptors[node_id];
+        self.scratch_space.unsafe_get_buffer(
+            scratch_descriptor.op_complex_offset,
             scratch_descriptor.complex_buffer_size,
         )
     }
 
     pub fn solve_root(
-        &self,
+        &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         mut global_time: usize,
@@ -132,23 +167,29 @@ where
         let repeat_steps = repeat_periodic_solve.steps;
 
         for _ in 0..repeat_solve.n {
+            println!("Solver: solve central");
+            self.conv_ops_calc.build_ops(global_time);
             self.periodic_solve_preallocated_io(
                 repeat_solve.node,
                 false,
                 input_domain,
                 output_domain,
                 global_time,
+                &self.conv_ops_calc,
             );
             global_time += repeat_steps;
             std::mem::swap(input_domain, output_domain);
         }
         if let Some(next) = repeat_solve.next {
+            println!("Solver: solve remainder");
+            self.remainder_ops_calc.build_ops(global_time);
             self.periodic_solve_preallocated_io(
                 next,
                 false,
                 input_domain,
                 output_domain,
                 global_time,
+                &self.remainder_ops_calc,
             )
         } else {
             std::mem::swap(input_domain, output_domain);
@@ -161,6 +202,12 @@ where
         input: &SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
         global_time: usize,
+        conv_ops: &TVAPConvOpsCalc<
+            'a,
+            GRID_DIMENSION,
+            NEIGHBORHOOD_SIZE,
+            StencilType,
+        >,
     ) {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
@@ -177,6 +224,7 @@ where
                     input,
                     output,
                     global_time,
+                    conv_ops,
                 );
             }
             PlanNode::Repeat(_) => {
@@ -194,6 +242,12 @@ where
         input: &mut SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
         global_time: usize,
+        conv_ops: &TVAPConvOpsCalc<
+            'a,
+            GRID_DIMENSION,
+            NEIGHBORHOOD_SIZE,
+            StencilType,
+        >,
     ) {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
@@ -211,6 +265,7 @@ where
                     input,
                     output,
                     global_time,
+                    conv_ops,
                 );
             }
             PlanNode::Repeat(_) => {
@@ -229,6 +284,12 @@ where
         input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         mut global_time: usize,
+        ops_calc: &TVAPConvOpsCalc<
+            'a,
+            GRID_DIMENSION,
+            NEIGHBORHOOD_SIZE,
+            StencilType,
+        >,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         std::mem::swap(input_domain, output_domain);
@@ -237,16 +298,15 @@ where
         output_domain.set_aabb(periodic_solve.input_aabb);
 
         // Apply convolution
-        {
-            let convolution_op =
-                self.convolution_store.get(periodic_solve.convolution_id);
-            convolution_op.apply(
-                input_domain,
-                output_domain,
-                self.get_complex(node_id),
-                self.chunk_size,
-            );
-        }
+        ops_calc.apply_convolution(
+            periodic_solve.convolution_id,
+            input_domain,
+            output_domain,
+            self.get_domain_complex(node_id),
+            self.get_op_complex(node_id),
+            self.chunk_size,
+            self.central_global_time,
+        );
 
         // Boundary
         // In a rayon scope, we fork for each of the boundary solves,
@@ -269,6 +329,7 @@ where
                             input_domain_const,
                             &mut node_output,
                             global_time,
+                            ops_calc,
                         );
                     });
                 }
@@ -291,6 +352,7 @@ where
                 input_domain,
                 output_domain,
                 global_time,
+                ops_calc,
             );
         }
     }
@@ -301,6 +363,12 @@ where
         input: &SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
         global_time: usize,
+        conv_ops: &TVAPConvOpsCalc<
+            'a,
+            GRID_DIMENSION,
+            NEIGHBORHOOD_SIZE,
+            StencilType,
+        >,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
@@ -316,6 +384,7 @@ where
             &mut input_domain,
             &mut output_domain,
             global_time,
+            conv_ops,
         );
 
         // copy output to output
@@ -346,7 +415,7 @@ where
         //debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
 
         // copy output to output
-        output.par_set_subdomain(&output_domain, self.chunk_size);
+        output.par_set_from(&output_domain, &direct_solve.output_aabb);
     }
 
     pub fn direct_solve_preallocated_io<'b>(
@@ -379,13 +448,15 @@ where
             &direct_solve.sloped_sides,
             direct_solve.steps,
             global_time,
+            direct_solve.threads,
         );
-
+        /*
         debug_assert_eq!(
             direct_solve.output_aabb,
             *output_domain.aabb(),
             "ERROR: n_id: {}, Unexpected solve output",
             node_id
         );
+        */
     }
 }

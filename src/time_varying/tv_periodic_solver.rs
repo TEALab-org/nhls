@@ -150,18 +150,18 @@ pub fn solve_convolve_node<
     let fft_pair = fft_store.get(node.plan_id);
     fft_pair
         .forward_plan
-        .r2c(node.s1.domain.buffer_mut(), &mut node.c1)
+        .r2c(node.s1.domain.buffer_mut(), node.c1)
         .unwrap();
     fft_pair
         .forward_plan
-        .r2c(node.s2.domain.buffer_mut(), &mut node.c2)
+        .r2c(node.s2.domain.buffer_mut(), node.c2)
         .unwrap();
 
     // Multiply in freq, return result to s1
-    par_slice::multiply_by(&mut node.c1, &node.c2, chunk_size);
+    par_slice::multiply_by(node.c1, node.c2, chunk_size);
     fft_pair
         .backward_plan
-        .c2r(&mut node.c1, node.s1.domain.buffer_mut())
+        .c2r(node.c1, node.s1.domain.buffer_mut())
         .unwrap();
     let n_r = node.s1.domain.aabb().buffer_size();
     par_slice::div(node.s1.domain.buffer_mut(), n_r as f64, chunk_size);
