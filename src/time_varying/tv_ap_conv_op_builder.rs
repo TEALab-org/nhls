@@ -331,12 +331,18 @@ impl<
         self.build_range(0, steps, 0, &mut offset);
         let node_count: usize = self.nodes.iter().map(|ns| ns.len()).sum();
         println!(
-            "Solve builder mem req: {}, nodes: {}",
+            "Solve builder pre mem req: {}, nodes: {}",
             human_readable_bytes(offset),
             node_count
         );
 
         self.add_op_nodes(tree_queries, &mut offset);
+
+        println!(
+            "Solve builder after op nodes mem req: {}, nodes: {}",
+            human_readable_bytes(offset),
+            node_count
+        );
 
         // TODO make sure we add nodes for missing op stencils
         let scratch = APScratch::new(offset);
