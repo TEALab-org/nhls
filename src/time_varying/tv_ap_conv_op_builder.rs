@@ -242,7 +242,7 @@ impl<
         //println!("  - stack : {:?}", stack);
 
         for i in 0..stack.len() - 1 {
-            assert!(stack[i].0 < stack[i + 1].0);
+            assert!(stack[i].1.0 < stack[i + 1].1.0);
         }
         assert!(stack.len() >= 2);
 
@@ -263,6 +263,15 @@ impl<
             if stencil_aabb.ex_greater_than(&self.aabb) {
                 panic!("Should never have full stencil whil adding op nodes");
             } else {
+                if new_node_id.0.min(result_node_id.0) == 0 {
+                    println!("ERROR");
+                    println!("[{}, {})", op.step_min, op.step_max);
+                    println!("{:?}", stack);
+                    for s in &stack {
+                        print!("{} ", s.1.0);
+                    }
+                    println!("");
+                }
                 let next_layer = new_node_id.0.min(result_node_id.0) - 1;
                 let mut n1_key = result_node_id;
                 let mut n2_key = new_node_id;

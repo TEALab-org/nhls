@@ -1,6 +1,7 @@
 use crate::fft_solver::*;
 use crate::time_varying::*;
 use crate::util::*;
+use crate::mem_fmt::*;
 
 /// Note all nodes will need all of these
 /// but we will set any values that are needed.
@@ -53,6 +54,7 @@ impl<'a, const GRID_DIMENSION: usize> TVAPScratchBuilder<'a, GRID_DIMENSION> {
             node_block_requirements,
         };
         builder.handle_repeat(plan.root, 0, &mut scratch_descriptors);
+        println!("TV AP Solver mem req: {}", human_readable_bytes(builder.blocks_to_bytes(builder.node_block_requirements[plan.root])));
         let scratch_space = APScratch::new(
             builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
         );
