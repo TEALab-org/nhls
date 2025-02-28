@@ -338,6 +338,7 @@ impl<
 
         self.add_op_nodes(tree_queries, &mut offset);
 
+        let node_count: usize = self.nodes.iter().map(|ns| ns.len()).sum();
         println!(
             "Solve builder after op nodes mem req: {}, nodes: {}",
             human_readable_bytes(offset),
