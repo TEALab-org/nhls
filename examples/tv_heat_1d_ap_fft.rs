@@ -4,6 +4,7 @@ use nhls::domain::*;
 use nhls::fft_solver::*;
 use nhls::image_1d_example::*;
 use nhls::init::*;
+use nhls::solver::*;
 use nhls::time_varying::*;
 use nhls::util::*;
 use std::time::*;
@@ -48,15 +49,7 @@ fn main() {
     let mut output_domain = buffer_2.as_slice_domain();
     rand(&mut input_domain, 10, args.chunk_size);
 
-    // Create BC
-    let bc = ConstantCheck::new(1.0, grid_bound);
-
-    let direct_solver = TVDirectFrustrumSolver {
-        bc: &bc,
-        stencil: &stencil,
-        stencil_slopes: stencil.slopes(),
-        chunk_size: args.chunk_size,
-    };
+    let direct_solver = AP1DDirectSolver::new(&stencil);
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
