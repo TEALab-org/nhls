@@ -5,13 +5,6 @@ use crate::time_varying::*;
 use crate::util::*;
 use std::collections::HashMap;
 
-struct OpOffsets {
-    real_domain_offset: usize,
-    real_domain_size: usize,
-    op_buffer_offset: usize,
-    op_buffer_size: usize,
-}
-
 pub struct TVIRBase1Node {
     pub t: usize,
 }
@@ -201,44 +194,12 @@ impl<
         }
     }
 
-    fn build_op_offsets(
-        &self,
-        tree_queries: &[TVOpDescriptor<GRID_DIMENSION>],
-        offset: &mut usize,
-    ) -> Vec<OpOffsets> {
-        // Add complex buffers for solver
-        let mut op_offsets = Vec::with_capacity(tree_queries.len());
-        for op in tree_queries.iter() {
-            let query_aabb = AABB::from_exclusive_bounds(&op.exclusive_bounds);
-            // real domain,
-            let real_domain_offset = *offset;
-            let real_domain_size =
-                Self::real_domain_size(query_aabb.buffer_size());
-            *offset += real_domain_size;
-
-            // op_buffer,
-            let op_buffer_offset = *offset;
-            let op_buffer_size =
-                Self::complex_buffer_size(query_aabb.complex_buffer_size());
-            *offset += op_buffer_size;
-            let op_offset = OpOffsets {
-                real_domain_offset,
-                real_domain_size,
-                op_buffer_offset,
-                op_buffer_size,
-            };
-
-            op_offsets.push(op_offset);
-        }
-        op_offsets
-    }
-
     fn add_nodes_for_op(
         &mut self,
         op: &TVOpDescriptor<GRID_DIMENSION>,
         offset: &mut usize,
     ) {
-        println!("Add nodes for op, [{}, {})", op.step_min, op.step_max);
+        //println!("Add nodes for op, [{}, {})", op.step_min, op.step_max);
         let key = (op.step_min, op.step_max);
 
         if self.node_map.contains_key(&key) {
@@ -249,7 +210,7 @@ impl<
         let mut stack: Vec<((usize, usize), (usize, usize))> = Vec::new();
         let mut start = op.step_min;
         //let mut i = 0;
-        'outer: while start < op.step_max {
+        while start < op.step_max {
             //println!("  ** start: {}, {}", start, op.step_max);
             let mut end = op.step_max;
             'inner: while end > start {
@@ -297,7 +258,7 @@ impl<
             let combined_slopes =
                 (end_time - start_time) as i32 * self.stencil_slopes;
             let stencil_aabb = slopes_to_circ_aabb(&combined_slopes);
-            let mid = (start_time + end_time) / 2;
+            //let mid = (start_time + end_time) / 2;
             // For full nodes we don't need to add anything, first layer is "summed"
             if stencil_aabb.ex_greater_than(&self.aabb) {
                 panic!("Should never have full stencil whil adding op nodes");
@@ -368,17 +329,16 @@ impl<
         // Calculate scratch space, build IR nodes
         let mut offset = 0;
         self.build_range(0, steps, 0, &mut offset);
+        let node_count: usize = self.nodes.iter().map(|ns| ns.len()).sum();
         println!(
-            "Solve builder pre op nodes mem req: {}",
-            human_readable_bytes(offset)
+            "Solve builder mem req: {}, nodes: {}",
+            human_readable_bytes(offset),
+            node_count
         );
 
         self.add_op_nodes(tree_queries, &mut offset);
 
         // TODO make sure we add nodes for missing op stencils
-
-        let op_offsets = self.build_op_offsets(tree_queries, &mut offset);
-        println!("Solve builder mem req: {}", human_readable_bytes(offset));
         let scratch = APScratch::new(offset);
         /*
         println!("NODE MAP");
@@ -487,37 +447,14 @@ impl<
         // Build ConvOp intsances
         // TODO we need the node lookip
         let mut conv_ops = Vec::with_capacity(tree_queries.len());
-        for (op_descriptor, op_offset) in
-            tree_queries.iter().zip(op_offsets.iter())
-        {
-            let query_aabb =
-                AABB::from_exclusive_bounds(&op_descriptor.exclusive_bounds);
-            let n_c = query_aabb.complex_buffer_size();
-
+        for op_descriptor in tree_queries.iter() {
             // Generate fft op, create ConvOp
             let fft_pair_id = fft_gen
                 .get_op(op_descriptor.exclusive_bounds, op_descriptor.threads);
 
-            let real_domain = scratch.unsafe_get_buffer(
-                op_offset.real_domain_offset,
-                op_offset.real_domain_size,
-            );
-
-            let op_buffer = &mut scratch.unsafe_get_buffer(
-                op_offset.op_buffer_offset,
-                op_offset.op_buffer_size,
-            )[0..n_c];
-
             let node_key = (op_descriptor.step_min, op_descriptor.step_max);
-            println!("node_key: {:?}", node_key);
+            //println!("node_key: {:?}", node_key);
             let op = ConvOp {
-                real_domain: SliceDomain::new(
-                    AABB::from_exclusive_bounds(
-                        &op_descriptor.exclusive_bounds,
-                    ),
-                    real_domain,
-                ),
-                op_buffer,
                 fft_pair_id,
                 node: *self.node_map.get(&node_key).unwrap(),
             };

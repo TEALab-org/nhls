@@ -52,101 +52,9 @@ impl<'a, const GRID_DIMENSION: usize> TVIntermediateNode<'a, GRID_DIMENSION> {
     }
 }
 
-pub struct ConvOp<'a, const GRID_DIMENSION: usize> {
-    pub real_domain: SliceDomain<'a, GRID_DIMENSION>,
-    pub op_buffer: &'a mut [c64],
+pub struct ConvOp {
     pub fft_pair_id: FFTPairId,
     pub node: (usize, usize),
-}
-
-pub fn build_op<
-    'solver_life,
-    const GRID_DIMENSION: usize,
-    const NEIGHBORHOOD_SIZE: usize,
-    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
->(
-    op: &mut ConvOp<'solver_life, GRID_DIMENSION>,
-    stencil: &StencilType,
-    intermediate_nodes: &[Vec<
-        TVIntermediateNode<'solver_life, GRID_DIMENSION>,
-    >],
-    fft_store: &FFTStore,
-    global_time: usize,
-) {
-    let ir_node = &intermediate_nodes[op.node.0][op.node.1];
-
-    // Add weights
-    match ir_node {
-        TVIntermediateNode::Base1(n) => {
-            // Add stencil offsets to output
-            let weights = stencil.weights(global_time + n.t);
-            for i in 0..NEIGHBORHOOD_SIZE {
-                let offset = stencil.offsets()[i];
-                let weight = weights[i];
-                let rn_i: Coord<GRID_DIMENSION> = offset * -1;
-                let periodic_coord =
-                    op.real_domain.aabb().periodic_coord(&rn_i);
-                op.real_domain.set_coord(&periodic_coord, weight);
-            }
-        }
-        TVIntermediateNode::Base2(n) => {
-            // Add stencil offsets to output
-            for (offset, weight) in n.s1.to_offset_weights() {
-                let rn_i: Coord<GRID_DIMENSION> = offset * -1;
-                let periodic_coord =
-                    op.real_domain.aabb().periodic_coord(&rn_i);
-                op.real_domain.set_coord(&periodic_coord, weight);
-            }
-        }
-        TVIntermediateNode::Convolve(n) => {
-            // Add stencil offsets to output
-            for (offset, weight) in n.s1.to_offset_weights() {
-                let rn_i: Coord<GRID_DIMENSION> = offset * -1;
-                let periodic_coord =
-                    op.real_domain.aabb().periodic_coord(&rn_i);
-                op.real_domain.set_coord(&periodic_coord, weight);
-            }
-        }
-    }
-
-    // fft stuff
-    fft_store
-        .get(op.fft_pair_id)
-        .forward_plan
-        .r2c(op.real_domain.buffer_mut(), op.op_buffer)
-        .unwrap();
-
-    // Cleanup
-    match ir_node {
-        TVIntermediateNode::Base1(_) => {
-            // Add stencil offsets to output
-            for i in 0..NEIGHBORHOOD_SIZE {
-                let offset = stencil.offsets()[i];
-                let rn_i: Coord<GRID_DIMENSION> = offset * -1;
-                let periodic_coord =
-                    op.real_domain.aabb().periodic_coord(&rn_i);
-                op.real_domain.set_coord(&periodic_coord, 0.0);
-            }
-        }
-        TVIntermediateNode::Base2(n) => {
-            // Add stencil offsets to output
-            for (offset, _weight) in n.s1.to_offset_weights() {
-                let rn_i: Coord<GRID_DIMENSION> = offset * -1;
-                let periodic_coord =
-                    op.real_domain.aabb().periodic_coord(&rn_i);
-                op.real_domain.set_coord(&periodic_coord, 0.0);
-            }
-        }
-        TVIntermediateNode::Convolve(n) => {
-            // Add stencil offsets to output
-            for (offset, _weight) in n.s1.to_offset_weights() {
-                let rn_i: Coord<GRID_DIMENSION> = offset * -1;
-                let periodic_coord =
-                    op.real_domain.aabb().periodic_coord(&rn_i);
-                op.real_domain.set_coord(&periodic_coord, 0.0);
-            }
-        }
-    }
 }
 
 pub fn solve_tvbase2_node<
@@ -361,7 +269,7 @@ pub struct TVAPConvOpsCalc<
     pub stencil: &'a StencilType,
     pub aabb: AABB<GRID_DIMENSION>,
     pub intermediate_nodes: Vec<Vec<TVIntermediateNode<'a, GRID_DIMENSION>>>,
-    pub conv_ops: Vec<ConvOp<'a, GRID_DIMENSION>>,
+    pub conv_ops: Vec<ConvOp>,
     pub threads: usize,
     pub fft_pairs: FFTStore,
     pub scratch: APScratch,
@@ -414,18 +322,6 @@ impl<
                 &self.fft_pairs,
             );
         }
-
-        // Build ops
-        println!("Solver: Build Ops");
-        self.conv_ops.par_iter_mut().for_each(|conv_op| {
-            build_op(
-                conv_op,
-                self.stencil,
-                &self.intermediate_nodes,
-                &self.fft_pairs,
-                global_time,
-            );
-        });
     }
 
     /// And input / output / complex buffers
@@ -434,25 +330,77 @@ impl<
         id: usize,
         input: &mut DomainType,
         output: &mut DomainType,
-        complex_buffer: &mut [c64],
+        domain_complex_buffer: &mut [c64],
+        op_complex_buffer: &mut [c64],
         chunk_size: usize,
+        central_global_time: usize,
     ) {
         let op = &self.conv_ops[id];
-        let fft_pair = self.fft_pairs.get(op.fft_pair_id);
+        let ir_node = &self.intermediate_nodes[op.node.0][op.node.1];
+        par_slice::set_value(output.buffer_mut(), 0.0, chunk_size);
         let n_r = input.aabb().buffer_size();
         let n_c = input.aabb().complex_buffer_size();
+        let mut s_d = output.unsafe_mut_access();
+        s_d.set_aabb(AABB::from_exclusive_bounds(
+            &output.aabb().exclusive_bounds(),
+        ));
+
+        // Add weights
+        match ir_node {
+            TVIntermediateNode::Base1(n) => {
+                // Add stencil offsets to output
+                let weights = self.stencil.weights(central_global_time + n.t);
+                for i in 0..NEIGHBORHOOD_SIZE {
+                    let offset = self.stencil.offsets()[i];
+                    let weight = weights[i];
+                    let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                    let periodic_coord = s_d.aabb().periodic_coord(&rn_i);
+                    s_d.set_coord(&periodic_coord, weight);
+                }
+            }
+            TVIntermediateNode::Base2(n) => {
+                // Add stencil offsets to output
+                for (offset, weight) in n.s1.to_offset_weights() {
+                    let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                    let periodic_coord = s_d.aabb().periodic_coord(&rn_i);
+                    s_d.set_coord(&periodic_coord, weight);
+                }
+            }
+            TVIntermediateNode::Convolve(n) => {
+                // Add stencil offsets to output
+                for (offset, weight) in n.s1.to_offset_weights() {
+                    let rn_i: Coord<GRID_DIMENSION> = offset * -1;
+                    let periodic_coord = s_d.aabb().periodic_coord(&rn_i);
+                    s_d.set_coord(&periodic_coord, weight);
+                }
+            }
+        }
+
+        // fft stuff
+        self.fft_pairs
+            .get(op.fft_pair_id)
+            .forward_plan
+            .r2c(s_d.buffer_mut(), &mut op_complex_buffer[0..n_c])
+            .unwrap();
+
+        let fft_pair = self.fft_pairs.get(op.fft_pair_id);
         fft_pair
             .forward_plan
-            .r2c(input.buffer_mut(), &mut complex_buffer[0..n_c])
+            .r2c(input.buffer_mut(), &mut domain_complex_buffer[0..n_c])
             .unwrap();
+
+        // We now need to build the op here
+        // We can use output buffer for stencil circulent
+        // we can use extra complex buffer for that
+
         par_slice::multiply_by(
-            &mut complex_buffer[0..n_c],
-            op.op_buffer,
+            &mut domain_complex_buffer[0..n_c],
+            &op_complex_buffer[0..n_c],
             chunk_size,
         );
         fft_pair
             .backward_plan
-            .c2r(&mut complex_buffer[0..n_c], output.buffer_mut())
+            .c2r(&mut domain_complex_buffer[0..n_c], output.buffer_mut())
             .unwrap();
         par_slice::div(output.buffer_mut(), n_r as f64, chunk_size);
     }

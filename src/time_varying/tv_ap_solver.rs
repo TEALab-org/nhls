@@ -19,9 +19,10 @@ pub struct TVAPSolver<
     pub remainder_ops_calc:
         TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>,
     pub plan: APPlan<GRID_DIMENSION>,
-    pub node_scratch_descriptors: Vec<ScratchDescriptor>,
+    pub node_scratch_descriptors: Vec<TVScratchDescriptor>,
     pub scratch_space: APScratch,
     pub chunk_size: usize,
+    pub central_global_time: usize,
 }
 
 impl<
@@ -46,10 +47,10 @@ impl<
             create_tv_ap_plan(stencil, aabb, steps, threads, params);
         let plan = planner_result.plan;
 
-        let stencil_slopes = planner_result.stencil_slopes;
+        //let stencil_slopes = planner_result.stencil_slopes;
 
         let (node_scratch_descriptors, scratch_space) =
-            APScratchBuilder::build(&plan);
+            TVAPScratchBuilder::build(&plan);
 
         let conv_ops_calc_builder = TVAPOpCalcBuilder::new(stencil, aabb);
         let conv_ops_calc = conv_ops_calc_builder.build_op_calc(
@@ -80,6 +81,7 @@ impl<
             node_scratch_descriptors,
             scratch_space,
             chunk_size: params.chunk_size,
+            central_global_time: 0,
         }
     }
 
@@ -99,6 +101,7 @@ impl<
         global_time: usize,
     ) {
         println!("Solver: Apply");
+        self.central_global_time = global_time;
         self.solve_root(input_domain, output_domain, global_time);
     }
 
@@ -136,10 +139,18 @@ impl<
         (input_domain, output_domain)
     }
 
-    fn get_complex(&self, node_id: usize) -> &mut [c64] {
+    fn get_domain_complex(&self, node_id: usize) -> &mut [c64] {
         let scratch_descriptor = &self.node_scratch_descriptors[node_id];
         self.scratch_space.unsafe_get_buffer(
-            scratch_descriptor.complex_offset,
+            scratch_descriptor.domain_complex_offset,
+            scratch_descriptor.complex_buffer_size,
+        )
+    }
+
+    fn get_op_complex(&self, node_id: usize) -> &mut [c64] {
+        let scratch_descriptor = &self.node_scratch_descriptors[node_id];
+        self.scratch_space.unsafe_get_buffer(
+            scratch_descriptor.op_complex_offset,
             scratch_descriptor.complex_buffer_size,
         )
     }
@@ -291,8 +302,10 @@ impl<
             periodic_solve.convolution_id,
             input_domain,
             output_domain,
-            self.get_complex(node_id),
+            self.get_domain_complex(node_id),
+            self.get_op_complex(node_id),
             self.chunk_size,
+            self.central_global_time,
         );
 
         // Boundary
