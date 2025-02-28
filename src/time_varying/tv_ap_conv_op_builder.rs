@@ -241,9 +241,6 @@ impl<
         }
         //println!("  - stack : {:?}", stack);
 
-        for i in 0..stack.len() - 1 {
-            assert!(stack[i].1.0 < stack[i + 1].1.0);
-        }
         assert!(stack.len() >= 2);
 
         let (mut result_node_range, mut result_node_id) = stack.last().unwrap();
@@ -263,15 +260,7 @@ impl<
             if stencil_aabb.ex_greater_than(&self.aabb) {
                 panic!("Should never have full stencil whil adding op nodes");
             } else {
-                if new_node_id.0.min(result_node_id.0) == 0 {
-                    println!("ERROR");
-                    println!("[{}, {})", op.step_min, op.step_max);
-                    println!("{:?}", stack);
-                    for s in &stack {
-                        print!("{} ", s.1.0);
-                    }
-                    println!("");
-                }
+                assert!(new_node_id.0.min(result_node_id.0) >= 1);
                 let next_layer = new_node_id.0.min(result_node_id.0) - 1;
                 let mut n1_key = result_node_id;
                 let mut n2_key = new_node_id;
@@ -337,7 +326,7 @@ impl<
     {
         // Calculate scratch space, build IR nodes
         let mut offset = 0;
-        self.build_range(0, steps, 0, &mut offset);
+        self.build_range(0, steps, 10, &mut offset);
         let node_count: usize = self.nodes.iter().map(|ns| ns.len()).sum();
         println!(
             "Solve builder pre mem req: {}, nodes: {}",
