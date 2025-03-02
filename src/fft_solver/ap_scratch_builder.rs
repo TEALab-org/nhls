@@ -34,6 +34,27 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
         (scratch_descriptors, scratch_space)
     }
 
+    pub fn build_double(
+        plan: &'a APPlan<GRID_DIMENSION>,
+    ) -> (Vec<ScratchDescriptor>, APScratch, APScratch) {
+        let node_block_requirements = APAccountBuilder::node_requirements(plan);
+        let mut scratch_descriptors =
+            vec![ScratchDescriptor::default(); plan.len()];
+
+        let builder = APScratchBuilder {
+            plan,
+            node_block_requirements,
+        };
+        builder.handle_repeat(plan.root, 0, &mut scratch_descriptors);
+        let scratch_space_1 = APScratch::new(
+            builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
+        );
+        let scratch_space_2 = APScratch::new(
+            builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
+        );
+        (scratch_descriptors, scratch_space_1, scratch_space_2)
+    }
+
     fn blocks_to_bytes(&self, blocks: usize) -> usize {
         blocks * MIN_ALIGNMENT
     }

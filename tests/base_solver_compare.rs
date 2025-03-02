@@ -37,6 +37,7 @@ fn heat_1d_p_compare() {
         n_steps,
         plan_type,
         chunk_size,
+        8,
     );
     periodic_solver.apply(&mut fft_input_domain, &mut fft_output_domain);
 
@@ -88,6 +89,7 @@ fn heat_2d_p_compare() {
         n_steps,
         plan_type,
         chunk_size,
+        8,
     );
     periodic_solver.apply(&mut fft_input_domain, &mut fft_output_domain);
 
@@ -152,6 +154,7 @@ fn periodic_compare() {
             steps,
             plan_type,
             chunk_size,
+            8,
         );
         periodic_solver.apply(&mut domain_b_input, &mut domain_b_output);
 

@@ -33,6 +33,7 @@ fn main() {
         args.steps_per_line,
         args.plan_type,
         args.chunk_size,
+        args.threads,
     );
     for t in 1..args.lines as u32 {
         periodic_solver.apply(&mut input_domain, &mut output_domain);

@@ -16,6 +16,7 @@ pub mod mem_fmt;
 pub mod par_slice;
 pub mod par_stencil;
 pub mod solver;
+pub mod space_hack;
 pub mod standard_stencils;
 pub mod stencil;
 pub mod time_varying;
