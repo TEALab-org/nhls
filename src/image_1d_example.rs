@@ -72,7 +72,7 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn cli_parse(name: &str) -> (Self, PathBuf) {
+    pub fn cli_setup(name: &str) -> (Self, PathBuf) {
         let args = Args::parse();
 
         if args.build_info {
@@ -102,6 +102,15 @@ impl Args {
             }
         }
 
+        #[cfg(feature = "profile-with-puffin")]
+        let server_addr = format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
+        let _puffin_server =
+            puffin_http::Server::new(&server_addr).unwrap();
+        println!(
+            "Run this to view profiling data:  puffin_viewer {server_addr}"
+        );
+        profiling::puffin::set_scopes_on(true);
+
         (args, output_image_path)
     }
 
@@ -115,7 +124,8 @@ impl Args {
         dot_path
     }
 
-    pub fn save_wisdom(&self) {
+    pub fn finish(&self) {
+        profiling::finish_frame!();
         if let Some(ref wisdom_path) = self.wisdom_file {
             println!("Saving wisdom: {:?}", wisdom_path);
             fftw::wisdom::export_wisdom_file_f64(&wisdom_path).unwrap();
