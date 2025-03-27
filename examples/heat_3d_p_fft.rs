@@ -5,7 +5,7 @@ use nhls::init;
 use nhls::vtk::*;
 
 fn main() {
-    let args = Args::cli_parse("heat_3d_p_fft");
+    let args = Args::cli_setup("heat_3d_p_fft");
 
     let stencil =
         nhls::standard_stencils::heat_3d(1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.1);
@@ -42,5 +42,5 @@ fn main() {
         }
     }
 
-    args.save_wisdom();
+    args.finish();
 }

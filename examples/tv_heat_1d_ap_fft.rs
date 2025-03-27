@@ -35,7 +35,7 @@ impl TVStencil<1, 3> for TVHeat1D {
 }
 
 fn main() {
-    let (args, output_image_path) = Args::cli_parse("tv_heat_1d_ap_fft");
+    let (args, output_image_path) = Args::cli_setup("tv_heat_1d_ap_fft");
 
     // Grid size
     let grid_bound = args.grid_bounds();
@@ -65,7 +65,7 @@ fn main() {
         direct_solver,
     );
     if args.gen_only {
-        args.save_wisdom();
+        args.finish();
         std::process::exit(0);
     }
 
@@ -97,5 +97,5 @@ fn main() {
         i.write(&output_image_path);
     }
 
-    args.save_wisdom();
+    args.finish();
 }

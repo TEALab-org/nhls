@@ -11,7 +11,7 @@ use nhls::util::*;
 use std::time::*;
 
 fn main() {
-    let args = Args::cli_parse("sv_heat_2d_fft");
+    let args = Args::cli_setup("sv_heat_2d_fft");
 
     // Grid size
     let mut grid_bound = args.grid_bounds();
@@ -50,7 +50,7 @@ fn main() {
     );
 
     if args.gen_only {
-        args.save_wisdom();
+        args.finish();
         std::process::exit(0);
     }
 
@@ -81,5 +81,5 @@ fn main() {
         }
     }
 
-    args.save_wisdom();
+    args.finish();
 }

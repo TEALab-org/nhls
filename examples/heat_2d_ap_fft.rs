@@ -5,7 +5,7 @@ use nhls::image_2d_example::*;
 use nhls::init;
 
 fn main() {
-    let args = Args::cli_parse("heat_2d_ap_fft");
+    let args = Args::cli_setup("heat_2d_ap_fft");
 
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
     let grid_bound = args.grid_bounds();
@@ -35,7 +35,7 @@ fn main() {
     }
 
     if args.gen_only {
-        args.save_wisdom();
+        args.finish();
         std::process::exit(0);
     }
 
@@ -65,5 +65,5 @@ fn main() {
         }
     }
 
-    args.save_wisdom();
+    args.finish();
 }
