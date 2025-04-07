@@ -500,7 +500,7 @@ dependencies = [
 [[package]]
 name = "fftw"
 version = "0.8.0"
-source = "git+https://github.com/sallysoul/fftw3-rs.git?tag=fftw3-v0.8.4#0556d8f6102976010462f3b7d0da649b986c2ca9"
+source = "git+https://github.com/sallysoul/fftw3-rs.git?tag=fftw3-v0.8.5#8b457efd5a004581b4cd50812ad92ddeb8e1555d"
 dependencies = [
  "bitflags 2.6.0",
  "fftw-sys",
@@ -508,6 +508,7 @@ dependencies = [
  "ndarray",
  "num-complex",
  "num-traits",
+ "profiling",
  "rayon",
  "sync-ptr",
  "thiserror",
@@ -516,7 +517,7 @@ dependencies = [
 [[package]]
 name = "fftw-src"
 version = "0.8.0"
-source = "git+https://github.com/sallysoul/fftw3-rs.git?tag=fftw3-v0.8.4#0556d8f6102976010462f3b7d0da649b986c2ca9"
+source = "git+https://github.com/sallysoul/fftw3-rs.git?tag=fftw3-v0.8.5#8b457efd5a004581b4cd50812ad92ddeb8e1555d"
 dependencies = [
  "anyhow",
  "cc",
@@ -528,7 +529,7 @@ dependencies = [
 [[package]]
 name = "fftw-sys"
 version = "0.8.0"
-source = "git+https://github.com/sallysoul/fftw3-rs.git?tag=fftw3-v0.8.4#0556d8f6102976010462f3b7d0da649b986c2ca9"
+source = "git+https://github.com/sallysoul/fftw3-rs.git?tag=fftw3-v0.8.5#8b457efd5a004581b4cd50812ad92ddeb8e1555d"
 dependencies = [
  "fftw-src",
  "libc",
@@ -956,6 +957,7 @@ dependencies = [
  "fftw",
  "float-cmp",
  "image",
+ "lazy_static 1.5.0",
  "nalgebra",
  "num 0.4.3",
  "num-traits",

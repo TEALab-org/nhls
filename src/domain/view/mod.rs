@@ -54,6 +54,7 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
     ) {
         self.par_modify_access(chunk_size).for_each(
             |mut d: DomainChunk<'_, GRID_DIMENSION>| {
+                profiling::scope!("domain::par_set_values Thread Callback");
                 d.coord_iter_mut().for_each(|(world_coord, value_mut)| {
                     *value_mut = f(world_coord);
                 })
@@ -67,6 +68,8 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
         aabb: &AABB<GRID_DIMENSION>,
         //threads: usize,
     ) {
+       profiling::scope!("domain::par_set_from (SINGLE THREADED)");
+
         for coord in aabb.coord_iter() {
             self.set_coord(&coord, other.view(&coord));
         }
@@ -83,6 +86,7 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
             .par_chunks(chunk_size)
             .enumerate()
             .for_each(move |(i, buffer_chunk): (usize, &[f64])| {
+                profiling::scope!("domain::par_set_subdomain Thread Callback");
                 let self_ptr = const_self_ref as *const Self;
                 let mut_self_ref: &mut Self =
                     unsafe { &mut *(self_ptr as *mut Self) as &mut Self };

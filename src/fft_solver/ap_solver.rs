@@ -35,6 +35,8 @@ where
         params: &PlannerParameters,
         threads: usize,
     ) -> Self {
+        profiling::scope!("ap_solver::new");
+
         // Create our plan and convolution_store
         let planner_result =
             create_ap_plan(stencil, aabb, steps, threads, params);
@@ -77,6 +79,7 @@ where
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        profiling::scope!("ap_solver::apply");
         self.solve_root(input_domain, output_domain, global_time);
     }
 
@@ -232,6 +235,7 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         mut global_time: usize,
     ) {
+        profiling::scope!("ap_solver::periodic_solve_preallocated_io");
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(periodic_solve.input_aabb);
@@ -358,6 +362,7 @@ where
         output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        profiling::scope!("ap_solver::direct_solve_preallocated_io");
         let direct_solve = self.plan.unwrap_direct_node(node_id);
 
         debug_assert!(input_domain

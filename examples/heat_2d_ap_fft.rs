@@ -3,8 +3,33 @@ use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init;
+use std::time::*;
 
 fn main() {
+        #[cfg(feature = "profile-with-puffin")]
+        let _s = {
+            println!("Initializing profiling server:");
+            let server_addr =
+                format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
+            let puffin_server =
+                puffin_http::Server::new(&server_addr).unwrap();
+
+            //while puffin_server.num_clients() < 1 {
+            //    println!("No clients..., sleeping, {}", puffin_server.num_clients());
+            //}
+
+            profiling::puffin::set_scopes_on(true);
+            profiling::finish_frame!();
+
+
+            //std::thread::sleep(std::time::Duration::from_secs(2));
+            println!(
+                "Run this to view profiling data:  puffin_viewer {server_addr}"
+            );
+            println!("{}", puffin_server.num_clients());
+            puffin_server
+        };
+
     let args = Args::cli_setup("heat_2d_ap_fft");
 
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
@@ -57,7 +82,12 @@ fn main() {
 
     let mut global_time = 0;
     for t in 1..args.images {
+        let now = Instant::now();
         solver.apply(&mut input_domain, &mut output_domain, global_time);
+
+        let elapsed_time = now.elapsed();
+        eprintln!("{}", elapsed_time.as_nanos() as f64 / 1000000000.0);
+
         global_time += args.steps_per_image;
         std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {
