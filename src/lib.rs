@@ -5,6 +5,7 @@
 #![allow(clippy::needless_range_loop)]
 
 pub mod build_info;
+pub mod csv;
 pub mod domain;
 pub mod fft_solver;
 pub mod image;
