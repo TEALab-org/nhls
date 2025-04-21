@@ -114,6 +114,12 @@ impl Args {
         result
     }
 
+    pub fn csv_frame_name(&self, i: usize) -> PathBuf {
+        let mut result = self.output_dir.as_ref().unwrap().clone();
+        result.push(format!("csv_frame_{:04}.csv", i));
+        result
+    }
+
     pub fn dot_path(&self) -> PathBuf {
         let mut dot_path = self.output_dir.as_ref().unwrap().clone();
         dot_path.push("plan.dot");
