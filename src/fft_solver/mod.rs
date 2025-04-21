@@ -26,6 +26,7 @@ mod convolution_op;
 mod convolution_store;
 mod find_periodic_solve;
 mod frustrum_util;
+mod periodic_op_collector;
 mod periodic_solver;
 mod plan_type;
 
@@ -34,5 +35,6 @@ pub use convolution_op::*;
 pub use convolution_store::*;
 pub use find_periodic_solve::*;
 pub use frustrum_util::*;
+pub use periodic_op_collector::*;
 pub use periodic_solver::*;
 pub use plan_type::*;
