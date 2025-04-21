@@ -2,11 +2,13 @@ mod chunk;
 mod debug_io;
 mod owned;
 mod slice;
+mod subset_ops;
 
 pub use chunk::*;
 pub use debug_io::*;
 pub use owned::*;
 pub use slice::*;
+pub use subset_ops::*;
 
 use crate::util::*;
 use rayon::prelude::*;
