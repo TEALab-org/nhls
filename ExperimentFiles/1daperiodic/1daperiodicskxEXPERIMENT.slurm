@@ -1,0 +1,99 @@
+#!/bin/bash
+#SBATCH --job-name=1daperiodicskx        # Job name
+#SBATCH --output=skx_job_output.txt         # Output file
+#SBATCH --error=skx_job_error.txt           # Error file
+#SBATCH --ntasks=1                      # Number of tasks (1 task per node)
+#SBATCH --cpus-per-task=48              # Number of CPUs per task
+#SBATCH --time=010:00:00                 # Max run time (hh:mm:ss)
+#SBATCH --mem=128GB                      # Memory per node
+#SBATCH --partition=skx                 # Partition to run the job on
+#SBATCH --nodes=1                       # Number of nodes (1 node for this job)
+
+# Load modules
+module load intel/24.0
+export OMP_NUM_THREADS=48
+export MKL_NUM_THREADS=48
+
+# Set the working directory (where plutinput.c is located)
+cd /home1/10457/michaelsbu/pluto/1daperiodic
+
+# Generate t_values array
+t_values=()
+for i in {5..26}; do
+    value=$((2**i))
+    sqrt=$(echo "scale=0; $value/1" | bc)
+    t_values+=("$sqrt")
+done
+
+# Append results to output file
+for t in "${t_values[@]}"; do
+    echo "HEre: $t" >> outputicx.txt
+done
+
+
+# Function to calculate statistics
+calculate_stats() {
+    local data=("$@")
+    local sum=0
+    local count=${#data[@]}
+    local min=${data[0]}
+    local max=${data[0]}
+
+    # Calculate min, max, and sum
+    for value in "${data[@]}"; do
+        if (( $(echo "$value < $min" | bc -l) )); then
+            min=$value
+        fi
+        if (( $(echo "$value > $max" | bc -l) )); then
+            max=$value
+        fi
+        sum=$(echo "$sum + $value" | bc -l)
+    done
+
+    # Calculate average
+    local average=$(echo "scale=6; $sum / $count" | bc -l)
+
+    # Calculate variance and standard deviation
+    local variance_sum=0
+    for value in "${data[@]}"; do
+        local diff=$(echo "$value - $average" | bc -l)
+        variance_sum=$(echo "$variance_sum + ($diff * $diff)" | bc -l)
+    done
+    local variance=$(echo "scale=6; $variance_sum / $count" | bc -l)
+    local std_dev=$(echo "scale=6; sqrt($variance)" | bc -l)
+
+    echo "Min: $min, Max: $max, Average: $average, Std Dev: $std_dev, Variance: $variance"
+}
+
+# Main script
+echo " " > outputskx.txt
+cat tile.sizes >> outputskx.txt
+
+for t in "${t_values[@]}"; do
+    echo "Current value = $t" >> outputskx.txt
+
+    # Update the #define N and #define T lines in plutoinputskx.c
+    sed -i "s/#define N.*/#define N ${t}L/" plutoinputskx.c
+    sed -i "s/#define T.*/#define T ${t}L/" plutoinputskx.c
+
+    # Array to store results for this t
+    declare -a results
+
+    for ((i=1; i<=10; i++)); do
+        # Run polycc and compile the code
+        ../polycc plutoinputskx.c --tile --parallel
+        icx -xhost -O3 -qopenmp -ansi-alias -ipo -D TIME -mkl plutoinputskx.pluto.c -o skxexe
+
+        # Run the executable and capture the output
+        output=$(./skxexe)
+        echo "$output" >> outputskx.txt
+
+        # Extract runtime from the output
+        runtime=$(echo "$output" | grep "Time taken" | awk -F'|' '{print $3}' | awk '{print $4}' | sed 's/s//')
+        results+=("$runtime")
+    done
+
+    # Calculate and print statistics
+    stats=$(calculate_stats "${results[@]}")
+    echo "Statistics for t = $t: $stats" >> outputskx.txt
+done
