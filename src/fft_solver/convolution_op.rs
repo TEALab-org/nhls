@@ -2,6 +2,7 @@ use crate::domain::*;
 use crate::fft_solver::*;
 use crate::par_slice;
 use crate::stencil::*;
+use crate::util::indexing::*;
 use crate::util::*;
 use fftw::plan::*;
 use float_cmp::assert_approx_eq;
@@ -26,7 +27,7 @@ impl ConvolutionOperation {
         stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         real_buffer: &mut [f64],
         convolution_buffer: &mut [c64],
-        aabb: &AABB<GRID_DIMENSION>,
+        exclusive_bounds: &Coord<GRID_DIMENSION>,
         steps: usize,
         plan_type: PlanType,
         chunk_size: usize,
@@ -39,8 +40,7 @@ impl ConvolutionOperation {
             }
         }
         fftw::threading::plan_with_nthreads_f64(threads);
-        let size = aabb.exclusive_bounds();
-        let plan_size = size.try_cast::<usize>().unwrap();
+        let plan_size = exclusive_bounds.try_cast::<usize>().unwrap();
         let forward_plan = fftw::plan::R2CPlan64::aligned(
             plan_size.as_slice(),
             plan_type.to_fftw3_flag(),
@@ -52,8 +52,8 @@ impl ConvolutionOperation {
         )
         .unwrap();
 
-        // TODO: Create domain for real buffer
-        let mut stencil_domain = SliceDomain::new(*aabb, real_buffer);
+        let domain_aabb = AABB::from_exclusive_bounds(exclusive_bounds);
+        let mut stencil_domain = SliceDomain::new(domain_aabb, real_buffer);
 
         // Place offsets in real buffer
         let offsets = stencil.offsets();
@@ -62,13 +62,13 @@ impl ConvolutionOperation {
             // I don't understand why, but we found that this mirroring operation
             // was necessary. I think it was in the paper.
             // TODO: Why is this the case?
-            let rn_i: Coord<GRID_DIMENSION> = aabb.min() + offsets[n_i] * -1;
-            let periodic_coord = aabb.periodic_coord(&rn_i);
+            let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
+            let periodic_coord = domain_aabb.periodic_coord(&rn_i);
             stencil_domain.set_coord(&periodic_coord, weights[n_i]);
         }
 
         // Calculate convolution of stencil
-        let n_c = aabb.complex_buffer_size();
+        let n_c = complex_buffer_size(exclusive_bounds);
         forward_plan
             .r2c(stencil_domain.buffer_mut(), &mut convolution_buffer[0..n_c])
             .unwrap();
@@ -76,8 +76,8 @@ impl ConvolutionOperation {
         // Clean up real buffer
         //stencil_domain.par_set_values(|_| 0.0, chunk_size);
         for n_i in 0..NEIGHBORHOOD_SIZE {
-            let rn_i: Coord<GRID_DIMENSION> = aabb.min() + offsets[n_i] * -1;
-            let periodic_coord = aabb.periodic_coord(&rn_i);
+            let rn_i: Coord<GRID_DIMENSION> = offsets[n_i] * -1;
+            let periodic_coord = domain_aabb.periodic_coord(&rn_i);
             stencil_domain.set_coord(&periodic_coord, 0.0);
         }
 

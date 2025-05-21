@@ -28,7 +28,7 @@ impl PeriodicSolver {
             stencil,
             real_buffer,
             &mut complex_buffer,
-            aabb,
+            &aabb.exclusive_bounds(),
             steps,
             plan_type,
             chunk_size,

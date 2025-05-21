@@ -1,5 +1,6 @@
 use crate::fft_solver::*;
 use crate::stencil::*;
+use crate::time_varying::TVStencil;
 use crate::util::*;
 
 /// Planner recurses by finding periodic solves.
@@ -9,14 +10,17 @@ pub struct PlannerParameters {
     pub cutoff: i32,
     pub ratio: f64,
     pub chunk_size: usize,
+    pub solve_threads: usize,
 }
 
 /// Creating a plan results in both a plan and convolution store.
 /// Someday we may separate the creation, if for example we
 /// we add support for saving APPlans to file.
-pub struct PlannerResult<const GRID_DIMENSION: usize> {
+pub struct APPlannerResult<const GRID_DIMENSION: usize> {
     pub plan: APPlan<GRID_DIMENSION>,
-    pub convolution_store: ConvolutionStore,
+    pub periodic_op_descriptors: Vec<PeriodicOpDescriptor<GRID_DIMENSION>>,
+    pub remainder_op_descriptors:
+        Option<Vec<PeriodicOpDescriptor<GRID_DIMENSION>>>,
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
 }
 
@@ -26,56 +30,49 @@ pub struct PlannerResult<const GRID_DIMENSION: usize> {
 pub fn create_ap_plan<
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
-    stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    stencil: &StencilType,
     aabb: AABB<GRID_DIMENSION>,
     steps: usize,
-    threads: usize,
     params: &PlannerParameters,
-) -> PlannerResult<GRID_DIMENSION> {
+) -> APPlannerResult<GRID_DIMENSION> {
     let planner = APPlanner::new(
         stencil,
         aabb,
         steps,
-        params.plan_type,
         params.cutoff,
         params.ratio,
-        params.chunk_size,
+        params.solve_threads,
     );
-    planner.finish(threads)
+    planner.finish(params.solve_threads)
 }
 
 /// Used to create an `APPlan`. See `create_ap_plan`
-struct APPlanner<
-    'a,
-    const GRID_DIMENSION: usize,
-    const NEIGHBORHOOD_SIZE: usize,
-> {
+struct APPlanner<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize> {
     stencil_slopes: Bounds<GRID_DIMENSION>,
     aabb: AABB<GRID_DIMENSION>,
     steps: usize,
     cutoff: i32,
     ratio: f64,
-    convolution_gen:
-        ConvolutionGenerator<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    periodic_op_collector: PeriodicOpCollector<GRID_DIMENSION>,
     nodes: Vec<PlanNode<GRID_DIMENSION>>,
+    solve_threads: usize,
 }
 
-impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    APPlanner<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+impl<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    APPlanner<GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 {
-    fn new(
-        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    fn new<StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>>(
+        stencil: &StencilType,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
-        plan_type: PlanType,
         cutoff: i32,
         ratio: f64,
-        chunk_size: usize,
+        solve_threads: usize,
     ) -> Self {
         let stencil_slopes = stencil.slopes();
-        let convolution_gen =
-            ConvolutionGenerator::new(&aabb, stencil, plan_type, chunk_size);
+        let periodic_op_collector = PeriodicOpCollector::blank();
         let nodes = Vec::new();
         APPlanner {
             stencil_slopes,
@@ -83,8 +80,9 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             steps,
             cutoff,
             ratio,
-            convolution_gen,
+            periodic_op_collector,
             nodes,
+            solve_threads,
         }
     }
 
@@ -116,15 +114,21 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         &mut self,
         mut frustrum: APFrustrum<GRID_DIMENSION>,
         periodic_solve: PeriodicSolve<GRID_DIMENSION>,
+        rel_time_0: usize,
         threads: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         // Create the convolution operation and get the id
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
-        let convolution_id = self.convolution_gen.get_op(
-            &input_aabb,
-            periodic_solve.steps,
+        let rel_time_post = rel_time_0 + periodic_solve.steps;
+        let op_descriptor = PeriodicOpDescriptor {
+            step_min: rel_time_0,
+            step_max: rel_time_post,
+            steps: periodic_solve.steps,
+            exclusive_bounds: input_aabb.exclusive_bounds(),
             threads,
-        );
+        };
+        let convolution_id =
+            self.periodic_op_collector.get_op_id(op_descriptor);
 
         // Do we need a time cut.
         // If so that will trim that and create a plan for it
@@ -132,7 +136,8 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         let maybe_next_frustrum =
             frustrum.time_cut(periodic_solve.steps, &self.stencil_slopes);
         if let Some(next_frustrum) = maybe_next_frustrum {
-            let next_node = self.generate_frustrum(next_frustrum, threads);
+            let next_node =
+                self.generate_frustrum(next_frustrum, rel_time_post, threads);
             time_cut = Some(self.add_node(next_node));
         }
         debug_assert!(frustrum
@@ -145,8 +150,9 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         let sub_threads = 1
             .max((threads as f64 / boundary_frustrums.len() as f64).ceil()
                 as usize);
+
         for bf in boundary_frustrums {
-            sub_nodes.push(self.generate_frustrum(bf, sub_threads));
+            sub_nodes.push(self.generate_frustrum(bf, rel_time_0, sub_threads));
         }
 
         // Ensure boundary solve nodes are contiguous in the plan
@@ -161,6 +167,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             steps: periodic_solve.steps,
             boundary_nodes: first_node..last_node,
             time_cut,
+            threads,
         })
     }
 
@@ -171,6 +178,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
     fn generate_frustrum(
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
+        rel_time_0: usize,
         threads: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         let solve_params = PeriodicSolveParams {
@@ -189,7 +197,12 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             self.generate_direct_node(frustrum, threads)
         } else {
             let periodic_solve = maybe_periodic_solve.unwrap();
-            self.generate_periodic_node(frustrum, periodic_solve, threads)
+            self.generate_periodic_node(
+                frustrum,
+                periodic_solve,
+                rel_time_0,
+                threads,
+            )
         }
     }
 
@@ -204,6 +217,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         max_steps: usize,
         threads: usize,
     ) -> (NodeId, usize) {
+        let rel_time_0 = 0;
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
             cutoff: self.cutoff,
@@ -214,11 +228,15 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         let periodic_solve =
             find_periodic_solve(&self.aabb, &solve_params).unwrap();
 
-        let convolution_id = self.convolution_gen.get_op(
-            &self.aabb,
-            periodic_solve.steps,
+        let op_descriptor = PeriodicOpDescriptor {
+            step_min: 0,
+            step_max: periodic_solve.steps,
+            steps: periodic_solve.steps,
+            exclusive_bounds: self.aabb.exclusive_bounds(),
             threads,
-        );
+        };
+        let convolution_id =
+            self.periodic_op_collector.get_op_id(op_descriptor);
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
@@ -237,6 +255,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
                         side,
                         periodic_solve.steps,
                     ),
+                    rel_time_0,
                     sub_threads,
                 ));
             }
@@ -254,15 +273,24 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             steps: periodic_solve.steps,
             boundary_nodes: first_node..last_node,
             time_cut: None,
+            threads,
         };
 
         let root_node =
             self.add_node(PlanNode::PeriodicSolve(periodic_solve_node));
+
         (root_node, periodic_solve.steps)
     }
 
     /// Create the root repeat node.
-    fn generate(&mut self, threads: usize) -> NodeId {
+    fn generate(
+        &mut self,
+        threads: usize,
+    ) -> (
+        NodeId,
+        Vec<PeriodicOpDescriptor<GRID_DIMENSION>>,
+        Option<Vec<PeriodicOpDescriptor<GRID_DIMENSION>>>,
+    ) {
         // generate central once,
         let (central_solve_node, central_solve_steps) =
             self.generate_central(self.steps, threads);
@@ -270,10 +298,19 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         let n = self.steps / central_solve_steps;
         let remainder = self.steps % central_solve_steps;
         let mut next = None;
+        let mut remainder_op_descriptors = None;
+
+        let mut t_collector = PeriodicOpCollector::blank();
+        std::mem::swap(&mut self.periodic_op_collector, &mut t_collector);
+        let op_descriptors = t_collector.finish();
+
         if remainder != 0 {
             let (remainder_solve_node, remainder_solve_steps) =
                 self.generate_central(remainder, threads);
             next = Some(remainder_solve_node);
+            let mut t_collector = PeriodicOpCollector::blank();
+            std::mem::swap(&mut self.periodic_op_collector, &mut t_collector);
+            remainder_op_descriptors = Some(t_collector.finish());
             debug_assert_eq!(remainder_solve_steps, remainder);
         }
 
@@ -283,69 +320,25 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             next,
         };
 
-        self.add_node(PlanNode::Repeat(repeat_node))
+        let root_node = self.add_node(PlanNode::Repeat(repeat_node));
+        (root_node, op_descriptors, remainder_op_descriptors)
     }
 
     /// Package up the results
-    fn finish(mut self, threads: usize) -> PlannerResult<GRID_DIMENSION> {
-        let root = self.generate(threads);
-        let convolution_store = self.convolution_gen.finish();
+    fn finish(mut self, threads: usize) -> APPlannerResult<GRID_DIMENSION> {
+        let (root, periodic_op_descriptors, remainder_op_descriptors) =
+            self.generate(threads);
         let stencil_slopes = self.stencil_slopes;
         let plan = APPlan {
             nodes: self.nodes,
             root,
         };
 
-        PlannerResult {
+        APPlannerResult {
             plan,
-            convolution_store,
+            periodic_op_descriptors,
+            remainder_op_descriptors,
             stencil_slopes,
         }
     }
 }
-/*
-#[cfg(test)]
-mod unit_tests {
-    use super::*;
-    use crate::standard_stencils::*;
-
-    #[test]
-    fn create_ap_plan_test() {
-        let planner_params = PlannerParameters {
-            cutoff: 20,
-            ratio: 0.5,
-            plan_type: PlanType::Estimate,
-            chunk_size: 1000,
-        };
-
-        {
-            let stencil = heat_1d(1.0, 1.0, 0.5);
-            let aabb = AABB::new(matrix![54, 5234]);
-            let steps = 10000;
-            create_ap_plan(&stencil, aabb, steps, &planner_params);
-        }
-
-        {
-            let stencil = heat_2d(1.0, 1.0, 1.0, 1.0, 0.5);
-            let aabb = AABB::new(matrix![0, 100; 0, 100]);
-            let steps = 100;
-            create_ap_plan(&stencil, aabb, steps, &planner_params);
-        }
-
-        {
-            let stencil = heat_2d(1.0, 1.0, 1.0, 1.0, 0.5);
-            let aabb = AABB::new(matrix![555, 1234; -1234, -343]);
-            let steps = 1000;
-            create_ap_plan(&stencil, aabb, steps, &planner_params);
-        }
-
-        {
-            let stencil =
-                Stencil::new([[-1], [0], [4]], |args: &[f64; 3]| args[0]);
-            let aabb = AABB::new(matrix![54, 5234]);
-            let steps = 10000;
-            create_ap_plan(&stencil, aabb, steps, &planner_params);
-        }
-    }
-}
-*/

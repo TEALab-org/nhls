@@ -8,6 +8,7 @@ use std::collections::HashMap;
 struct ConvolutionDescriptor<const GRID_DIMENSION: usize> {
     exclusive_bounds: Coord<GRID_DIMENSION>,
     steps: usize,
+    threads: usize,
 }
 
 /// Used by APPlaner to create convolution operations,
@@ -51,15 +52,33 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         }
     }
 
+    pub fn from_periodic_ops(
+        max_aabb: &AABB<GRID_DIMENSION>,
+        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        plan_type: PlanType,
+        chunk_size: usize,
+        periodic_op_descriptors: &[PeriodicOpDescriptor<GRID_DIMENSION>],
+    ) -> ConvolutionStore {
+        let mut gen = Self::new(max_aabb, stencil, plan_type, chunk_size);
+        for (i, op) in periodic_op_descriptors.iter().enumerate() {
+            assert_eq!(op.steps, op.step_max - op.step_min);
+            let k = gen.get_op(op.exclusive_bounds, op.steps, op.threads);
+            assert_eq!(k, i);
+        }
+
+        ConvolutionStore::new(gen.operations)
+    }
+
     pub fn get_op(
         &mut self,
-        bounds: &AABB<GRID_DIMENSION>,
+        exclusive_bounds: Coord<GRID_DIMENSION>,
         steps: usize,
         threads: usize,
     ) -> OpId {
         let key = ConvolutionDescriptor {
-            exclusive_bounds: bounds.exclusive_bounds(),
+            exclusive_bounds,
             steps,
+            threads,
         };
         *self.key_map.entry(key).or_insert_with(|| {
             let result = self.operations.len();
@@ -67,7 +86,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
                 self.stencil,
                 &mut self.real_buffer,
                 &mut self.convolution_buffer,
-                bounds,
+                &exclusive_bounds,
                 steps,
                 self.plan_type,
                 self.chunk_size,

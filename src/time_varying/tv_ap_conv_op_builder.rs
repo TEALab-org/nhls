@@ -196,7 +196,7 @@ impl<
 
     fn add_nodes_for_op(
         &mut self,
-        op: &TVOpDescriptor<GRID_DIMENSION>,
+        op: &PeriodicOpDescriptor<GRID_DIMENSION>,
         offset: &mut usize,
     ) {
         //println!("Add nodes for op, [{}, {})", op.step_min, op.step_max);
@@ -308,7 +308,7 @@ impl<
 
     fn add_op_nodes(
         &mut self,
-        tree_queries: &[TVOpDescriptor<GRID_DIMENSION>],
+        tree_queries: &[PeriodicOpDescriptor<GRID_DIMENSION>],
         offset: &mut usize,
     ) {
         for query in tree_queries.iter() {
@@ -321,7 +321,7 @@ impl<
         steps: usize,
         threads: usize,
         plan_type: PlanType,
-        tree_queries: &[TVOpDescriptor<GRID_DIMENSION>],
+        tree_queries: &[PeriodicOpDescriptor<GRID_DIMENSION>],
     ) -> TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
     {
         // Calculate scratch space, build IR nodes

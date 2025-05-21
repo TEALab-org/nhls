@@ -27,6 +27,9 @@ pub struct PeriodicSolveNode<const GRID_DIMENSION: usize> {
 
     /// Is there a time cut following this solve
     pub time_cut: Option<NodeId>,
+
+    /// Number of threads to use
+    pub threads: usize,
 }
 
 /// Direct solves have an input and output AABB,
@@ -35,10 +38,21 @@ pub struct PeriodicSolveNode<const GRID_DIMENSION: usize> {
 /// but its remains useful for debugging.
 #[derive(Debug)]
 pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
+    /// Required Input buffer
     pub input_aabb: AABB<GRID_DIMENSION>,
+
+    /// Required Output buffer
     pub output_aabb: AABB<GRID_DIMENSION>,
+
+    /// For each axis,
+    /// For each direction
+    /// 1 if side is sloped, 0 if facing BC
     pub sloped_sides: Bounds<GRID_DIMENSION>,
+
+    /// How many steps to solve for.
     pub steps: usize,
+
+    /// Number of threads to use
     pub threads: usize,
 }
 

@@ -10,6 +10,7 @@ pub type TVOpId = usize;
 pub struct PeriodicOpDescriptor<const GRID_DIMENSION: usize> {
     pub step_min: usize,
     pub step_max: usize,
+    pub steps: usize,
     pub exclusive_bounds: Coord<GRID_DIMENSION>,
     pub threads: usize,
 }
@@ -19,6 +20,7 @@ impl<const GRID_DIMENSION: usize> PeriodicOpDescriptor<GRID_DIMENSION> {
         PeriodicOpDescriptor {
             step_min: 0,
             step_max: 0,
+            steps: 0,
             exclusive_bounds: Coord::zeros(),
             threads: 0,
         }

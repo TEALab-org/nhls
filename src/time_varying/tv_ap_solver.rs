@@ -38,13 +38,11 @@ impl<
         stencil: &'a StencilType,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
-        threads: usize,
         params: &PlannerParameters,
         direct_solver: SolverType,
     ) -> Self {
         // Create our plan and convolution_store
-        let planner_result =
-            create_tv_ap_plan(stencil, aabb, steps, threads, params);
+        let planner_result = create_ap_plan(stencil, aabb, steps, params);
         let plan = planner_result.plan;
 
         //let stencil_slopes = planner_result.stencil_slopes;
@@ -55,9 +53,9 @@ impl<
         let conv_ops_calc_builder = TVAPOpCalcBuilder::new(stencil, aabb);
         let conv_ops_calc = conv_ops_calc_builder.build_op_calc(
             steps,
-            threads,
+            params.solve_threads,
             params.plan_type,
-            &planner_result.op_descriptors,
+            &planner_result.periodic_op_descriptors,
         );
         let remainder_ops_calc = planner_result
             .remainder_op_descriptors
@@ -66,7 +64,7 @@ impl<
                     TVAPOpCalcBuilder::new(stencil, aabb);
                 conv_ops_calc_builder.build_op_calc(
                     steps,
-                    threads,
+                    params.solve_threads,
                     params.plan_type,
                     &op_descriptors,
                 )

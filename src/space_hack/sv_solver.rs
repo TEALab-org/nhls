@@ -11,6 +11,7 @@ pub struct SVSolver<
 > {
     pub direct_frustrum_solver: SolverType,
     pub convolution_store: ConvolutionStore,
+    pub remainder_convolution_store: Option<ConvolutionStore>,
     pub plan: APPlan<GRID_DIMENSION>,
     pub node_scratch_descriptors: Vec<ScratchDescriptor>,
     pub scratch_space_1: APScratch,
@@ -28,15 +29,30 @@ impl<
         stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
-        threads: usize,
         params: &PlannerParameters,
         solver: SolverType,
     ) -> Self {
         // Create our plan and convolution_store
-        let planner_result =
-            create_ap_plan(stencil, aabb, steps, threads, params);
+        let planner_result = create_ap_plan(stencil, aabb, steps, params);
         let plan = planner_result.plan;
-        let convolution_store = planner_result.convolution_store;
+        let convolution_store = ConvolutionGenerator::from_periodic_ops(
+            &aabb,
+            stencil,
+            params.plan_type,
+            params.chunk_size,
+            &planner_result.periodic_op_descriptors,
+        );
+        let remainder_convolution_store = planner_result
+            .remainder_op_descriptors
+            .map(|op_descriptors| {
+                ConvolutionGenerator::from_periodic_ops(
+                    &aabb,
+                    stencil,
+                    params.plan_type,
+                    params.chunk_size,
+                    &op_descriptors,
+                )
+            });
 
         let (node_scratch_descriptors, scratch_space_1, scratch_space_2) =
             APScratchBuilder::build_double(&plan);
@@ -44,6 +60,7 @@ impl<
         SVSolver {
             direct_frustrum_solver: solver,
             convolution_store,
+            remainder_convolution_store,
             plan,
             node_scratch_descriptors,
             scratch_space_1,
