@@ -39,12 +39,12 @@ fn main() {
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
+        solve_threads: args.threads,
     };
     let solver = SVSolver::new(
         &stencil,
         grid_bound,
         args.steps_per_image,
-        args.threads,
         &planner_params,
         direct_solver,
     );

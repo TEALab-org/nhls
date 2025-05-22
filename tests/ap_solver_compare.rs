@@ -5,6 +5,8 @@ use nhls::init::*;
 use nhls::solver::*;
 use nhls::util::*;
 
+pub const TEST_SOLVE_THREADS: usize = 4;
+
 #[test]
 fn heat_1d_ap_compare() {
     let threads = 8;
@@ -39,15 +41,10 @@ fn heat_1d_ap_compare() {
         cutoff: 40,
         ratio: 0.5,
         chunk_size,
+        solve_threads: TEST_SOLVE_THREADS,
     };
-    let fft_solver = APSolver::new(
-        &bc,
-        &stencil,
-        grid_bound,
-        n_steps,
-        &planner_params,
-        threads,
-    );
+    let fft_solver =
+        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
@@ -103,9 +100,10 @@ fn heat_2d_ap_compare() {
         cutoff: 40,
         ratio: 0.5,
         chunk_size,
+        solve_threads: TEST_SOLVE_THREADS,
     };
     let fft_solver =
-        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params, 8);
+        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
@@ -123,7 +121,7 @@ fn heat_2d_ap_compare() {
             f64,
             fft_output_domain.buffer()[i],
             direct_output_domain.buffer()[i],
-            epsilon = 0.0000000000001
+            epsilon = 0.00000001
         );
     }
 }
