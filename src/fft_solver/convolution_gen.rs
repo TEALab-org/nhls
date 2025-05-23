@@ -63,6 +63,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         for (i, op) in periodic_op_descriptors.iter().enumerate() {
             assert_eq!(op.steps, op.step_max - op.step_min);
             let k = gen.get_op(op.exclusive_bounds, op.steps, op.threads);
+            println!("i: {}, k: {}, op: {:?}", i, k, op);
             assert_eq!(k, i);
         }
 

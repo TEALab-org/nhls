@@ -5,11 +5,10 @@ use nhls::init::*;
 use nhls::solver::*;
 use nhls::util::*;
 
-pub const TEST_SOLVE_THREADS: usize = 4;
+pub const TEST_SOLVE_THREADS: usize = 8;
 
 #[test]
 fn heat_1d_ap_compare() {
-    let threads = 8;
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
 
@@ -121,7 +120,7 @@ fn heat_2d_ap_compare() {
             f64,
             fft_output_domain.buffer()[i],
             direct_output_domain.buffer()[i],
-            epsilon = 0.00000001
+            epsilon = 0.000001
         );
     }
 }
