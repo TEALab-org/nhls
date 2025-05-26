@@ -23,3 +23,4 @@ pub mod stencil;
 pub mod time_varying;
 pub mod util;
 pub mod vtk;
+pub mod ap_solver;
