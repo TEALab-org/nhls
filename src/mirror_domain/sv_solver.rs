@@ -1,6 +1,6 @@
 use crate::domain::*;
 use crate::fft_solver::*;
-use crate::space_hack::*;
+use crate::mirror_domain::*;
 use crate::stencil::*;
 use crate::util::*;
 

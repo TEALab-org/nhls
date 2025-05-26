@@ -1,5 +1,5 @@
 use crate::domain::*;
-use crate::space_hack::*;
+use crate::mirror_domain::*;
 use crate::time_varying::*;
 use crate::util::*;
 

@@ -5,9 +5,7 @@ use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
-use nhls::solver::*;
-use nhls::space_hack::*;
-use nhls::util::*;
+use nhls::mirror_domain::*;
 use std::time::*;
 
 fn main() {
