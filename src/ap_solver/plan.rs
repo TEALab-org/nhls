@@ -1,5 +1,5 @@
-use crate::util::*;
 use crate::ap_solver::index_types::*;
+use crate::util::*;
 use std::io::prelude::*;
 use std::ops::Range;
 

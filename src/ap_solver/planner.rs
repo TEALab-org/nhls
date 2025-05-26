@@ -5,9 +5,9 @@ use crate::fft_solver::PlanType;
 use crate::stencil::*;
 use crate::time_varying::TVStencil;
 
+use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::plan::*;
-use crate::ap_solver::index_types::*;
 
 use crate::util::*;
 
@@ -82,7 +82,7 @@ impl<
             ops_builder,
             nodes,
             solve_threads,
-            ops_type_marker: std::marker::PhantomData
+            ops_type_marker: std::marker::PhantomData,
         }
     }
 
@@ -127,8 +127,7 @@ impl<
             exclusive_bounds: input_aabb.exclusive_bounds(),
             threads,
         };
-        let convolution_id =
-            self.ops_builder.get_op_id(op_descriptor);
+        let convolution_id = self.ops_builder.get_op_id(op_descriptor);
 
         // Do we need a time cut.
         // If so that will trim that and create a plan for it
@@ -235,8 +234,7 @@ impl<
             exclusive_bounds: self.aabb.exclusive_bounds(),
             threads,
         };
-        let convolution_id =
-            self.ops_builder.get_op_id(op_descriptor);
+        let convolution_id = self.ops_builder.get_op_id(op_descriptor);
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
@@ -286,11 +284,7 @@ impl<
     fn generate(
         &mut self,
         threads: usize,
-    ) -> (
-        NodeId,
-        PeriodicOpsType,
-        Option<PeriodicOpsType>,
-    ) {
+    ) -> (NodeId, PeriodicOpsType, Option<PeriodicOpsType>) {
         // generate central once,
         let (central_solve_node, central_solve_steps) =
             self.generate_central(self.steps, threads);
