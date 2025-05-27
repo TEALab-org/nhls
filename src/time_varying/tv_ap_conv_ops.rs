@@ -1,6 +1,7 @@
 use crate::domain::*;
 use crate::fft_solver::*;
 use crate::par_slice;
+use crate::stencil::*;
 use crate::time_varying::*;
 use crate::util::*;
 use fftw::plan::*;

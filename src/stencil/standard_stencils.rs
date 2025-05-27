@@ -125,3 +125,59 @@ impl TVStencil<2, 5> for RotatingAdvectionStencil {
         vector![q1, q2, q3, q4, self.central_weight]
     }
 }
+
+pub struct TVHeat1D {
+    offsets: [Coord<1>; 3],
+}
+
+impl TVHeat1D {
+    pub fn new() -> Self {
+        let offsets = [vector![1], vector![-1], vector![0]];
+        TVHeat1D { offsets }
+    }
+}
+
+impl TVStencil<1, 3> for TVHeat1D {
+    fn offsets(&self) -> &[Coord<1>; 3] {
+        &self.offsets
+    }
+
+    fn weights(&self, global_time: usize) -> Values<3> {
+        let t_f = global_time as f64;
+        let e = (-t_f * 0.01).exp();
+        let cw = 1.0 - e;
+        let nw = e / 2.0;
+        vector![nw, nw, cw]
+    }
+}
+
+pub struct TVHeat2D {
+    offsets: [Coord<2>; 5],
+}
+
+impl TVHeat2D {
+    pub fn new() -> Self {
+        let offsets = [
+            vector![1, 0],
+            vector![0, -1],
+            vector![-1, 0],
+            vector![0, 1],
+            vector![0, 0],
+        ];
+        TVHeat2D { offsets }
+    }
+}
+
+impl TVStencil<2, 5> for TVHeat2D {
+    fn offsets(&self) -> &[Coord<2>; 5] {
+        &self.offsets
+    }
+
+    fn weights(&self, global_time: usize) -> Values<5> {
+        let t_f = global_time as f64;
+        let e = (-t_f * 0.01).exp();
+        let cw = 1.0 - e;
+        let nw = e / 5.0;
+        vector![nw, nw, nw, nw, cw]
+    }
+}

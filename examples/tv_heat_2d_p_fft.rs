@@ -5,39 +5,7 @@ use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
 use nhls::time_varying::*;
-use nhls::util::*;
 use std::time::*;
-
-pub struct TVHeat2D {
-    offsets: [Coord<2>; 5],
-}
-
-impl TVHeat2D {
-    pub fn new() -> Self {
-        let offsets = [
-            vector![1, 0],
-            vector![0, -1],
-            vector![-1, 0],
-            vector![0, 1],
-            vector![0, 0],
-        ];
-        TVHeat2D { offsets }
-    }
-}
-
-impl TVStencil<2, 5> for TVHeat2D {
-    fn offsets(&self) -> &[Coord<2>; 5] {
-        &self.offsets
-    }
-
-    fn weights(&self, global_time: usize) -> Values<5> {
-        let t_f = global_time as f64;
-        let e = (-t_f * 0.01).exp();
-        let cw = 1.0 - e;
-        let nw = e / 5.0;
-        vector![nw, nw, nw, nw, cw]
-    }
-}
 
 fn main() {
     let args = Args::cli_parse("tv_heat_2d_p_fft");
@@ -45,7 +13,7 @@ fn main() {
     // Grid size
     let grid_bound = args.grid_bounds();
 
-    let stencil = TVHeat2D::new();
+    let stencil = nhls::standard_stencils::TVHeat2D::new();
 
     // Create domains
     let mut input_domain = OwnedDomain::new(grid_bound);
