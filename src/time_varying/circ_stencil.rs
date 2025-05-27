@@ -61,15 +61,6 @@ impl<'a, const GRID_DIMENSION: usize> CircStencil<'a, GRID_DIMENSION> {
         }
     }
 
-    pub fn from_dynamic_stencil(
-        &mut self,
-        ds: &DynamicLinearStencil<GRID_DIMENSION>,
-    ) {
-        for (offset, weight) in ds.offset_weights() {
-            self.add_offset_weight(*offset, *weight);
-        }
-    }
-
     pub fn to_offset_weights(
         &'a self,
     ) -> impl Iterator<Item = (Coord<GRID_DIMENSION>, f64)> + 'a {
