@@ -28,8 +28,13 @@ pub trait PeriodicOpsBuilder<
     fn finish(self) -> SolverType;
 }
 
-pub trait PeriodicOps<const GRID_DIMENSION: usize> {
+pub trait PeriodicOps<const GRID_DIMENSION: usize>: Send + Sync {
+    fn blank() -> Self;
+
+    fn build_ops(&mut self, global_time: usize);
+
     fn apply_operation(
+        &self,
         op_id: OpId,
         input_domain: &SliceDomain<GRID_DIMENSION>,
         output_domain: &mut SliceDomain<GRID_DIMENSION>,

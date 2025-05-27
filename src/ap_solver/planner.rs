@@ -30,12 +30,12 @@ pub struct PlannerResult<
 > {
     pub plan: Plan<GRID_DIMENSION>,
     pub periodic_ops: PeriodicOpsType,
-    pub remainder_periodic_ops: Option<PeriodicOpsType>,
+    pub remainder_periodic_ops: PeriodicOpsType,
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
 }
 
 /// Used to create an `APPlan`. See `create_ap_plan`
-struct Planner<
+pub struct Planner<
     const GRID_DIMENSION: usize,
     PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
     OpsBuilderType: PeriodicOpsBuilder<GRID_DIMENSION, PeriodicOpsType>,
@@ -45,7 +45,6 @@ struct Planner<
     steps: usize,
     ops_builder: OpsBuilderType,
     nodes: Vec<PlanNode<GRID_DIMENSION>>,
-    solve_threads: usize,
 
     cutoff: i32,
     ratio: f64,
@@ -59,7 +58,7 @@ impl<
         OpsBuilderType: PeriodicOpsBuilder<GRID_DIMENSION, PeriodicOpsType>,
     > Planner<GRID_DIMENSION, PeriodicOpsType, OpsBuilderType>
 {
-    fn new<
+    pub fn new<
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     >(
@@ -68,7 +67,6 @@ impl<
         steps: usize,
         cutoff: i32,
         ratio: f64,
-        solve_threads: usize,
     ) -> Self {
         let stencil_slopes = stencil.slopes();
         let ops_builder = OpsBuilderType::blank();
@@ -81,7 +79,6 @@ impl<
             ratio,
             ops_builder,
             nodes,
-            solve_threads,
             ops_type_marker: std::marker::PhantomData,
         }
     }
@@ -284,7 +281,7 @@ impl<
     fn generate(
         &mut self,
         threads: usize,
-    ) -> (NodeId, PeriodicOpsType, Option<PeriodicOpsType>) {
+    ) -> (NodeId, PeriodicOpsType, PeriodicOpsType) {
         // generate central once,
         let (central_solve_node, central_solve_steps) =
             self.generate_central(self.steps, threads);
@@ -292,7 +289,7 @@ impl<
         let n = self.steps / central_solve_steps;
         let remainder = self.steps % central_solve_steps;
         let mut next = None;
-        let mut remainder_periodic_ops = None;
+        let mut remainder_periodic_ops = PeriodicOpsType::blank();
 
         let mut t_builder = OpsBuilderType::blank();
         std::mem::swap(&mut self.ops_builder, &mut t_builder);
@@ -304,7 +301,7 @@ impl<
             next = Some(remainder_solve_node);
             let mut t_builder = OpsBuilderType::blank();
             std::mem::swap(&mut self.ops_builder, &mut t_builder);
-            remainder_periodic_ops = Some(t_builder.finish());
+            remainder_periodic_ops = t_builder.finish();
             debug_assert_eq!(remainder_solve_steps, remainder);
         }
 
@@ -319,7 +316,7 @@ impl<
     }
 
     /// Package up the results
-    fn finish(
+    pub fn finish(
         mut self,
         threads: usize,
     ) -> PlannerResult<GRID_DIMENSION, PeriodicOpsType> {
