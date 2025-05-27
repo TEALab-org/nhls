@@ -1,5 +1,4 @@
 mod circ_stencil;
-mod dynamic_stencil;
 mod fft_gen;
 mod fft_pair;
 mod fft_store;
@@ -17,7 +16,6 @@ mod tv_stencil;
 mod tv_tree_planner;
 
 pub use circ_stencil::*;
-pub use dynamic_stencil::*;
 pub use fft_gen::*;
 pub use fft_pair::*;
 pub use fft_store::*;
