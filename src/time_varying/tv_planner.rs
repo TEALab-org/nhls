@@ -1,4 +1,5 @@
 use crate::fft_solver::*;
+use crate::stencil::TVStencil;
 use crate::time_varying::*;
 use crate::util::*;
 /// Creating a plan results in both a plan and convolution store.

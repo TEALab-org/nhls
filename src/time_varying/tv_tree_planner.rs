@@ -1,4 +1,4 @@
-use crate::time_varying::*;
+use crate::stencil::*;
 use crate::util::*;
 use std::io::prelude::*;
 
@@ -21,6 +21,8 @@ pub struct TVTreePlanNode<const GRID_DIMENSION: usize> {
     sub_ops: Option<[TVNodeId; 2]>,
 }
 
+/// This can create a plan that looks like what conv ops does and write it to dot File
+/// but literally thats it
 pub struct TVTreePlanner<
     'a,
     const GRID_DIMENSION: usize,
