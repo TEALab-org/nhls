@@ -57,8 +57,9 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         steps: usize,
         threads: usize,
     ) -> OpId {
+        let exclusive_bounds = bounds.exclusive_bounds();
         let key = ConvolutionDescriptor {
-            exclusive_bounds: bounds.exclusive_bounds(),
+            exclusive_bounds,
             steps,
         };
         *self.key_map.entry(key).or_insert_with(|| {
@@ -67,7 +68,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
                 self.stencil,
                 &mut self.real_buffer,
                 &mut self.convolution_buffer,
-                bounds,
+                &exclusive_bounds,
                 steps,
                 self.plan_type,
                 self.chunk_size,
