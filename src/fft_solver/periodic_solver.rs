@@ -3,6 +3,7 @@ use crate::fft_solver::*;
 use crate::stencil::*;
 use crate::util::*;
 use fftw::array::*;
+use indexing::complex_buffer_size;
 
 pub struct PeriodicSolver {
     operation: ConvolutionOperation,
@@ -23,12 +24,14 @@ impl PeriodicSolver {
         chunk_size: usize,
         threads: usize,
     ) -> Self {
-        let mut complex_buffer = AlignedVec::new(aabb.complex_buffer_size());
+        let exclusive_bounds = aabb.exclusive_bounds();
+        let mut complex_buffer =
+            AlignedVec::new(complex_buffer_size(&exclusive_bounds));
         let operation = ConvolutionOperation::create(
             stencil,
             real_buffer,
             &mut complex_buffer,
-            aabb,
+            &exclusive_bounds,
             steps,
             plan_type,
             chunk_size,
