@@ -1,4 +1,5 @@
 use crate::domain::*;
+use crate::stencil::TVStencil;
 use crate::time_varying::*;
 use crate::util::*;
 

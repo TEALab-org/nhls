@@ -1,4 +1,3 @@
-mod circ_stencil;
 mod fft_gen;
 mod fft_pair;
 mod fft_store;
@@ -13,11 +12,9 @@ mod tv_direct_frustrum_solver;
 mod tv_periodic_solver;
 mod tv_periodic_solver_builder;
 mod tv_planner;
-mod tv_stencil;
 mod tv_tree_planner;
 mod tv_tree_query_collector;
 
-pub use circ_stencil::*;
 pub use fft_gen::*;
 pub use fft_pair::*;
 pub use fft_store::*;
@@ -32,6 +29,5 @@ pub use tv_direct_frustrum_solver::*;
 pub use tv_periodic_solver::*;
 pub use tv_periodic_solver_builder::*;
 pub use tv_planner::*;
-pub use tv_stencil::*;
 pub use tv_tree_planner::*;
 pub use tv_tree_query_collector::*;
