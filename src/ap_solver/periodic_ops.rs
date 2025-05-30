@@ -13,13 +13,23 @@ pub struct PeriodicOpDescriptor<const GRID_DIMENSION: usize> {
     pub threads: usize,
 }
 
+impl<const GRID_DIMENSION: usize> PeriodicOpDescriptor<GRID_DIMENSION> {
+    pub fn blank() -> Self {
+        PeriodicOpDescriptor {
+            step_min: 0,
+            step_max: 0,
+            steps: 0,
+            exclusive_bounds: Coord::zeros(),
+            threads: 0,
+        }
+    }
+}
+
 pub trait PeriodicOpsBuilder<
     const GRID_DIMENSION: usize,
     SolverType: PeriodicOps<GRID_DIMENSION>,
 >
 {
-    fn blank() -> Self;
-
     fn get_op_id(
         &mut self,
         descriptor: PeriodicOpDescriptor<GRID_DIMENSION>,

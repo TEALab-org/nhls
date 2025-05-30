@@ -48,7 +48,7 @@ pub enum IRIntermediateNode<const GRID_DIMENSION: usize> {
     Convolve(IRConvolveNode<GRID_DIMENSION>),
 }
 
-pub struct OpCalcBuilder<
+pub struct TvPeriodicOpsBuilder<
     'a,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
@@ -67,12 +67,12 @@ impl<
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    > OpCalcBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+    > TvPeriodicOpsBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
 {
     pub fn new(stencil: &'a StencilType, aabb: AABB<GRID_DIMENSION>) -> Self {
         let stencil_slopes = stencil.slopes();
 
-        OpCalcBuilder {
+        TvPeriodicOpsBuilder {
             stencil,
             stencil_slopes,
             aabb,

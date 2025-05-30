@@ -10,5 +10,6 @@ pub mod solver;
 
 pub mod tv_periodic_ops;
 pub mod tv_periodic_ops_builder;
+pub mod tv_periodic_ops_collector;
 
 pub const MIN_ALIGNMENT: usize = 128;
