@@ -3,7 +3,6 @@ use crate::fft_solver::find_periodic_solve::*;
 use crate::fft_solver::PlanType;
 
 use crate::stencil::*;
-use crate::time_varying::TVStencil;
 
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;

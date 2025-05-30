@@ -76,7 +76,6 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         steps: usize,
         threads: usize,
     ) -> OpId {
-        let exclusive_bounds = bounds.exclusive_bounds();
         let key = ConvolutionDescriptor {
             exclusive_bounds,
             steps,

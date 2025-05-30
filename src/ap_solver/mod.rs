@@ -8,4 +8,7 @@ pub mod scratch;
 pub mod scratch_builder;
 pub mod solver;
 
+pub mod tv_periodic_ops;
+pub mod tv_periodic_ops_builder;
+
 pub const MIN_ALIGNMENT: usize = 128;

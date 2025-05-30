@@ -1,6 +1,5 @@
 use crate::fft_solver::*;
 use crate::stencil::*;
-use crate::time_varying::TVStencil;
 use crate::util::*;
 
 /// Planner recurses by finding periodic solves.
