@@ -23,10 +23,6 @@ impl ApPeriodicOps {
 impl<const GRID_DIMENSION: usize> PeriodicOps<GRID_DIMENSION>
     for ApPeriodicOps
 {
-    fn blank() -> Self {
-        ApPeriodicOps::new(Vec::new())
-    }
-
     fn build_ops(&mut self, _global_time: usize) {}
 
     fn apply_operation<'a>(
@@ -35,6 +31,7 @@ impl<const GRID_DIMENSION: usize> PeriodicOps<GRID_DIMENSION>
         input: &mut SliceDomain<'a, GRID_DIMENSION>,
         output: &mut SliceDomain<'a, GRID_DIMENSION>,
         complex_buffer: &mut [c64],
+        _global_time: usize,
         chunk_size: usize,
     ) {
         self.get(op_id)

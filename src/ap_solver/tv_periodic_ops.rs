@@ -1,3 +1,5 @@
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::scratch::*;
 use crate::domain::*;
 use crate::par_slice;
@@ -404,5 +406,41 @@ impl<
             .c2r(&mut domain_complex_buffer[0..n_c], output.buffer_mut())
             .unwrap();
         par_slice::div(output.buffer_mut(), n_r as f64, chunk_size);
+    }
+}
+
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+        StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    > PeriodicOps<GRID_DIMENSION>
+    for TvPeriodicOps<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+{
+    fn build_ops(&mut self, global_time: usize) {
+        self.build_ops(global_time);
+    }
+
+    fn apply_operation<'b>(
+        &'b self,
+        op_id: OpId,
+        input: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        // NOTE: TV will need twice the buffer, and we can split it as needed
+        complex_buffer: &mut [c64],
+        central_global_time: usize,
+        chunk_size: usize,
+    ) {
+        let (domain_complex_buffer, op_complex_buffer) =
+            complex_buffer.split_at_mut(complex_buffer.len() / 2);
+        self.apply_convolution(
+            op_id,
+            input,
+            output,
+            domain_complex_buffer,
+            op_complex_buffer,
+            chunk_size,
+            central_global_time,
+        )
     }
 }

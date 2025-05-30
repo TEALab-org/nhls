@@ -39,8 +39,6 @@ pub trait PeriodicOpsBuilder<
 }
 
 pub trait PeriodicOps<const GRID_DIMENSION: usize>: Send + Sync {
-    fn blank() -> Self;
-
     fn build_ops(&mut self, global_time: usize);
 
     fn apply_operation<'a>(
@@ -50,6 +48,7 @@ pub trait PeriodicOps<const GRID_DIMENSION: usize>: Send + Sync {
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         // NOTE: TV will need twice the buffer, and we can split it as needed
         complex_buffer: &mut [c64],
+        central_global_time: usize,
         chunk_size: usize,
     );
 }
