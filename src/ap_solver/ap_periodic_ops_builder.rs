@@ -1,4 +1,8 @@
-use crate::fft_solver::*;
+use crate::ap_solver::ap_periodic_ops::*;
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::periodic_ops::*;
+use crate::fft_solver::ConvolutionOperation;
+use crate::fft_solver::PlanType;
 use crate::stencil::*;
 use crate::util::*;
 use fftw::array::*;
@@ -13,7 +17,7 @@ struct ConvolutionDescriptor<const GRID_DIMENSION: usize> {
 
 /// Used by APPlaner to create convolution operations,
 /// and assign them IDs.
-pub struct ConvolutionGenerator<
+pub struct ApPeriodicOpsBuilder<
     'a,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
@@ -28,7 +32,7 @@ pub struct ConvolutionGenerator<
 }
 
 impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    ConvolutionGenerator<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+    ApPeriodicOpsBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 {
     pub fn new(
         max_aabb: &AABB<GRID_DIMENSION>,
@@ -41,7 +45,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         let max_complex_size = max_aabb.complex_buffer_size();
         let convolution_buffer = fftw::array::AlignedVec::new(max_complex_size);
 
-        ConvolutionGenerator {
+        ApPeriodicOpsBuilder {
             stencil,
             operations: Vec::new(),
             real_buffer,
@@ -50,24 +54,6 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             key_map: HashMap::new(),
             chunk_size,
         }
-    }
-
-    pub fn from_periodic_ops(
-        max_aabb: &AABB<GRID_DIMENSION>,
-        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        plan_type: PlanType,
-        chunk_size: usize,
-        periodic_op_descriptors: &[PeriodicOpDescriptor<GRID_DIMENSION>],
-    ) -> ConvolutionStore {
-        let mut gen = Self::new(max_aabb, stencil, plan_type, chunk_size);
-        for (i, op) in periodic_op_descriptors.iter().enumerate() {
-            assert_eq!(op.steps, op.step_max - op.step_min);
-            let k = gen.get_op(op.exclusive_bounds, op.steps, op.threads);
-            println!("i: {}, k: {}, op: {:?}", i, k, op);
-            assert_eq!(k, i);
-        }
-
-        ConvolutionStore::new(gen.operations)
     }
 
     pub fn get_op(
@@ -101,7 +87,27 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         self.operations.len()
     }
 
-    pub fn finish(self) -> ConvolutionStore {
-        ConvolutionStore::new(self.operations)
+    pub fn finish(self) -> ApPeriodicOps {
+        ApPeriodicOps::new(self.operations)
+    }
+}
+
+impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    PeriodicOpsBuilder<GRID_DIMENSION, ApPeriodicOps>
+    for ApPeriodicOpsBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+{
+    fn get_op_id(
+        &mut self,
+        descriptor: PeriodicOpDescriptor<GRID_DIMENSION>,
+    ) -> OpId {
+        self.get_op(
+            descriptor.exclusive_bounds,
+            descriptor.steps,
+            descriptor.threads,
+        )
+    }
+
+    fn finish(self) -> ApPeriodicOps {
+        self.finish()
     }
 }

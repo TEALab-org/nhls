@@ -20,6 +20,7 @@ fn main() {
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
+        solve_threads: args.threads,
     };
     let solver = APSolver::new(
         &bc,
@@ -27,7 +28,6 @@ fn main() {
         grid_bound,
         args.steps_per_image,
         &planner_params,
-        args.threads,
     );
     solver.print_report();
     if args.write_dot {

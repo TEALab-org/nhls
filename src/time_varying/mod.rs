@@ -11,9 +11,7 @@ mod tv_direct_api;
 mod tv_direct_frustrum_solver;
 mod tv_periodic_solver;
 mod tv_periodic_solver_builder;
-mod tv_planner;
 mod tv_tree_planner;
-mod tv_tree_query_collector;
 
 pub use fft_gen::*;
 pub use fft_pair::*;
@@ -28,6 +26,4 @@ pub use tv_direct_api::*;
 pub use tv_direct_frustrum_solver::*;
 pub use tv_periodic_solver::*;
 pub use tv_periodic_solver_builder::*;
-pub use tv_planner::*;
 pub use tv_tree_planner::*;
-pub use tv_tree_query_collector::*;

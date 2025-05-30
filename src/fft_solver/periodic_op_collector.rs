@@ -4,33 +4,39 @@ use std::io::prelude::*;
 
 pub type TVOpId = usize;
 
+/// Describes a periodic solve,
+/// including time-varying
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TVOpDescriptor<const GRID_DIMENSION: usize> {
+pub struct PeriodicOpDescriptor<const GRID_DIMENSION: usize> {
     pub step_min: usize,
     pub step_max: usize,
+    pub steps: usize,
     pub exclusive_bounds: Coord<GRID_DIMENSION>,
     pub threads: usize,
 }
 
-impl<const GRID_DIMENSION: usize> TVOpDescriptor<GRID_DIMENSION> {
+impl<const GRID_DIMENSION: usize> PeriodicOpDescriptor<GRID_DIMENSION> {
     pub fn blank() -> Self {
-        TVOpDescriptor {
+        PeriodicOpDescriptor {
             step_min: 0,
             step_max: 0,
+            steps: 0,
             exclusive_bounds: Coord::zeros(),
             threads: 0,
         }
     }
 }
 
-pub struct TVTreeQueryCollector<const GRID_DIMENSION: usize> {
-    pub descriptor_map: HashMap<TVOpDescriptor<GRID_DIMENSION>, TVOpId>,
+/// Collect all periodic solves needed
+/// during plan creation
+pub struct PeriodicOpCollector<const GRID_DIMENSION: usize> {
+    pub descriptor_map: HashMap<PeriodicOpDescriptor<GRID_DIMENSION>, TVOpId>,
     next_id: usize,
 }
 
-impl<const GRID_DIMENSION: usize> TVTreeQueryCollector<GRID_DIMENSION> {
-    pub fn new() -> Self {
-        TVTreeQueryCollector {
+impl<const GRID_DIMENSION: usize> PeriodicOpCollector<GRID_DIMENSION> {
+    pub fn blank() -> Self {
+        PeriodicOpCollector {
             descriptor_map: HashMap::new(),
             next_id: 0,
         }
@@ -38,7 +44,7 @@ impl<const GRID_DIMENSION: usize> TVTreeQueryCollector<GRID_DIMENSION> {
 
     pub fn get_op_id(
         &mut self,
-        descriptor: TVOpDescriptor<GRID_DIMENSION>,
+        descriptor: PeriodicOpDescriptor<GRID_DIMENSION>,
     ) -> TVOpId {
         if let Some(id) = self.descriptor_map.get(&descriptor) {
             *id
@@ -50,9 +56,9 @@ impl<const GRID_DIMENSION: usize> TVTreeQueryCollector<GRID_DIMENSION> {
         }
     }
 
-    pub fn finish(self) -> Vec<TVOpDescriptor<GRID_DIMENSION>> {
+    pub fn finish(self) -> Vec<PeriodicOpDescriptor<GRID_DIMENSION>> {
         let mut result =
-            vec![TVOpDescriptor::blank(); self.descriptor_map.len()];
+            vec![PeriodicOpDescriptor::blank(); self.descriptor_map.len()];
         // Collect
         for (descriptor, id) in self.descriptor_map {
             result[id] = descriptor;

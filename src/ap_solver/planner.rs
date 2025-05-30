@@ -1,78 +1,84 @@
-use crate::fft_solver::*;
-use crate::stencil::TVStencil;
-use crate::time_varying::*;
+use crate::fft_solver::ap_frustrum::*;
+use crate::fft_solver::find_periodic_solve::*;
+use crate::fft_solver::PlanType;
+
+use crate::stencil::*;
+
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::periodic_ops::*;
+use crate::ap_solver::plan::*;
+
 use crate::util::*;
+
+/// Planner recurses by finding periodic solves.
+/// These solves are configured with these parameters.
+pub struct PlannerParameters {
+    pub plan_type: PlanType,
+    pub cutoff: i32,
+    pub ratio: f64,
+    pub chunk_size: usize,
+    pub solve_threads: usize,
+}
+
 /// Creating a plan results in both a plan and convolution store.
 /// Someday we may separate the creation, if for example we
 /// we add support for saving APPlans to file.
-pub struct TVPlannerResult<const GRID_DIMENSION: usize> {
-    pub plan: APPlan<GRID_DIMENSION>,
-    pub op_descriptors: Vec<TVOpDescriptor<GRID_DIMENSION>>,
-    pub remainder_op_descriptors: Option<Vec<TVOpDescriptor<GRID_DIMENSION>>>,
+pub struct PlannerResult<
+    const GRID_DIMENSION: usize,
+    PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+> {
+    pub plan: Plan<GRID_DIMENSION>,
+    pub periodic_ops: PeriodicOpsType,
+    pub remainder_periodic_ops: PeriodicOpsType,
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
 }
 
-/// Given a stencil and AABB domain
-/// create an `PlannerResult`.
-/// We assume all faces of the AABB are boundary conditions.
-pub fn create_tv_ap_plan<
-    const GRID_DIMENSION: usize,
-    const NEIGHBORHOOD_SIZE: usize,
-    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
->(
-    stencil: &StencilType,
-    aabb: AABB<GRID_DIMENSION>,
-    steps: usize,
-    threads: usize,
-    params: &PlannerParameters,
-) -> TVPlannerResult<GRID_DIMENSION> {
-    let planner = TVPlanner::new(
-        stencil,
-        aabb,
-        steps,
-        //params.plan_type,
-        params.cutoff,
-        params.ratio,
-        //params.chunk_size,
-    );
-    planner.finish(threads)
-}
-
 /// Used to create an `APPlan`. See `create_ap_plan`
-struct TVPlanner<const GRID_DIMENSION: usize> {
+pub struct Planner<
+    const GRID_DIMENSION: usize,
+    PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+    OpsBuilderType: PeriodicOpsBuilder<GRID_DIMENSION, PeriodicOpsType>,
+> {
     stencil_slopes: Bounds<GRID_DIMENSION>,
     aabb: AABB<GRID_DIMENSION>,
     steps: usize,
+    ops_builder: OpsBuilderType,
+    nodes: Vec<PlanNode<GRID_DIMENSION>>,
+
     cutoff: i32,
     ratio: f64,
-    tree_query_collector: TVTreeQueryCollector<GRID_DIMENSION>,
-    nodes: Vec<PlanNode<GRID_DIMENSION>>,
+
+    ops_type_marker: std::marker::PhantomData<PeriodicOpsType>,
 }
 
-impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
-    fn new<
+impl<
+        const GRID_DIMENSION: usize,
+        PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+        OpsBuilderType: PeriodicOpsBuilder<GRID_DIMENSION, PeriodicOpsType>,
+    > Planner<GRID_DIMENSION, PeriodicOpsType, OpsBuilderType>
+{
+    pub fn new<
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     >(
         stencil: &StencilType,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
-        //plan_type: PlanType,
         cutoff: i32,
         ratio: f64,
-        //chunk_size: usize,
     ) -> Self {
         let stencil_slopes = stencil.slopes();
-        let tree_query_collector = TVTreeQueryCollector::new();
+        let ops_builder = OpsBuilderType::blank();
         let nodes = Vec::new();
-        TVPlanner {
+        Planner {
             stencil_slopes,
             aabb,
             steps,
             cutoff,
             ratio,
-            tree_query_collector,
+            ops_builder,
             nodes,
+            ops_type_marker: std::marker::PhantomData,
         }
     }
 
@@ -110,13 +116,14 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         // Create the convolution operation and get the id
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
         let rel_time_post = rel_time_0 + periodic_solve.steps;
-        let op_descriptor = TVOpDescriptor {
+        let op_descriptor = PeriodicOpDescriptor {
             step_min: rel_time_0,
             step_max: rel_time_post,
+            steps: periodic_solve.steps,
             exclusive_bounds: input_aabb.exclusive_bounds(),
             threads,
         };
-        let convolution_id = self.tree_query_collector.get_op_id(op_descriptor);
+        let convolution_id = self.ops_builder.get_op_id(op_descriptor);
 
         // Do we need a time cut.
         // If so that will trim that and create a plan for it
@@ -138,12 +145,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         let sub_threads = 1
             .max((threads as f64 / boundary_frustrums.len() as f64).ceil()
                 as usize);
-        /*
-        println!(
-            "Generate frustrum threads: {}, sub_threads: {}",
-            threads, sub_threads
-        );
-        */
+
         for bf in boundary_frustrums {
             sub_nodes.push(self.generate_frustrum(bf, rel_time_0, sub_threads));
         }
@@ -160,6 +162,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             steps: periodic_solve.steps,
             boundary_nodes: first_node..last_node,
             time_cut,
+            threads,
         })
     }
 
@@ -220,14 +223,14 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         let periodic_solve =
             find_periodic_solve(&self.aabb, &solve_params).unwrap();
 
-        let op_descriptor = TVOpDescriptor {
+        let op_descriptor = PeriodicOpDescriptor {
             step_min: 0,
             step_max: periodic_solve.steps,
+            steps: periodic_solve.steps,
             exclusive_bounds: self.aabb.exclusive_bounds(),
             threads,
         };
-        let convolution_id = self.tree_query_collector.get_op_id(op_descriptor);
-        println!("Generate central conv op id: {}", convolution_id);
+        let convolution_id = self.ops_builder.get_op_id(op_descriptor);
 
         let decomposition =
             self.aabb.decomposition(&periodic_solve.output_aabb);
@@ -236,10 +239,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             1.max(
                 (threads as f64 / (GRID_DIMENSION * 2) as f64).ceil() as usize
             );
-        println!(
-            "Plan Central: threads: {}, sub_threads: {}",
-            threads, sub_threads
-        );
+
         for d in 0..GRID_DIMENSION {
             for side in [Side::Min, Side::Max] {
                 sub_nodes.push(self.generate_frustrum(
@@ -267,6 +267,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
             steps: periodic_solve.steps,
             boundary_nodes: first_node..last_node,
             time_cut: None,
+            threads,
         };
 
         let root_node =
@@ -279,11 +280,7 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
     fn generate(
         &mut self,
         threads: usize,
-    ) -> (
-        NodeId,
-        Vec<TVOpDescriptor<GRID_DIMENSION>>,
-        Option<Vec<TVOpDescriptor<GRID_DIMENSION>>>,
-    ) {
+    ) -> (NodeId, PeriodicOpsType, PeriodicOpsType) {
         // generate central once,
         let (central_solve_node, central_solve_steps) =
             self.generate_central(self.steps, threads);
@@ -291,19 +288,19 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         let n = self.steps / central_solve_steps;
         let remainder = self.steps % central_solve_steps;
         let mut next = None;
-        let mut remainder_op_descriptors = None;
+        let mut remainder_periodic_ops = PeriodicOpsType::blank();
 
-        let mut t_collector = TVTreeQueryCollector::new();
-        std::mem::swap(&mut self.tree_query_collector, &mut t_collector);
-        let op_descriptors = t_collector.finish();
+        let mut t_builder = OpsBuilderType::blank();
+        std::mem::swap(&mut self.ops_builder, &mut t_builder);
+        let periodic_ops = t_builder.finish();
 
         if remainder != 0 {
             let (remainder_solve_node, remainder_solve_steps) =
                 self.generate_central(remainder, threads);
             next = Some(remainder_solve_node);
-            let mut t_collector = TVTreeQueryCollector::new();
-            std::mem::swap(&mut self.tree_query_collector, &mut t_collector);
-            remainder_op_descriptors = Some(t_collector.finish());
+            let mut t_builder = OpsBuilderType::blank();
+            std::mem::swap(&mut self.ops_builder, &mut t_builder);
+            remainder_periodic_ops = t_builder.finish();
             debug_assert_eq!(remainder_solve_steps, remainder);
         }
 
@@ -314,23 +311,26 @@ impl<const GRID_DIMENSION: usize> TVPlanner<GRID_DIMENSION> {
         };
 
         let root_node = self.add_node(PlanNode::Repeat(repeat_node));
-        (root_node, op_descriptors, remainder_op_descriptors)
+        (root_node, periodic_ops, remainder_periodic_ops)
     }
 
     /// Package up the results
-    fn finish(mut self, threads: usize) -> TVPlannerResult<GRID_DIMENSION> {
-        let (root, op_descriptors, remainder_op_descriptors) =
+    pub fn finish(
+        mut self,
+        threads: usize,
+    ) -> PlannerResult<GRID_DIMENSION, PeriodicOpsType> {
+        let (root, periodic_ops, remainder_periodic_ops) =
             self.generate(threads);
         let stencil_slopes = self.stencil_slopes;
-        let plan = APPlan {
+        let plan = Plan {
             nodes: self.nodes,
             root,
         };
 
-        TVPlannerResult {
+        PlannerResult {
             plan,
-            op_descriptors,
-            remainder_op_descriptors,
+            periodic_ops,
+            remainder_periodic_ops,
             stencil_slopes,
         }
     }

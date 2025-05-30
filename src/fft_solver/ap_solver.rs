@@ -16,6 +16,7 @@ pub struct APSolver<
     pub direct_frustrum_solver:
         DirectFrustrumSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     pub convolution_store: ConvolutionStore,
+    pub remainder_convolution_store: Option<ConvolutionStore>,
     pub plan: APPlan<GRID_DIMENSION>,
     pub node_scratch_descriptors: Vec<ScratchDescriptor>,
     pub scratch_space: APScratch,
@@ -33,13 +34,29 @@ where
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
         params: &PlannerParameters,
-        threads: usize,
     ) -> Self {
         // Create our plan and convolution_store
-        let planner_result =
-            create_ap_plan(stencil, aabb, steps, threads, params);
+        let planner_result = create_ap_plan(stencil, aabb, steps, params);
         let plan = planner_result.plan;
-        let convolution_store = planner_result.convolution_store;
+        let convolution_store = ConvolutionGenerator::from_periodic_ops(
+            &aabb,
+            stencil,
+            params.plan_type,
+            params.chunk_size,
+            &planner_result.periodic_op_descriptors,
+        );
+        let remainder_convolution_store = planner_result
+            .remainder_op_descriptors
+            .map(|op_descriptors| {
+                ConvolutionGenerator::from_periodic_ops(
+                    &aabb,
+                    stencil,
+                    params.plan_type,
+                    params.chunk_size,
+                    &op_descriptors,
+                )
+            });
+
         let stencil_slopes = planner_result.stencil_slopes;
 
         let (node_scratch_descriptors, scratch_space) =
@@ -55,6 +72,7 @@ where
         APSolver {
             direct_frustrum_solver,
             convolution_store,
+            remainder_convolution_store,
             plan,
             node_scratch_descriptors,
             scratch_space,
