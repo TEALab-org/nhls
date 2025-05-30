@@ -8,6 +8,8 @@ pub mod scratch;
 pub mod scratch_builder;
 pub mod solver;
 
+pub mod ap_periodic_ops;
+pub mod ap_periodic_ops_builder;
 pub mod tv_periodic_ops;
 pub mod tv_periodic_ops_builder;
 pub mod tv_periodic_ops_collector;
