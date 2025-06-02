@@ -1,7 +1,7 @@
 use core::f64;
 
+use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::*;
 use nhls::image_1d_example::*;
 use nhls::init::*;
 use nhls::mirror_domain::*;
@@ -36,15 +36,11 @@ fn main() {
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
-        solve_threads: args.threads,
+        threads: args.threads,
+        steps: args.steps_per_line,
+        aabb: grid_bound,
     };
-    let solver = SVSolver::new(
-        &stencil,
-        grid_bound,
-        args.steps_per_line,
-        &planner_params,
-        direct_solver,
-    );
+    let solver = SVSolver::new(&stencil, &planner_params, direct_solver);
 
     if args.gen_only {
         args.save_wisdom();

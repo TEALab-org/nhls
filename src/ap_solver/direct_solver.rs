@@ -1,7 +1,7 @@
 use crate::domain::*;
 use crate::fft_solver::DirectFrustrumSolver;
 use crate::stencil::*;
-use crate::time_varying::TVDirectFrustrumSolver;
+use crate::time_varying::tv_direct_frustrum_solver::*;
 use crate::util::*;
 use rayon::prelude::*;
 
@@ -18,12 +18,11 @@ pub trait DirectSolver<const GRID_DIMENSION: usize>: Send + Sync {
 }
 
 impl<
-        'a,
         BC: BCCheck<GRID_DIMENSION>,
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
     > DirectSolver<GRID_DIMENSION>
-    for DirectFrustrumSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+    for DirectFrustrumSolver<'_, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 {
     fn apply<'b>(
         &self,
