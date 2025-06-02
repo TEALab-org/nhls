@@ -15,4 +15,11 @@ pub mod tv_periodic_ops;
 pub mod tv_periodic_ops_builder;
 pub mod tv_periodic_ops_collector;
 
+pub mod generate_solver;
+
+pub use crate::fft_solver::PlanType;
+pub use generate_solver::*;
+pub use planner::PlannerParameters;
+pub use solver::SolverInterface;
+
 pub const MIN_ALIGNMENT: usize = 128;

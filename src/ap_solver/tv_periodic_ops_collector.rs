@@ -34,17 +34,15 @@ impl<
 {
     pub fn new(
         stencil: &'a StencilType,
-        aabb: AABB<GRID_DIMENSION>,
-        steps: usize,
         params: &'a PlannerParameters<GRID_DIMENSION>,
     ) -> Self {
         TvPeriodicOpsCollector {
             descriptor_map: HashMap::new(),
             next_id: 0,
             stencil,
-            aabb,
+            aabb: params.aabb,
             params,
-            steps,
+            steps: params.steps,
         }
     }
 
@@ -79,5 +77,36 @@ impl<
             self.params.plan_type,
             &result,
         )
+    }
+}
+
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+        StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    >
+    PeriodicOpsBuilder<
+        GRID_DIMENSION,
+        TvPeriodicOps<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>,
+    >
+    for TvPeriodicOpsCollector<
+        'a,
+        GRID_DIMENSION,
+        NEIGHBORHOOD_SIZE,
+        StencilType,
+    >
+{
+    fn get_op_id(
+        &mut self,
+        descriptor: PeriodicOpDescriptor<GRID_DIMENSION>,
+    ) -> OpId {
+        self.get_op_id(descriptor)
+    }
+
+    fn finish(
+        self,
+    ) -> TvPeriodicOps<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType> {
+        self.finish()
     }
 }

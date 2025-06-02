@@ -1,9 +1,10 @@
 use float_cmp::assert_approx_eq;
+use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::*;
 use nhls::init::*;
 use nhls::solver::*;
 use nhls::standard_stencils::*;
+use nhls::stencil::TVStencil;
 use nhls::time_varying::*;
 use nhls::util::*;
 
@@ -37,6 +38,8 @@ fn tv_rotating_advection_compare() {
     normal_ic_2d(&mut direct_input_domain, chunk_size);
     normal_ic_2d(&mut fft_input_domain, chunk_size);
 
+    let bc = ConstantCheck::new(0.0, grid_bound);
+
     let direct_solver = AP2DDirectSolver::new(&stencil);
     direct_solver.apply(
         &mut direct_input_domain,
@@ -52,15 +55,18 @@ fn tv_rotating_advection_compare() {
         cutoff: 20,
         ratio: 0.5,
         chunk_size,
-    };
-    let mut solver = TVAPSolver::new(
-        &stencil,
-        grid_bound,
-        n_steps,
+        aabb: grid_bound,
         threads,
-        &planner_params,
-        direct_solver,
-    );
+        steps: n_steps,
+    };
+    let direct_solver = TVDirectFrustrumSolver {
+        bc: &bc,
+        stencil: &stencil,
+        stencil_slopes: stencil.slopes(),
+        chunk_size,
+    };
+    let mut solver =
+        generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
     solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     for i in 0..buffer_size {

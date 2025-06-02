@@ -1,6 +1,7 @@
 use crate::ap_solver::ap_periodic_ops::*;
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
+use crate::ap_solver::planner::PlannerParameters;
 use crate::fft_solver::ConvolutionOperation;
 use crate::fft_solver::PlanType;
 use crate::stencil::*;
@@ -35,14 +36,12 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
     ApPeriodicOpsBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 {
     pub fn new(
-        max_aabb: &AABB<GRID_DIMENSION>,
         stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        plan_type: PlanType,
-        chunk_size: usize,
+        params: &PlannerParameters<GRID_DIMENSION>,
     ) -> Self {
-        let max_real_size = max_aabb.buffer_size();
+        let max_real_size = params.aabb.buffer_size();
         let real_buffer = fftw::array::AlignedVec::new(max_real_size);
-        let max_complex_size = max_aabb.complex_buffer_size();
+        let max_complex_size = params.aabb.complex_buffer_size();
         let convolution_buffer = fftw::array::AlignedVec::new(max_complex_size);
 
         ApPeriodicOpsBuilder {
@@ -50,9 +49,9 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
             operations: Vec::new(),
             real_buffer,
             convolution_buffer,
-            plan_type,
+            plan_type: params.plan_type,
             key_map: HashMap::new(),
-            chunk_size,
+            chunk_size: params.chunk_size,
         }
     }
 

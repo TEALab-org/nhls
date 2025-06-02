@@ -11,6 +11,45 @@ use crate::mem_fmt::*;
 use crate::util::*;
 use std::io::prelude::*;
 
+pub trait SolverInterface<'a, const GRID_DIMENSION: usize> {
+    fn apply(
+        &mut self,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        global_time: usize,
+    );
+
+    fn print_report(&self);
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P);
+}
+
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        DirectSolverType: DirectSolver<GRID_DIMENSION>,
+        PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+    > SolverInterface<'a, GRID_DIMENSION>
+    for Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
+{
+    fn apply(
+        &mut self,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        global_time: usize,
+    ) {
+        self.apply(input_domain, output_domain, global_time);
+    }
+
+    fn print_report(&self) {
+        self.print_report();
+    }
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P) {
+        self.plan.to_dot_file(path);
+    }
+}
+
 pub struct Solver<
     const GRID_DIMENSION: usize,
     DirectSolverType: DirectSolver<GRID_DIMENSION>,
