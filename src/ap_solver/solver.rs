@@ -167,9 +167,8 @@ impl<
 
         for _ in 0..repeat_solve.n {
             self.periodic_ops.build_ops(global_time);
-            self.periodic_solve_preallocated_io(
+            self.periodic_solve(
                 repeat_solve.node,
-                false,
                 input_domain,
                 output_domain,
                 global_time,
@@ -183,13 +182,7 @@ impl<
                 &mut self.remainder_periodic_ops,
             );
             self.remainder_periodic_ops.build_ops(global_time);
-            self.periodic_solve_preallocated_io(
-                next,
-                false,
-                input_domain,
-                output_domain,
-                global_time,
-            );
+            self.periodic_solve(next, input_domain, output_domain, global_time);
             std::mem::swap(
                 &mut self.periodic_ops,
                 &mut self.remainder_periodic_ops,
@@ -251,7 +244,6 @@ impl<
             PlanNode::PeriodicSolve(_) => {
                 self.periodic_solve_preallocated_io(
                     node_id,
-                    true,
                     input,
                     output,
                     global_time,
@@ -269,7 +261,6 @@ impl<
     pub fn periodic_solve_preallocated_io(
         &self,
         node_id: NodeId,
-        resize: bool,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         mut global_time: usize,
@@ -279,6 +270,80 @@ impl<
         input_domain.set_aabb(periodic_solve.input_aabb);
         input_domain.par_from_superset(output_domain, self.chunk_size);
         output_domain.set_aabb(periodic_solve.input_aabb);
+
+        self.periodic_solve(node_id, input_domain, output_domain, global_time);
+
+        std::mem::swap(input_domain, output_domain);
+        output_domain.set_aabb(periodic_solve.output_aabb);
+        output_domain.par_from_superset(input_domain, self.chunk_size);
+        input_domain.set_aabb(periodic_solve.output_aabb);
+
+        // call time cut if needed
+        if let Some(next_id) = periodic_solve.time_cut {
+            global_time += periodic_solve.steps;
+            std::mem::swap(input_domain, output_domain);
+            self.unknown_solve_preallocated_io(
+                next_id,
+                input_domain,
+                output_domain,
+                global_time,
+            );
+        }
+    }
+
+    pub fn periodic_solve_allocate_io(
+        &self,
+        node_id: NodeId,
+        input: &SliceDomain<'a, GRID_DIMENSION>,
+        output: &mut SliceDomain<'a, GRID_DIMENSION>,
+        mut global_time: usize,
+    ) {
+        let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+
+        let (mut input_domain, mut output_domain) =
+            self.get_input_output(node_id, &periodic_solve.input_aabb);
+
+        // copy input
+        input_domain.par_from_superset(input, self.chunk_size);
+
+        self.periodic_solve(
+            node_id,
+            &mut input_domain,
+            &mut output_domain,
+            global_time,
+        );
+
+        // TODO: this could get merged with the copy instruction below
+        // if we had an extra method for copying from AABB
+        std::mem::swap(&mut input_domain, &mut output_domain);
+        output_domain.set_aabb(periodic_solve.output_aabb);
+        output_domain.par_from_superset(&input_domain, self.chunk_size);
+        input_domain.set_aabb(periodic_solve.output_aabb);
+
+        // call time cut if needed
+        if let Some(next_id) = periodic_solve.time_cut {
+            global_time += periodic_solve.steps;
+            std::mem::swap(&mut input_domain, &mut output_domain);
+            self.unknown_solve_preallocated_io(
+                next_id,
+                &mut input_domain,
+                &mut output_domain,
+                global_time,
+            );
+        }
+
+        // copy output to output
+        output.par_set_subdomain(&output_domain, self.chunk_size);
+    }
+
+    pub fn periodic_solve(
+        &self,
+        node_id: NodeId,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        global_time: usize,
+    ) {
+        let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
         // Apply convolution
         self.periodic_ops.apply_operation(
@@ -316,52 +381,6 @@ impl<
                 }
             });
         }
-
-        if resize {
-            std::mem::swap(input_domain, output_domain);
-            output_domain.set_aabb(periodic_solve.output_aabb);
-            output_domain.par_from_superset(input_domain, self.chunk_size);
-            input_domain.set_aabb(periodic_solve.output_aabb);
-        }
-
-        // call time cut if needed
-        if let Some(next_id) = periodic_solve.time_cut {
-            global_time += periodic_solve.steps;
-            std::mem::swap(input_domain, output_domain);
-            self.unknown_solve_preallocated_io(
-                next_id,
-                input_domain,
-                output_domain,
-                global_time,
-            );
-        }
-    }
-
-    pub fn periodic_solve_allocate_io(
-        &self,
-        node_id: NodeId,
-        input: &SliceDomain<'a, GRID_DIMENSION>,
-        output: &mut SliceDomain<'a, GRID_DIMENSION>,
-        global_time: usize,
-    ) {
-        let periodic_solve = self.plan.unwrap_periodic_node(node_id);
-
-        let (mut input_domain, mut output_domain) =
-            self.get_input_output(node_id, &periodic_solve.input_aabb);
-
-        // copy input
-        input_domain.par_from_superset(input, self.chunk_size);
-
-        self.periodic_solve_preallocated_io(
-            node_id,
-            true,
-            &mut input_domain,
-            &mut output_domain,
-            global_time,
-        );
-
-        // copy output to output
-        output.par_set_subdomain(&output_domain, self.chunk_size);
     }
 
     pub fn direct_solve_allocate_io<'b>(
@@ -379,13 +398,15 @@ impl<
         // copy input
         input_domain.par_from_superset(input, self.chunk_size);
 
-        self.direct_solve_preallocated_io(
-            node_id,
+        // invoke direct solver
+        self.direct_solver.apply(
             &mut input_domain,
             &mut output_domain,
+            &direct_solve.sloped_sides,
+            direct_solve.steps,
             global_time,
+            direct_solve.threads,
         );
-        //debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
 
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
