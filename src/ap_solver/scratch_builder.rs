@@ -1,5 +1,18 @@
-use crate::fft_solver::*;
+use crate::ap_solver::account_builder::*;
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::plan::*;
+use crate::ap_solver::scratch::*;
+use crate::ap_solver::MIN_ALIGNMENT;
 use crate::util::*;
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum ComplexBufferType {
+    // Periodic Ops only
+    DomainOnly,
+
+    // TV operations need buffer space to build the convolution
+    DomainAndOp,
+}
 
 /// `APScratchBuilder` calculates offsets and sizes for the scratch memory
 /// each node will use in terms of bytes.
@@ -8,48 +21,55 @@ use crate::util::*;
 /// Note that these buffers are provided at runtime by `APScratch`,
 /// the scratch builder just creates a descriptor for each node in
 /// the plan.
-pub struct APScratchBuilder<'a, const GRID_DIMENSION: usize> {
-    plan: &'a APPlan<GRID_DIMENSION>,
+pub struct ScratchBuilder<'a, const GRID_DIMENSION: usize> {
+    plan: &'a Plan<GRID_DIMENSION>,
     node_block_requirements: Vec<usize>,
+    complex_buffer_type: ComplexBufferType,
 }
 
-impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
+impl<'a, const GRID_DIMENSION: usize> ScratchBuilder<'a, GRID_DIMENSION> {
     /// Static method to create an `APScratch` instance
     /// and a scratch descriptor for each node
     pub fn build(
-        plan: &'a APPlan<GRID_DIMENSION>,
-    ) -> (Vec<ScratchDescriptor>, APScratch) {
-        let node_block_requirements = APAccountBuilder::node_requirements(plan);
+        plan: &'a Plan<GRID_DIMENSION>,
+        complex_buffer_type: ComplexBufferType,
+    ) -> (Vec<ScratchDescriptor>, Scratch) {
+        let node_block_requirements =
+            AccountBuilder::node_requirements(plan, complex_buffer_type);
         let mut scratch_descriptors =
             vec![ScratchDescriptor::default(); plan.len()];
 
-        let builder = APScratchBuilder {
+        let builder = ScratchBuilder {
             plan,
             node_block_requirements,
+            complex_buffer_type,
         };
         builder.handle_repeat(plan.root, 0, &mut scratch_descriptors);
-        let scratch_space = APScratch::new(
+        let scratch_space = Scratch::new(
             builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
         );
         (scratch_descriptors, scratch_space)
     }
 
     pub fn build_double(
-        plan: &'a APPlan<GRID_DIMENSION>,
-    ) -> (Vec<ScratchDescriptor>, APScratch, APScratch) {
-        let node_block_requirements = APAccountBuilder::node_requirements(plan);
+        plan: &'a Plan<GRID_DIMENSION>,
+        complex_buffer_type: ComplexBufferType,
+    ) -> (Vec<ScratchDescriptor>, Scratch, Scratch) {
+        let node_block_requirements =
+            AccountBuilder::node_requirements(plan, complex_buffer_type);
         let mut scratch_descriptors =
             vec![ScratchDescriptor::default(); plan.len()];
 
-        let builder = APScratchBuilder {
+        let builder = ScratchBuilder {
             plan,
             node_block_requirements,
+            complex_buffer_type,
         };
         builder.handle_repeat(plan.root, 0, &mut scratch_descriptors);
-        let scratch_space_1 = APScratch::new(
+        let scratch_space_1 = Scratch::new(
             builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
         );
-        let scratch_space_2 = APScratch::new(
+        let scratch_space_2 = Scratch::new(
             builder.blocks_to_bytes(builder.node_block_requirements[plan.root]),
         );
         (scratch_descriptors, scratch_space_1, scratch_space_2)
@@ -66,7 +86,11 @@ impl<'a, const GRID_DIMENSION: usize> APScratchBuilder<'a, GRID_DIMENSION> {
 
     fn complex_buffer_bytes(&self, aabb: &AABB<GRID_DIMENSION>) -> usize {
         let min_bytes = aabb.complex_buffer_size() * std::mem::size_of::<c64>();
-        min_bytes.div_ceil(MIN_ALIGNMENT) * MIN_ALIGNMENT
+        let byte_req = min_bytes.div_ceil(MIN_ALIGNMENT) * MIN_ALIGNMENT;
+        match self.complex_buffer_type {
+            ComplexBufferType::DomainOnly => byte_req,
+            ComplexBufferType::DomainAndOp => 2 * byte_req,
+        }
     }
 
     fn handle_repeat(

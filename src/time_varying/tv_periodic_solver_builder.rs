@@ -1,7 +1,9 @@
+use crate::ap_solver::scratch::*;
+use crate::ap_solver::*;
 use crate::domain::*;
-use crate::fft_solver::*;
 use crate::mem_fmt::*;
 use crate::stencil::*;
+use crate::time_varying::tv_periodic_solver::*;
 use crate::time_varying::*;
 use crate::util::*;
 
@@ -222,7 +224,7 @@ impl<
         offset += c_size;
 
         println!("Solve builder mem req: {}", human_readable_bytes(offset));
-        let scratch = APScratch::new(offset);
+        let scratch = Scratch::new(offset);
 
         let mut fft_gen = FFTGen::new(plan_type);
 

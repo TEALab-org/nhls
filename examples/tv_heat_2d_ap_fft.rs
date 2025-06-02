@@ -1,12 +1,10 @@
 use core::f64;
 
+use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
-use nhls::solver::*;
-use nhls::time_varying::*;
 use std::time::*;
 
 fn main() {
@@ -24,21 +22,19 @@ fn main() {
     let mut output_domain = buffer_2.as_slice_domain();
     rand(&mut input_domain, 10, args.chunk_size);
 
-    let direct_solver = AP2DDirectSolver::new(&stencil);
+    let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
+    // Create AP Solver
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
+        threads: args.threads,
+        steps: args.steps_per_image,
+        aabb: grid_bound,
     };
-    let mut solver = TVAPSolver::new(
-        &stencil,
-        grid_bound,
-        args.steps_per_image,
-        args.threads,
-        &planner_params,
-        direct_solver,
-    );
+    let mut solver =
+        generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
 
     if args.gen_only {
         args.save_wisdom();

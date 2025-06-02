@@ -1,17 +1,19 @@
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::periodic_ops::*;
+use crate::ap_solver::scratch::*;
 use crate::domain::*;
-use crate::fft_solver::*;
 use crate::par_slice;
 use crate::stencil::*;
-use crate::time_varying::*;
+use crate::time_varying::{FFTPairId, FFTStore};
 use crate::util::*;
 use fftw::plan::*;
 use rayon::prelude::*;
 
-pub struct TVBase1Node {
+pub struct Base1Node {
     pub t: usize,
 }
 
-pub struct TVBase2Node<'a, const GRID_DIMENSION: usize> {
+pub struct Base2Node<'a, const GRID_DIMENSION: usize> {
     pub t1: usize,
     pub t2: usize,
     pub s1: CircStencil<'a, GRID_DIMENSION>,
@@ -21,7 +23,7 @@ pub struct TVBase2Node<'a, const GRID_DIMENSION: usize> {
     pub plan_id: FFTPairId,
 }
 
-pub struct TVConvolveNode<'a, const GRID_DIMENSION: usize> {
+pub struct ConvolveNode<'a, const GRID_DIMENSION: usize> {
     pub n1_key: (usize, usize),
     pub n2_key: (usize, usize),
     pub s1: CircStencil<'a, GRID_DIMENSION>,
@@ -31,21 +33,21 @@ pub struct TVConvolveNode<'a, const GRID_DIMENSION: usize> {
     pub plan_id: FFTPairId,
 }
 
-pub enum TVIntermediateNode<'a, const GRID_DIMENSION: usize> {
-    Base1(TVBase1Node),
-    Base2(TVBase2Node<'a, GRID_DIMENSION>),
-    Convolve(TVConvolveNode<'a, GRID_DIMENSION>),
+pub enum IntermediateNode<'a, const GRID_DIMENSION: usize> {
+    Base1(Base1Node),
+    Base2(Base2Node<'a, GRID_DIMENSION>),
+    Convolve(ConvolveNode<'a, GRID_DIMENSION>),
 }
 
-impl<'a, const GRID_DIMENSION: usize> TVIntermediateNode<'a, GRID_DIMENSION> {
+impl<const GRID_DIMENSION: usize> IntermediateNode<'_, GRID_DIMENSION> {
     pub fn clear_stencils(&mut self) {
         match self {
-            TVIntermediateNode::Base1(_) => {}
-            TVIntermediateNode::Base2(n) => {
+            IntermediateNode::Base1(_) => {}
+            IntermediateNode::Base2(n) => {
                 n.s1.clear();
                 n.s2.clear();
             }
-            TVIntermediateNode::Convolve(n) => {
+            IntermediateNode::Convolve(n) => {
                 n.s1.clear();
                 n.s2.clear();
             }
@@ -63,7 +65,7 @@ pub fn solve_tvbase2_node<
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
-    node: &mut TVBase2Node<GRID_DIMENSION>,
+    node: &mut Base2Node<GRID_DIMENSION>,
     stencil: &StencilType,
     global_time: usize,
     fft_store: &FFTStore,
@@ -103,18 +105,18 @@ pub fn add_tvnode_to_circ_stencil<
 >(
     s: &'b mut CircStencil<'a, GRID_DIMENSION>,
     id: (usize, usize),
-    prev_layers: &'b [Vec<TVIntermediateNode<'a, GRID_DIMENSION>>],
+    prev_layers: &'b [Vec<IntermediateNode<'a, GRID_DIMENSION>>],
     stencil: &StencilType,
     global_time: usize,
 ) {
     match &prev_layers[id.0][id.1] {
-        TVIntermediateNode::Base1(n) => {
+        IntermediateNode::Base1(n) => {
             s.add_tv_stencil(stencil, global_time + n.t);
         }
-        TVIntermediateNode::Base2(n) => {
+        IntermediateNode::Base2(n) => {
             s.add_circ_stencil(&n.s1);
         }
-        TVIntermediateNode::Convolve(n) => {
+        IntermediateNode::Convolve(n) => {
             s.add_circ_stencil(&n.s1);
         }
     }
@@ -127,9 +129,9 @@ pub fn solve_tvconvolve_node<
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 >(
-    node: &'node_borrow mut TVConvolveNode<'solver_life, GRID_DIMENSION>,
+    node: &'node_borrow mut ConvolveNode<'solver_life, GRID_DIMENSION>,
     prev_layers: &'node_borrow [Vec<
-        TVIntermediateNode<'solver_life, GRID_DIMENSION>,
+        IntermediateNode<'solver_life, GRID_DIMENSION>,
     >],
     stencil: &'node_borrow StencilType,
     global_time: usize,
@@ -180,7 +182,7 @@ pub fn solve_tvbase_layer<
     stencil: &StencilType,
     threads: usize,
     global_time: usize,
-    layer_nodes: &mut [TVIntermediateNode<GRID_DIMENSION>],
+    layer_nodes: &mut [IntermediateNode<GRID_DIMENSION>],
     fft_store: &FFTStore,
 ) {
     // TODO clear
@@ -190,8 +192,8 @@ pub fn solve_tvbase_layer<
         .for_each(|layer_node_chunk| {
             for node in layer_node_chunk.iter_mut() {
                 match node {
-                    TVIntermediateNode::Base1(_) => {}
-                    TVIntermediateNode::Base2(n) => {
+                    IntermediateNode::Base1(_) => {}
+                    IntermediateNode::Base2(n) => {
                         solve_tvbase2_node(
                             n,
                             stencil,
@@ -200,7 +202,7 @@ pub fn solve_tvbase_layer<
                             10000,
                         );
                     }
-                    TVIntermediateNode::Convolve(_) => {
+                    IntermediateNode::Convolve(_) => {
                         panic!(
                             "ERROR: shouldn't be convolve nodes in base layer"
                         );
@@ -220,12 +222,12 @@ pub fn solve_tvmiddle_layer<
     stencil: &'node_borrow StencilType,
     threads: usize,
     global_time: usize,
-    layer_nodes: &'node_borrow mut [TVIntermediateNode<
+    layer_nodes: &'node_borrow mut [IntermediateNode<
         'solver_life,
         GRID_DIMENSION,
     >],
     prev_layers: &'node_borrow [Vec<
-        TVIntermediateNode<'solver_life, GRID_DIMENSION>,
+        IntermediateNode<'solver_life, GRID_DIMENSION>,
     >],
     fft_store: &FFTStore,
 ) {
@@ -236,8 +238,8 @@ pub fn solve_tvmiddle_layer<
         .for_each(|layer_node_chunk| {
             for node in layer_node_chunk {
                 match node {
-                    TVIntermediateNode::Base1(_) => {}
-                    TVIntermediateNode::Base2(n) => {
+                    IntermediateNode::Base1(_) => {}
+                    IntermediateNode::Base2(n) => {
                         solve_tvbase2_node(
                             n,
                             stencil,
@@ -246,7 +248,7 @@ pub fn solve_tvmiddle_layer<
                             chunk_size,
                         );
                     }
-                    TVIntermediateNode::Convolve(n) => {
+                    IntermediateNode::Convolve(n) => {
                         solve_tvconvolve_node(
                             n,
                             prev_layers,
@@ -261,7 +263,7 @@ pub fn solve_tvmiddle_layer<
         });
 }
 
-pub struct TVAPConvOpsCalc<
+pub struct TvPeriodicOps<
     'a,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
@@ -269,11 +271,11 @@ pub struct TVAPConvOpsCalc<
 > {
     pub stencil: &'a StencilType,
     pub aabb: AABB<GRID_DIMENSION>,
-    pub intermediate_nodes: Vec<Vec<TVIntermediateNode<'a, GRID_DIMENSION>>>,
+    pub intermediate_nodes: Vec<Vec<IntermediateNode<'a, GRID_DIMENSION>>>,
     pub conv_ops: Vec<ConvOp>,
     pub threads: usize,
     pub fft_pairs: FFTStore,
-    pub scratch: APScratch,
+    pub scratch: Scratch,
 }
 
 impl<
@@ -281,17 +283,17 @@ impl<
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    > TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+    > TvPeriodicOps<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
 {
     pub fn blank(s: &'a StencilType) -> Self {
-        TVAPConvOpsCalc {
+        TvPeriodicOps {
             stencil: s,
             aabb: AABB::new(Bounds::zero()),
             intermediate_nodes: Vec::new(),
             conv_ops: Vec::new(),
             threads: 0,
             fft_pairs: FFTStore::new(Vec::new()),
-            scratch: APScratch::new(1),
+            scratch: Scratch::new(1),
         }
     }
 
@@ -348,7 +350,7 @@ impl<
 
         // Add weights
         match ir_node {
-            TVIntermediateNode::Base1(n) => {
+            IntermediateNode::Base1(n) => {
                 // Add stencil offsets to output
                 let weights = self.stencil.weights(central_global_time + n.t);
                 for i in 0..NEIGHBORHOOD_SIZE {
@@ -359,7 +361,7 @@ impl<
                     s_d.set_coord(&periodic_coord, weight);
                 }
             }
-            TVIntermediateNode::Base2(n) => {
+            IntermediateNode::Base2(n) => {
                 // Add stencil offsets to output
                 for (offset, weight) in n.s1.to_offset_weights() {
                     let rn_i: Coord<GRID_DIMENSION> = offset * -1;
@@ -367,7 +369,7 @@ impl<
                     s_d.set_coord(&periodic_coord, weight);
                 }
             }
-            TVIntermediateNode::Convolve(n) => {
+            IntermediateNode::Convolve(n) => {
                 // Add stencil offsets to output
                 for (offset, weight) in n.s1.to_offset_weights() {
                     let rn_i: Coord<GRID_DIMENSION> = offset * -1;
@@ -404,5 +406,41 @@ impl<
             .c2r(&mut domain_complex_buffer[0..n_c], output.buffer_mut())
             .unwrap();
         par_slice::div(output.buffer_mut(), n_r as f64, chunk_size);
+    }
+}
+
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+        StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    > PeriodicOps<GRID_DIMENSION>
+    for TvPeriodicOps<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+{
+    fn build_ops(&mut self, global_time: usize) {
+        self.build_ops(global_time);
+    }
+
+    fn apply_operation<'b>(
+        &self,
+        op_id: OpId,
+        input: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        // NOTE: TV will need twice the buffer, and we can split it as needed
+        complex_buffer: &mut [c64],
+        central_global_time: usize,
+        chunk_size: usize,
+    ) {
+        let (domain_complex_buffer, op_complex_buffer) =
+            complex_buffer.split_at_mut(complex_buffer.len() / 2);
+        self.apply_convolution(
+            op_id,
+            input,
+            output,
+            domain_complex_buffer,
+            op_complex_buffer,
+            chunk_size,
+            central_global_time,
+        )
     }
 }

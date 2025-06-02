@@ -1,7 +1,9 @@
+use crate::ap_solver::scratch::*;
+use crate::ap_solver::*;
 use crate::domain::*;
-use crate::fft_solver::*;
 use crate::par_slice;
 use crate::stencil::*;
+use crate::time_varying::tv_periodic_solver_builder::*;
 use crate::time_varying::*;
 use crate::util::*;
 use fftw::plan::*;
@@ -264,7 +266,7 @@ pub struct TVPeriodicSolver<
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
 > {
-    pub scratch: APScratch,
+    pub scratch: Scratch,
     pub stencil: &'a StencilType,
     pub c1: &'a mut [c64],
     pub c2: &'a mut [c64],

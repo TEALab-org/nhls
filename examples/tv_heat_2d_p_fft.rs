@@ -4,7 +4,7 @@ use nhls::domain::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
-use nhls::time_varying::*;
+use nhls::time_varying::tv_periodic_solver::*;
 use std::time::*;
 
 fn main() {

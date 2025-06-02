@@ -1,5 +1,8 @@
+use nhls::ap_solver::generate_solver::*;
+use nhls::ap_solver::planner::PlannerParameters;
+use nhls::ap_solver::solver::SolverInterface;
 use nhls::domain::*;
-use nhls::fft_solver::*;
+use nhls::fft_solver::DirectFrustrumSolver;
 use nhls::image_1d_example::*;
 
 fn main() {
@@ -17,21 +20,26 @@ fn main() {
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);
 
+    let direct_solver = DirectFrustrumSolver {
+        bc: &bc,
+        stencil: &stencil,
+        stencil_slopes: stencil.slopes(),
+        chunk_size: args.chunk_size,
+    };
+
     // Create AP Solver
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
+        threads: args.threads,
+        steps: args.steps_per_line,
+        aabb: grid_bound,
     };
-    let solver = APSolver::new(
-        &bc,
-        &stencil,
-        grid_bound,
-        args.steps_per_line,
-        &planner_params,
-        args.threads,
-    );
+    let mut solver =
+        generate_ap_solver(&stencil, direct_solver, &planner_params);
+
     solver.print_report();
 
     if args.write_dot {

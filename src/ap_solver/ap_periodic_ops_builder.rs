@@ -1,4 +1,9 @@
-use crate::fft_solver::*;
+use crate::ap_solver::ap_periodic_ops::*;
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::periodic_ops::*;
+use crate::ap_solver::planner::PlannerParameters;
+use crate::fft_solver::ConvolutionOperation;
+use crate::fft_solver::PlanType;
 use crate::stencil::*;
 use crate::util::*;
 use fftw::array::*;
@@ -8,11 +13,12 @@ use std::collections::HashMap;
 struct ConvolutionDescriptor<const GRID_DIMENSION: usize> {
     exclusive_bounds: Coord<GRID_DIMENSION>,
     steps: usize,
+    threads: usize,
 }
 
 /// Used by APPlaner to create convolution operations,
 /// and assign them IDs.
-pub struct ConvolutionGenerator<
+pub struct ApPeriodicOpsBuilder<
     'a,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
@@ -27,40 +33,38 @@ pub struct ConvolutionGenerator<
 }
 
 impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    ConvolutionGenerator<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+    ApPeriodicOpsBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
 {
     pub fn new(
-        max_aabb: &AABB<GRID_DIMENSION>,
         stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        plan_type: PlanType,
-        chunk_size: usize,
+        params: &PlannerParameters<GRID_DIMENSION>,
     ) -> Self {
-        let max_real_size = max_aabb.buffer_size();
+        let max_real_size = params.aabb.buffer_size();
         let real_buffer = fftw::array::AlignedVec::new(max_real_size);
-        let max_complex_size = max_aabb.complex_buffer_size();
+        let max_complex_size = params.aabb.complex_buffer_size();
         let convolution_buffer = fftw::array::AlignedVec::new(max_complex_size);
 
-        ConvolutionGenerator {
+        ApPeriodicOpsBuilder {
             stencil,
             operations: Vec::new(),
             real_buffer,
             convolution_buffer,
-            plan_type,
+            plan_type: params.plan_type,
             key_map: HashMap::new(),
-            chunk_size,
+            chunk_size: params.chunk_size,
         }
     }
 
     pub fn get_op(
         &mut self,
-        bounds: &AABB<GRID_DIMENSION>,
+        exclusive_bounds: Coord<GRID_DIMENSION>,
         steps: usize,
         threads: usize,
     ) -> OpId {
-        let exclusive_bounds = bounds.exclusive_bounds();
         let key = ConvolutionDescriptor {
             exclusive_bounds,
             steps,
+            threads,
         };
         *self.key_map.entry(key).or_insert_with(|| {
             let result = self.operations.len();
@@ -82,7 +86,27 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
         self.operations.len()
     }
 
-    pub fn finish(self) -> ConvolutionStore {
-        ConvolutionStore::new(self.operations)
+    pub fn finish(self) -> ApPeriodicOps {
+        ApPeriodicOps::new(self.operations)
+    }
+}
+
+impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    PeriodicOpsBuilder<GRID_DIMENSION, ApPeriodicOps>
+    for ApPeriodicOpsBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+{
+    fn get_op_id(
+        &mut self,
+        descriptor: PeriodicOpDescriptor<GRID_DIMENSION>,
+    ) -> OpId {
+        self.get_op(
+            descriptor.exclusive_bounds,
+            descriptor.steps,
+            descriptor.threads,
+        )
+    }
+
+    fn finish(self) -> ApPeriodicOps {
+        self.finish()
     }
 }

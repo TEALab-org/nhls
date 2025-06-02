@@ -1,5 +1,12 @@
+use crate::ap_solver::ap_periodic_ops::*;
+use crate::ap_solver::ap_periodic_ops_builder::*;
+use crate::ap_solver::generate_plan::*;
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::plan::*;
+use crate::ap_solver::planner::*;
+use crate::ap_solver::scratch::*;
+use crate::ap_solver::scratch_builder::*;
 use crate::domain::*;
-use crate::fft_solver::*;
 use crate::mirror_domain::*;
 use crate::stencil::*;
 use crate::util::*;
@@ -10,11 +17,12 @@ pub struct SVSolver<
     SolverType: SVDirectSolver<GRID_DIMENSION> + Send + Sync,
 > {
     pub direct_frustrum_solver: SolverType,
-    pub convolution_store: ConvolutionStore,
-    pub plan: APPlan<GRID_DIMENSION>,
+    pub convolution_store: ApPeriodicOps,
+    pub remainder_convolution_store: ApPeriodicOps,
+    pub plan: Plan<GRID_DIMENSION>,
     pub node_scratch_descriptors: Vec<ScratchDescriptor>,
-    pub scratch_space_1: APScratch,
-    pub scratch_space_2: APScratch,
+    pub scratch_space_1: Scratch,
+    pub scratch_space_2: Scratch,
     pub chunk_size: usize,
 }
 
@@ -26,24 +34,22 @@ impl<
 {
     pub fn new(
         stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        aabb: AABB<GRID_DIMENSION>,
-        steps: usize,
-        threads: usize,
-        params: &PlannerParameters,
+        params: &PlannerParameters<GRID_DIMENSION>,
         solver: SolverType,
     ) -> Self {
-        // Create our plan and convolution_store
-        let planner_result =
-            create_ap_plan(stencil, aabb, steps, threads, params);
-        let plan = planner_result.plan;
-        let convolution_store = planner_result.convolution_store;
+        let create_ops_builder = || ApPeriodicOpsBuilder::new(stencil, params);
+        let planner_result = generate_plan(stencil, create_ops_builder, params);
 
+        // Create our plan and convolution_store
+        let plan = planner_result.plan;
+        let complex_buffer_type = ComplexBufferType::DomainOnly;
         let (node_scratch_descriptors, scratch_space_1, scratch_space_2) =
-            APScratchBuilder::build_double(&plan);
+            ScratchBuilder::build_double(&plan, complex_buffer_type);
 
         SVSolver {
             direct_frustrum_solver: solver,
-            convolution_store,
+            convolution_store: planner_result.periodic_ops,
+            remainder_convolution_store: planner_result.remainder_periodic_ops,
             plan,
             node_scratch_descriptors,
             scratch_space_1,

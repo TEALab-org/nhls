@@ -1,4 +1,5 @@
-use crate::fft_solver::*;
+use crate::ap_solver::MIN_ALIGNMENT;
+
 use sync_ptr::SyncConstPtr;
 
 pub type AllocationType = f64;
@@ -23,12 +24,12 @@ pub struct ScratchDescriptor {
     pub complex_buffer_size: usize,
 }
 
-pub struct APScratch {
+pub struct Scratch {
     scratch_ptr: SyncConstPtr<u8>,
     pub size: usize,
 }
 
-impl Drop for APScratch {
+impl Drop for Scratch {
     fn drop(&mut self) {
         let alloc_layout =
             std::alloc::Layout::from_size_align(self.size, MIN_ALIGNMENT)
@@ -43,7 +44,7 @@ impl Drop for APScratch {
     }
 }
 
-impl APScratch {
+impl Scratch {
     pub fn new(size: usize) -> Self {
         let alloc_layout =
             std::alloc::Layout::from_size_align(size, MIN_ALIGNMENT).unwrap();
@@ -56,7 +57,7 @@ impl APScratch {
             scratch_ptr.inner() as usize,
             scratch_ptr.inner() as usize % MIN_ALIGNMENT
         );
-        APScratch { scratch_ptr, size }
+        Scratch { scratch_ptr, size }
     }
 
     /// Only use this function with the values provided by APScratchBuilder

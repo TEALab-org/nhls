@@ -3,6 +3,8 @@
 // We use these alot with const ranges,
 // don't like this warning for this codebase.
 #![allow(clippy::needless_range_loop)]
+
+pub mod ap_solver;
 pub mod build_info;
 pub mod csv;
 pub mod domain;

@@ -1,16 +1,22 @@
+use crate::ap_solver::periodic_ops::*;
+use crate::ap_solver::scratch::*;
+use crate::ap_solver::tv_periodic_ops::*;
+use crate::ap_solver::MIN_ALIGNMENT;
 use crate::domain::*;
-use crate::fft_solver::*;
+use crate::fft_solver::PlanType;
 use crate::mem_fmt::*;
 use crate::stencil::*;
-use crate::time_varying::*;
+use crate::time_varying::FFTGen;
 use crate::util::*;
 use std::collections::HashMap;
 
-pub struct TVIRBase1Node {
+pub const NONSENSE: usize = 99999999;
+
+pub struct IRBase1Node {
     pub t: usize,
 }
 
-pub struct TVIRBase2Node<const GRID_DIMENSION: usize> {
+pub struct IRBase2Node<const GRID_DIMENSION: usize> {
     pub t1: usize,
     pub t2: usize,
     pub s_slopes: Bounds<GRID_DIMENSION>,
@@ -23,7 +29,7 @@ pub struct TVIRBase2Node<const GRID_DIMENSION: usize> {
     pub c2_offset: usize,
 }
 
-pub struct TVIRConvolveNode<const GRID_DIMENSION: usize> {
+pub struct IRConvolveNode<const GRID_DIMENSION: usize> {
     pub n1_key: (usize, usize),
     pub n2_key: (usize, usize),
     pub s_slopes: Bounds<GRID_DIMENSION>,
@@ -36,13 +42,13 @@ pub struct TVIRConvolveNode<const GRID_DIMENSION: usize> {
     pub c2_offset: usize,
 }
 
-pub enum TVIRIntermediateNode<const GRID_DIMENSION: usize> {
-    Base1(TVIRBase1Node),
-    Base2(TVIRBase2Node<GRID_DIMENSION>),
-    Convolve(TVIRConvolveNode<GRID_DIMENSION>),
+pub enum IRIntermediateNode<const GRID_DIMENSION: usize> {
+    Base1(IRBase1Node),
+    Base2(IRBase2Node<GRID_DIMENSION>),
+    Convolve(IRConvolveNode<GRID_DIMENSION>),
 }
 
-pub struct TVAPOpCalcBuilder<
+pub struct TvPeriodicOpsBuilder<
     'a,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
@@ -51,7 +57,7 @@ pub struct TVAPOpCalcBuilder<
     pub stencil: &'a StencilType,
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
     pub aabb: AABB<GRID_DIMENSION>,
-    pub nodes: Vec<Vec<TVIRIntermediateNode<GRID_DIMENSION>>>,
+    pub nodes: Vec<Vec<IRIntermediateNode<GRID_DIMENSION>>>,
     // map (start_time, end_time) -> (layer, node_id)
     pub node_map: HashMap<(usize, usize), (usize, usize)>,
 }
@@ -61,12 +67,12 @@ impl<
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    > TVAPOpCalcBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+    > TvPeriodicOpsBuilder<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
 {
     pub fn new(stencil: &'a StencilType, aabb: AABB<GRID_DIMENSION>) -> Self {
         let stencil_slopes = stencil.slopes();
 
-        TVAPOpCalcBuilder {
+        TvPeriodicOpsBuilder {
             stencil,
             stencil_slopes,
             aabb,
@@ -79,7 +85,7 @@ impl<
         &mut self,
         start_time: usize,
         end_time: usize,
-        node: TVIRIntermediateNode<GRID_DIMENSION>,
+        node: IRIntermediateNode<GRID_DIMENSION>,
         layer: usize,
     ) -> usize {
         while layer >= self.nodes.len() {
@@ -133,7 +139,7 @@ impl<
             let c2_offset = *offset;
             *offset += complex_size;
 
-            let node = TVIRIntermediateNode::Base2(TVIRBase2Node {
+            let node = IRIntermediateNode::Base2(IRBase2Node {
                 t1: start_time,
                 t2: start_time + 1,
                 s_slopes: combined_slopes,
@@ -149,8 +155,7 @@ impl<
         }
 
         if end_time - start_time == 1 {
-            let node =
-                TVIRIntermediateNode::Base1(TVIRBase1Node { t: start_time });
+            let node = IRIntermediateNode::Base1(IRBase1Node { t: start_time });
             return self.add_node(start_time, end_time, node, layer);
         }
 
@@ -179,7 +184,7 @@ impl<
             let c2_offset = *offset;
             *offset += complex_size;
 
-            let node = TVIRIntermediateNode::Convolve(TVIRConvolveNode {
+            let node = IRIntermediateNode::Convolve(IRConvolveNode {
                 n1_key: (0, n1),
                 n2_key: (0, n2),
                 s_slopes: combined_slopes,
@@ -197,7 +202,7 @@ impl<
 
     fn add_nodes_for_op(
         &mut self,
-        op: &TVOpDescriptor<GRID_DIMENSION>,
+        op: &PeriodicOpDescriptor<GRID_DIMENSION>,
         offset: &mut usize,
     ) {
         //println!("Add nodes for op, [{}, {})", op.step_min, op.step_max);
@@ -226,7 +231,7 @@ impl<
                     //println!(" Add single");
                     // add node to base layer
                     let node =
-                        TVIRIntermediateNode::Base1(TVIRBase1Node { t: start });
+                        IRIntermediateNode::Base1(IRBase1Node { t: start });
                     let layer = self.nodes.len() - 1;
                     let id = self.add_node(start, end, node, layer);
                     stack.push(((start, end), (layer, id)));
@@ -287,7 +292,7 @@ impl<
                 let c2_offset = *offset;
                 *offset += complex_size;
 
-                let node = TVIRIntermediateNode::Convolve(TVIRConvolveNode {
+                let node = IRIntermediateNode::Convolve(IRConvolveNode {
                     n1_key,
                     n2_key,
                     s_slopes: combined_slopes,
@@ -309,7 +314,7 @@ impl<
 
     fn add_op_nodes(
         &mut self,
-        tree_queries: &[TVOpDescriptor<GRID_DIMENSION>],
+        tree_queries: &[PeriodicOpDescriptor<GRID_DIMENSION>],
         offset: &mut usize,
     ) {
         for query in tree_queries.iter() {
@@ -322,9 +327,8 @@ impl<
         steps: usize,
         threads: usize,
         plan_type: PlanType,
-        tree_queries: &[TVOpDescriptor<GRID_DIMENSION>],
-    ) -> TVAPConvOpsCalc<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
-    {
+        tree_queries: &[PeriodicOpDescriptor<GRID_DIMENSION>],
+    ) -> TvPeriodicOps<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType> {
         // Calculate scratch space, build IR nodes
         let mut offset = 0;
         self.build_range(0, steps, 10, &mut offset);
@@ -345,7 +349,7 @@ impl<
         );
 
         // TODO make sure we add nodes for missing op stencils
-        let scratch = APScratch::new(offset);
+        let scratch = Scratch::new(offset);
         /*
         println!("NODE MAP");
         for (k, j) in &self.node_map {
@@ -380,12 +384,12 @@ impl<
             );
             for node in ir_layer_nodes.iter() {
                 match node {
-                    TVIRIntermediateNode::Base1(n) => {
-                        layer_nodes.push(TVIntermediateNode::Base1(
-                            TVBase1Node { t: n.t },
-                        ));
+                    IRIntermediateNode::Base1(n) => {
+                        layer_nodes.push(IntermediateNode::Base1(Base1Node {
+                            t: n.t,
+                        }));
                     }
-                    TVIRIntermediateNode::Base2(n) => {
+                    IRIntermediateNode::Base2(n) => {
                         let s1_buffer =
                             scratch.unsafe_get_buffer(n.s1_offset, n.s_size);
                         let s2_buffer =
@@ -403,19 +407,17 @@ impl<
 
                         let size = s1.domain.aabb().exclusive_bounds();
                         let plan_id = fft_gen.get_op(size, plan_threads);
-                        layer_nodes.push(TVIntermediateNode::Base2(
-                            TVBase2Node {
-                                t1: n.t1,
-                                t2: n.t2,
-                                s1,
-                                s2,
-                                c1,
-                                c2,
-                                plan_id,
-                            },
-                        ));
+                        layer_nodes.push(IntermediateNode::Base2(Base2Node {
+                            t1: n.t1,
+                            t2: n.t2,
+                            s1,
+                            s2,
+                            c1,
+                            c2,
+                            plan_id,
+                        }));
                     }
-                    TVIRIntermediateNode::Convolve(n) => {
+                    IRIntermediateNode::Convolve(n) => {
                         let s1_buffer =
                             scratch.unsafe_get_buffer(n.s1_offset, n.s_size);
                         let s2_buffer =
@@ -433,8 +435,8 @@ impl<
 
                         let size = s1.domain.aabb().exclusive_bounds();
                         let plan_id = fft_gen.get_op(size, plan_threads);
-                        layer_nodes.push(TVIntermediateNode::Convolve(
-                            TVConvolveNode {
+                        layer_nodes.push(IntermediateNode::Convolve(
+                            ConvolveNode {
                                 n1_key: n.n1_key,
                                 n2_key: n.n2_key,
                                 s1,
@@ -469,7 +471,7 @@ impl<
 
         let fft_pairs = fft_gen.finish();
 
-        TVAPConvOpsCalc {
+        TvPeriodicOps {
             stencil: self.stencil,
             aabb: self.aabb,
             intermediate_nodes: result_nodes,
