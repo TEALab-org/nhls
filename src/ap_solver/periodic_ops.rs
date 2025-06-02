@@ -42,7 +42,7 @@ pub trait PeriodicOps<const GRID_DIMENSION: usize>: Send + Sync {
     fn build_ops(&mut self, global_time: usize);
 
     fn apply_operation<'a>(
-        &'a self,
+        &self,
         op_id: OpId,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,

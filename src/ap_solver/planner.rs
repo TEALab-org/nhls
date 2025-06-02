@@ -2,8 +2,6 @@ use crate::fft_solver::ap_frustrum::*;
 use crate::fft_solver::find_periodic_solve::*;
 use crate::fft_solver::PlanType;
 
-use crate::stencil::*;
-
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::plan::*;
@@ -12,12 +10,14 @@ use crate::util::*;
 
 /// Planner recurses by finding periodic solves.
 /// These solves are configured with these parameters.
-pub struct PlannerParameters {
+pub struct PlannerParameters<const GRID_DIMENSION: usize> {
+    pub steps: usize,
     pub plan_type: PlanType,
     pub cutoff: i32,
     pub ratio: f64,
     pub chunk_size: usize,
-    pub solve_threads: usize,
+    pub threads: usize,
+    pub aabb: AABB<GRID_DIMENSION>,
 }
 
 /// Creating a plan results in both a plan and convolution store.
@@ -35,55 +35,27 @@ pub struct PlannerResult<
 
 /// Used to create an `APPlan`. See `create_ap_plan`
 pub struct Planner<
+    'a,
     const GRID_DIMENSION: usize,
     PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
     OpsBuilderType: PeriodicOpsBuilder<GRID_DIMENSION, PeriodicOpsType>,
 > {
-    stencil_slopes: Bounds<GRID_DIMENSION>,
-    aabb: AABB<GRID_DIMENSION>,
-    steps: usize,
-    ops_builder: OpsBuilderType,
-    nodes: Vec<PlanNode<GRID_DIMENSION>>,
-
-    cutoff: i32,
-    ratio: f64,
-
-    ops_type_marker: std::marker::PhantomData<PeriodicOpsType>,
+    pub stencil_slopes: Bounds<GRID_DIMENSION>,
+    pub nodes: Vec<PlanNode<GRID_DIMENSION>>,
+    pub params: &'a PlannerParameters<GRID_DIMENSION>,
+    pub ops_builder: OpsBuilderType,
+    pub ops_type_marker: std::marker::PhantomData<PeriodicOpsType>,
 }
 
 impl<
+        'a,
         const GRID_DIMENSION: usize,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
         OpsBuilderType: PeriodicOpsBuilder<GRID_DIMENSION, PeriodicOpsType>,
-    > Planner<GRID_DIMENSION, PeriodicOpsType, OpsBuilderType>
+    > Planner<'a, GRID_DIMENSION, PeriodicOpsType, OpsBuilderType>
 {
-    pub fn new<
-        const NEIGHBORHOOD_SIZE: usize,
-        StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    >(
-        stencil: &StencilType,
-        aabb: AABB<GRID_DIMENSION>,
-        steps: usize,
-        cutoff: i32,
-        ratio: f64,
-    ) -> Self {
-        let stencil_slopes = stencil.slopes();
-        let ops_builder = OpsBuilderType::blank();
-        let nodes = Vec::new();
-        Planner {
-            stencil_slopes,
-            aabb,
-            steps,
-            cutoff,
-            ratio,
-            ops_builder,
-            nodes,
-            ops_type_marker: std::marker::PhantomData,
-        }
-    }
-
     /// Pushes a node into the plan store and returns the id.
-    fn add_node(&mut self, node: PlanNode<GRID_DIMENSION>) -> NodeId {
+    pub fn add_node(&mut self, node: PlanNode<GRID_DIMENSION>) -> NodeId {
         let result = self.nodes.len();
         self.nodes.push(node);
         result
@@ -178,12 +150,12 @@ impl<
     ) -> PlanNode<GRID_DIMENSION> {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
-            cutoff: self.cutoff,
-            ratio: self.ratio,
+            cutoff: self.params.cutoff,
+            ratio: self.params.ratio,
             max_steps: Some(frustrum.steps),
         };
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
-        debug_assert!(self.aabb.contains_aabb(&input_aabb));
+        debug_assert!(self.params.aabb.contains_aabb(&input_aabb));
 
         // Can we do a periodic solve or do we direct solve?
         let maybe_periodic_solve =
@@ -207,7 +179,7 @@ impl<
     ///
     /// Note also that the boundary solve decomposition
     /// is based on `AABB` and not `APFrustrum`.
-    fn generate_central(
+    pub fn generate_central(
         &mut self,
         max_steps: usize,
         threads: usize,
@@ -215,25 +187,25 @@ impl<
         let rel_time_0 = 0;
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
-            cutoff: self.cutoff,
-            ratio: self.ratio,
+            cutoff: self.params.cutoff,
+            ratio: self.params.ratio,
             max_steps: Some(max_steps),
         };
 
         let periodic_solve =
-            find_periodic_solve(&self.aabb, &solve_params).unwrap();
+            find_periodic_solve(&self.params.aabb, &solve_params).unwrap();
 
         let op_descriptor = PeriodicOpDescriptor {
             step_min: 0,
             step_max: periodic_solve.steps,
             steps: periodic_solve.steps,
-            exclusive_bounds: self.aabb.exclusive_bounds(),
+            exclusive_bounds: self.params.aabb.exclusive_bounds(),
             threads,
         };
         let convolution_id = self.ops_builder.get_op_id(op_descriptor);
 
         let decomposition =
-            self.aabb.decomposition(&periodic_solve.output_aabb);
+            self.params.aabb.decomposition(&periodic_solve.output_aabb);
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
         let sub_threads =
             1.max(
@@ -261,7 +233,7 @@ impl<
         self.nodes.extend(&mut sub_nodes.drain(..));
 
         let periodic_solve_node = PeriodicSolveNode {
-            input_aabb: self.aabb,
+            input_aabb: self.params.aabb,
             output_aabb: periodic_solve.output_aabb,
             convolution_id,
             steps: periodic_solve.steps,
@@ -274,64 +246,5 @@ impl<
             self.add_node(PlanNode::PeriodicSolve(periodic_solve_node));
 
         (root_node, periodic_solve.steps)
-    }
-
-    /// Create the root repeat node.
-    fn generate(
-        &mut self,
-        threads: usize,
-    ) -> (NodeId, PeriodicOpsType, PeriodicOpsType) {
-        // generate central once,
-        let (central_solve_node, central_solve_steps) =
-            self.generate_central(self.steps, threads);
-
-        let n = self.steps / central_solve_steps;
-        let remainder = self.steps % central_solve_steps;
-        let mut next = None;
-        let mut remainder_periodic_ops = PeriodicOpsType::blank();
-
-        let mut t_builder = OpsBuilderType::blank();
-        std::mem::swap(&mut self.ops_builder, &mut t_builder);
-        let periodic_ops = t_builder.finish();
-
-        if remainder != 0 {
-            let (remainder_solve_node, remainder_solve_steps) =
-                self.generate_central(remainder, threads);
-            next = Some(remainder_solve_node);
-            let mut t_builder = OpsBuilderType::blank();
-            std::mem::swap(&mut self.ops_builder, &mut t_builder);
-            remainder_periodic_ops = t_builder.finish();
-            debug_assert_eq!(remainder_solve_steps, remainder);
-        }
-
-        let repeat_node = RepeatNode {
-            n,
-            node: central_solve_node,
-            next,
-        };
-
-        let root_node = self.add_node(PlanNode::Repeat(repeat_node));
-        (root_node, periodic_ops, remainder_periodic_ops)
-    }
-
-    /// Package up the results
-    pub fn finish(
-        mut self,
-        threads: usize,
-    ) -> PlannerResult<GRID_DIMENSION, PeriodicOpsType> {
-        let (root, periodic_ops, remainder_periodic_ops) =
-            self.generate(threads);
-        let stencil_slopes = self.stencil_slopes;
-        let plan = Plan {
-            nodes: self.nodes,
-            root,
-        };
-
-        PlannerResult {
-            plan,
-            periodic_ops,
-            remainder_periodic_ops,
-            stencil_slopes,
-        }
     }
 }

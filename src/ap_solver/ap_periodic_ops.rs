@@ -26,7 +26,7 @@ impl<const GRID_DIMENSION: usize> PeriodicOps<GRID_DIMENSION>
     fn build_ops(&mut self, _global_time: usize) {}
 
     fn apply_operation<'a>(
-        &'a self,
+        &self,
         op_id: OpId,
         input: &mut SliceDomain<'a, GRID_DIMENSION>,
         output: &mut SliceDomain<'a, GRID_DIMENSION>,

@@ -6,7 +6,7 @@ use crate::domain::*;
 use crate::fft_solver::PlanType;
 use crate::mem_fmt::*;
 use crate::stencil::*;
-use crate::time_varying::{FFTGen, FFTPairId, FFTStore};
+use crate::time_varying::FFTGen;
 use crate::util::*;
 use std::collections::HashMap;
 

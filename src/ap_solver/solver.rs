@@ -22,10 +22,12 @@ pub struct Solver<
     pub plan: Plan<GRID_DIMENSION>,
     pub node_scratch_descriptors: Vec<ScratchDescriptor>,
     pub scratch_space: Scratch,
+    pub central_global_time: usize,
     pub chunk_size: usize,
 }
 
 impl<
+        'a,
         const GRID_DIMENSION: usize,
         DirectSolverType: DirectSolver<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
@@ -33,7 +35,7 @@ impl<
 {
     pub fn new(
         direct_solver: DirectSolverType,
-        params: &PlannerParameters,
+        params: &PlannerParameters<GRID_DIMENSION>,
         planner_result: PlannerResult<GRID_DIMENSION, PeriodicOpsType>,
         complex_buffer_type: ComplexBufferType,
     ) -> Self {
@@ -48,6 +50,7 @@ impl<
             node_scratch_descriptors,
             scratch_space,
             chunk_size: params.chunk_size,
+            central_global_time: 0,
         }
     }
 
@@ -60,12 +63,13 @@ impl<
         );
     }
 
-    pub fn apply<'a>(
+    pub fn apply(
         &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        self.central_global_time = global_time;
         self.solve_root(input_domain, output_domain, global_time);
     }
 
@@ -111,7 +115,7 @@ impl<
         )
     }
 
-    pub fn solve_root<'a>(
+    pub fn solve_root(
         &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
@@ -130,12 +134,12 @@ impl<
                 input_domain,
                 output_domain,
                 global_time,
-                &self.periodic_ops,
             );
             global_time += repeat_steps;
             std::mem::swap(input_domain, output_domain);
         }
         if let Some(next) = repeat_solve.next {
+            //std::mem::swap(&mut self.periodic_ops, &mut self.remainder_periodic_ops);
             self.remainder_periodic_ops.build_ops(global_time);
             self.periodic_solve_preallocated_io(
                 next,
@@ -143,20 +147,19 @@ impl<
                 input_domain,
                 output_domain,
                 global_time,
-                &self.remainder_periodic_ops,
-            )
+            );
+            //std::mem::swap(&mut self.periodic_ops, &mut self.remainder_periodic_ops);
         } else {
             std::mem::swap(input_domain, output_domain);
         }
     }
 
-    pub fn unknown_solve_allocate_io<'b>(
+    pub fn unknown_solve_allocate_io(
         &self,
         node_id: NodeId,
-        input: &SliceDomain<'b, GRID_DIMENSION>,
-        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input: &SliceDomain<'a, GRID_DIMENSION>,
+        output: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
-        periodic_ops: &PeriodicOpsType,
     ) {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
@@ -173,7 +176,6 @@ impl<
                     input,
                     output,
                     global_time,
-                    periodic_ops,
                 );
             }
             PlanNode::Repeat(_) => {
@@ -185,13 +187,12 @@ impl<
         }
     }
 
-    pub fn unknown_solve_preallocated_io<'b>(
+    pub fn unknown_solve_preallocated_io(
         &self,
         node_id: NodeId,
-        input: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
-        periodic_ops: &PeriodicOpsType,
     ) {
         match self.plan.get_node(node_id) {
             PlanNode::DirectSolve(_) => {
@@ -209,7 +210,6 @@ impl<
                     input,
                     output,
                     global_time,
-                    periodic_ops,
                 );
             }
             PlanNode::Repeat(_) => {
@@ -221,14 +221,13 @@ impl<
         }
     }
 
-    pub fn periodic_solve_preallocated_io<'b>(
+    pub fn periodic_solve_preallocated_io(
         &self,
         node_id: NodeId,
         resize: bool,
-        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         mut global_time: usize,
-        periodic_ops: &PeriodicOpsType,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         std::mem::swap(input_domain, output_domain);
@@ -237,11 +236,12 @@ impl<
         output_domain.set_aabb(periodic_solve.input_aabb);
 
         // Apply convolution
-        periodic_ops.apply_operation(
+        self.periodic_ops.apply_operation(
             periodic_solve.convolution_id,
             input_domain,
             output_domain,
             self.get_complex(node_id),
+            self.central_global_time,
             self.chunk_size,
         );
 
@@ -249,7 +249,7 @@ impl<
         // In a rayon scope, we fork for each of the boundary solves,
         // each of which will fill in their part of of output_domain
         {
-            let input_domain_const: &SliceDomain<'b, GRID_DIMENSION> =
+            let input_domain_const: &SliceDomain<'a, GRID_DIMENSION> =
                 input_domain;
             rayon::scope(|s| {
                 for node_id in periodic_solve.boundary_nodes.clone() {
@@ -266,7 +266,6 @@ impl<
                             input_domain_const,
                             &mut node_output,
                             global_time,
-                            periodic_ops,
                         );
                     });
                 }
@@ -289,18 +288,16 @@ impl<
                 input_domain,
                 output_domain,
                 global_time,
-                periodic_ops,
             );
         }
     }
 
-    pub fn periodic_solve_allocate_io<'b>(
+    pub fn periodic_solve_allocate_io(
         &self,
         node_id: NodeId,
-        input: &SliceDomain<'b, GRID_DIMENSION>,
-        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input: &SliceDomain<'a, GRID_DIMENSION>,
+        output: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
-        periodic_ops: &PeriodicOpsType,
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
@@ -316,7 +313,6 @@ impl<
             &mut input_domain,
             &mut output_domain,
             global_time,
-            periodic_ops,
         );
 
         // copy output to output
@@ -350,11 +346,11 @@ impl<
         output.par_set_subdomain(&output_domain, self.chunk_size);
     }
 
-    pub fn direct_solve_preallocated_io<'b>(
+    pub fn direct_solve_preallocated_io(
         &self,
         node_id: NodeId,
-        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
         let direct_solve = self.plan.unwrap_direct_node(node_id);

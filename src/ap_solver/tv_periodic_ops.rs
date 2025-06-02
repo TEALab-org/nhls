@@ -4,7 +4,7 @@ use crate::ap_solver::scratch::*;
 use crate::domain::*;
 use crate::par_slice;
 use crate::stencil::*;
-use crate::time_varying::{FFTGen, FFTPairId, FFTStore};
+use crate::time_varying::{FFTPairId, FFTStore};
 use crate::util::*;
 use fftw::plan::*;
 use rayon::prelude::*;
@@ -39,7 +39,7 @@ pub enum IntermediateNode<'a, const GRID_DIMENSION: usize> {
     Convolve(ConvolveNode<'a, GRID_DIMENSION>),
 }
 
-impl<'a, const GRID_DIMENSION: usize> IntermediateNode<'a, GRID_DIMENSION> {
+impl<const GRID_DIMENSION: usize> IntermediateNode<'_, GRID_DIMENSION> {
     pub fn clear_stencils(&mut self) {
         match self {
             IntermediateNode::Base1(_) => {}
@@ -422,7 +422,7 @@ impl<
     }
 
     fn apply_operation<'b>(
-        &'b self,
+        &self,
         op_id: OpId,
         input: &mut SliceDomain<'b, GRID_DIMENSION>,
         output: &mut SliceDomain<'b, GRID_DIMENSION>,

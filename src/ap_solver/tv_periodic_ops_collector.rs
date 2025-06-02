@@ -20,7 +20,7 @@ pub struct TvPeriodicOpsCollector<
     next_id: usize,
     stencil: &'a StencilType,
     aabb: AABB<GRID_DIMENSION>,
-    params: &'a PlannerParameters,
+    params: &'a PlannerParameters<GRID_DIMENSION>,
     steps: usize,
 }
 
@@ -36,7 +36,7 @@ impl<
         stencil: &'a StencilType,
         aabb: AABB<GRID_DIMENSION>,
         steps: usize,
-        params: &'a PlannerParameters,
+        params: &'a PlannerParameters<GRID_DIMENSION>,
     ) -> Self {
         TvPeriodicOpsCollector {
             descriptor_map: HashMap::new(),
@@ -75,7 +75,7 @@ impl<
         let ops_builder = TvPeriodicOpsBuilder::new(self.stencil, self.aabb);
         ops_builder.build_op_calc(
             self.steps,
-            self.params.solve_threads,
+            self.params.threads,
             self.params.plan_type,
             &result,
         )
