@@ -17,7 +17,7 @@ pub fn heat_2d(dt: f64, dx: f64, dy: f64, k_x: f64, k_y: f64) -> Stencil<2, 5> {
         move |args: &[f64; 5]| {
             let middle = args[4];
             let left = args[2];
-            let right = args[1];
+            let right = args[0];
             let bottom = args[1];
             let top = args[3];
             middle
