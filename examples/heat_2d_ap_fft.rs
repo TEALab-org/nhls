@@ -1,5 +1,6 @@
+use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::*;
+use nhls::fft_solver::DirectFrustrumSolver;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init;
@@ -10,8 +11,21 @@ fn main() {
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
     let grid_bound = args.grid_bounds();
 
+    // Create domains
+    let mut buffer_1 = OwnedDomain::new(grid_bound);
+    let mut buffer_2 = OwnedDomain::new(grid_bound);
+    let mut input_domain = buffer_1.as_slice_domain();
+    let mut output_domain = buffer_2.as_slice_domain();
+
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);
+
+    let direct_solver = DirectFrustrumSolver {
+        bc: &bc,
+        stencil: &stencil,
+        stencil_slopes: stencil.slopes(),
+        chunk_size: args.chunk_size,
+    };
 
     // Create AP Solver
     let planner_params = PlannerParameters {
@@ -19,15 +33,13 @@ fn main() {
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
-        solve_threads: args.threads,
+        threads: args.threads,
+        steps: args.steps_per_image,
+        aabb: grid_bound,
     };
-    let solver = APSolver::new(
-        &bc,
-        &stencil,
-        grid_bound,
-        args.steps_per_image,
-        &planner_params,
-    );
+    let mut solver =
+        generate_ap_solver(&stencil, direct_solver, &planner_params);
+
     solver.print_report();
 
     if args.write_dot {
@@ -38,12 +50,6 @@ fn main() {
         args.save_wisdom();
         std::process::exit(0);
     }
-
-    // Create domains
-    let mut buffer_1 = OwnedDomain::new(grid_bound);
-    let mut buffer_2 = OwnedDomain::new(grid_bound);
-    let mut input_domain = buffer_1.as_slice_domain();
-    let mut output_domain = buffer_2.as_slice_domain();
 
     if args.rand_init {
         init::rand(&mut input_domain, 1024, args.chunk_size);
