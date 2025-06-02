@@ -178,7 +178,10 @@ impl<
             std::mem::swap(input_domain, output_domain);
         }
         if let Some(next) = repeat_solve.next {
-            //std::mem::swap(&mut self.periodic_ops, &mut self.remainder_periodic_ops);
+            std::mem::swap(
+                &mut self.periodic_ops,
+                &mut self.remainder_periodic_ops,
+            );
             self.remainder_periodic_ops.build_ops(global_time);
             self.periodic_solve_preallocated_io(
                 next,
@@ -187,7 +190,10 @@ impl<
                 output_domain,
                 global_time,
             );
-            //std::mem::swap(&mut self.periodic_ops, &mut self.remainder_periodic_ops);
+            std::mem::swap(
+                &mut self.periodic_ops,
+                &mut self.remainder_periodic_ops,
+            );
         } else {
             std::mem::swap(input_domain, output_domain);
         }
