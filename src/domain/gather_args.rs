@@ -1,5 +1,5 @@
 use crate::domain::*;
-use crate::time_varying::TVStencil;
+use crate::stencil::TVStencil;
 use crate::util::*;
 
 pub fn gather_args<

@@ -1,13 +1,11 @@
 use core::f64;
 
+use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
-use nhls::solver::*;
-use nhls::space_hack::*;
-use nhls::util::*;
+use nhls::mirror_domain::*;
 use std::time::*;
 
 fn main() {
@@ -39,15 +37,11 @@ fn main() {
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
+        threads: args.threads,
+        steps: args.steps_per_image,
+        aabb: grid_bound,
     };
-    let solver = SVSolver::new(
-        &stencil,
-        grid_bound,
-        args.steps_per_image,
-        args.threads,
-        &planner_params,
-        direct_solver,
-    );
+    let solver = SVSolver::new(&stencil, &planner_params, direct_solver);
 
     if args.gen_only {
         args.save_wisdom();

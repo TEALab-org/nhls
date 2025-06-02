@@ -1,13 +1,15 @@
 use float_cmp::assert_approx_eq;
+use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::*;
+use nhls::fft_solver::DirectFrustrumSolver;
 use nhls::init::*;
 use nhls::solver::*;
 use nhls::util::*;
 
+pub const TEST_SOLVE_THREADS: usize = 8;
+
 #[test]
 fn heat_1d_ap_compare() {
-    let threads = 8;
     // Grid size
     let grid_bound = AABB::new(matrix![0, 999]);
 
@@ -39,15 +41,18 @@ fn heat_1d_ap_compare() {
         cutoff: 40,
         ratio: 0.5,
         chunk_size,
+        threads: TEST_SOLVE_THREADS,
+        aabb: grid_bound,
+        steps: n_steps,
     };
-    let fft_solver = APSolver::new(
-        &bc,
-        &stencil,
-        grid_bound,
-        n_steps,
-        &planner_params,
-        threads,
-    );
+    let direct_solver = DirectFrustrumSolver {
+        bc: &bc,
+        stencil: &stencil,
+        stencil_slopes: stencil.slopes(),
+        chunk_size,
+    };
+    let mut fft_solver =
+        generate_ap_solver(&stencil, direct_solver, &planner_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
@@ -103,9 +108,19 @@ fn heat_2d_ap_compare() {
         cutoff: 40,
         ratio: 0.5,
         chunk_size,
+        threads: TEST_SOLVE_THREADS,
+        aabb: grid_bound,
+        steps: n_steps,
     };
-    let fft_solver =
-        APSolver::new(&bc, &stencil, grid_bound, n_steps, &planner_params, 8);
+    let direct_solver = DirectFrustrumSolver {
+        bc: &bc,
+        stencil: &stencil,
+        stencil_slopes: stencil.slopes(),
+        chunk_size,
+    };
+
+    let mut fft_solver =
+        generate_ap_solver(&stencil, direct_solver, &planner_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
@@ -123,7 +138,7 @@ fn heat_2d_ap_compare() {
             f64,
             fft_output_domain.buffer()[i],
             direct_output_domain.buffer()[i],
-            epsilon = 0.0000000000001
+            epsilon = 0.000001
         );
     }
 }

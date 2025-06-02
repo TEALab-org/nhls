@@ -1,4 +1,7 @@
-use crate::fft_solver::*;
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::plan::*;
+use crate::ap_solver::scratch_builder::ComplexBufferType;
+use crate::ap_solver::MIN_ALIGNMENT;
 use crate::util::*;
 use std::ops::Range;
 
@@ -8,15 +11,22 @@ use std::ops::Range;
 /// Since we require all domains to use buffers allocated in terms of
 /// `MIN_ALIGMENT`, the `APAccountBuilder` calculates requirements in terms
 /// of `MIN_ALIGNMENT` sized blocks.
-pub struct APAccountBuilder<'a, const GRID_DIMENSION: usize> {
-    plan: &'a APPlan<GRID_DIMENSION>,
+pub struct AccountBuilder<'a, const GRID_DIMENSION: usize> {
+    plan: &'a Plan<GRID_DIMENSION>,
+    complex_buffer_type: ComplexBufferType,
 }
 
-impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
+impl<'a, const GRID_DIMENSION: usize> AccountBuilder<'a, GRID_DIMENSION> {
     /// Generate the memory requirements for each node in MIN_ALIGMENT byte alignment
-    pub fn node_requirements(plan: &'a APPlan<GRID_DIMENSION>) -> Vec<usize> {
+    pub fn node_requirements(
+        plan: &'a Plan<GRID_DIMENSION>,
+        complex_buffer_type: ComplexBufferType,
+    ) -> Vec<usize> {
         let mut node_requirements = vec![0; plan.len()];
-        let account_builder = APAccountBuilder { plan };
+        let account_builder = AccountBuilder {
+            plan,
+            complex_buffer_type,
+        };
         account_builder.handle_repeat_node(plan.root, &mut node_requirements);
         node_requirements
     }
@@ -28,7 +38,11 @@ impl<'a, const GRID_DIMENSION: usize> APAccountBuilder<'a, GRID_DIMENSION> {
 
     fn complex_buffer_requirement(&self, aabb: &AABB<GRID_DIMENSION>) -> usize {
         let min_bytes = aabb.complex_buffer_size() * std::mem::size_of::<c64>();
-        min_bytes.div_ceil(MIN_ALIGNMENT)
+        let block_req = min_bytes.div_ceil(MIN_ALIGNMENT);
+        match self.complex_buffer_type {
+            ComplexBufferType::DomainOnly => block_req,
+            ComplexBufferType::DomainAndOp => 2 * block_req,
+        }
     }
 
     fn handle_repeat_node(

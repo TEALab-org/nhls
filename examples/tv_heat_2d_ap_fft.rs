@@ -1,45 +1,11 @@
 use core::f64;
 
+use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::*;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init::*;
-use nhls::solver::*;
-use nhls::time_varying::*;
-use nhls::util::*;
 use std::time::*;
-
-pub struct TVHeat2D {
-    offsets: [Coord<2>; 5],
-}
-
-impl TVHeat2D {
-    pub fn new() -> Self {
-        let offsets = [
-            vector![1, 0],
-            vector![0, -1],
-            vector![-1, 0],
-            vector![0, 1],
-            vector![0, 0],
-        ];
-        TVHeat2D { offsets }
-    }
-}
-
-impl TVStencil<2, 5> for TVHeat2D {
-    fn offsets(&self) -> &[Coord<2>; 5] {
-        &self.offsets
-    }
-
-    fn weights(&self, global_time: usize) -> Values<5> {
-        let t_f = global_time as f64;
-        let e = (-t_f * 0.01).exp();
-        let cw = 1.0 - e;
-        let nw = e / 5.0;
-        vector![nw, nw, nw, nw, cw]
-    }
-}
 
 fn main() {
     let args = Args::cli_parse("tv_heat_2d_ap_fft");
@@ -47,7 +13,7 @@ fn main() {
     // Grid size
     let grid_bound = args.grid_bounds();
 
-    let stencil = TVHeat2D::new();
+    let stencil = nhls::standard_stencils::TVHeat2D::new();
 
     // Create domains
     let mut buffer_1 = OwnedDomain::new(grid_bound);
@@ -56,21 +22,19 @@ fn main() {
     let mut output_domain = buffer_2.as_slice_domain();
     rand(&mut input_domain, 10, args.chunk_size);
 
-    let direct_solver = AP2DDirectSolver::new(&stencil);
+    let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
+    // Create AP Solver
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
         ratio: args.ratio,
         chunk_size: args.chunk_size,
+        threads: args.threads,
+        steps: args.steps_per_image,
+        aabb: grid_bound,
     };
-    let mut solver = TVAPSolver::new(
-        &stencil,
-        grid_bound,
-        args.steps_per_image,
-        args.threads,
-        &planner_params,
-        direct_solver,
-    );
+    let mut solver =
+        generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
 
     if args.gen_only {
         args.save_wisdom();
