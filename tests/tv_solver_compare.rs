@@ -1,11 +1,12 @@
 use float_cmp::assert_approx_eq;
+use nhls::ap_solver::direct_solver::*;
+use nhls::ap_solver::DirectSolver5Pt2DOpt;
 use nhls::ap_solver::*;
 use nhls::domain::*;
 use nhls::init::*;
-use nhls::solver::*;
 use nhls::standard_stencils::*;
 use nhls::stencil::TVStencil;
-use nhls::time_varying::*;
+use nhls::time_varying::tv_direct_frustrum_solver::*;
 use nhls::util::*;
 
 #[test]
@@ -40,7 +41,7 @@ fn tv_rotating_advection_compare() {
 
     let bc = ConstantCheck::new(0.0, grid_bound);
 
-    let direct_solver = AP2DDirectSolver::new(&stencil);
+    let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
     direct_solver.apply(
         &mut direct_input_domain,
         &mut direct_output_domain,
