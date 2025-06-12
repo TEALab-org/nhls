@@ -38,7 +38,7 @@ fn main() {
         aabb: grid_bound,
     };
     let mut solver =
-        generate_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_ap_solver_2d(&stencil, direct_solver, &planner_params);
 
     solver.print_report();
 

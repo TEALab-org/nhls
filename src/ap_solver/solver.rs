@@ -29,8 +29,9 @@ impl<
         const GRID_DIMENSION: usize,
         DirectSolverType: DirectSolver<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+        SubsetOpsType: SubsetOps<GRID_DIMENSION>,
     > SolverInterface<'a, GRID_DIMENSION>
-    for Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
+    for Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType, SubsetOpsType>
 {
     fn apply(
         &mut self,
@@ -54,9 +55,11 @@ pub struct Solver<
     const GRID_DIMENSION: usize,
     DirectSolverType: DirectSolver<GRID_DIMENSION>,
     PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+    SubsetOpsType: SubsetOps<GRID_DIMENSION>,
 > {
     pub direct_solver: DirectSolverType,
     pub periodic_ops: PeriodicOpsType,
+    pub subset_ops: SubsetOpsType,
     pub remainder_periodic_ops: PeriodicOpsType,
     pub plan: Plan<GRID_DIMENSION>,
     pub node_scratch_descriptors: Vec<ScratchDescriptor>,
@@ -70,10 +73,12 @@ impl<
         const GRID_DIMENSION: usize,
         DirectSolverType: DirectSolver<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
-    > Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
+        SubsetOpsType: SubsetOps<GRID_DIMENSION>,
+    > Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType, SubsetOpsType>
 {
     pub fn new(
         direct_solver: DirectSolverType,
+        subset_ops: SubsetOpsType,
         params: &PlannerParameters<GRID_DIMENSION>,
         planner_result: PlannerResult<GRID_DIMENSION, PeriodicOpsType>,
         complex_buffer_type: ComplexBufferType,
@@ -84,6 +89,7 @@ impl<
         Solver {
             direct_solver,
             periodic_ops: planner_result.periodic_ops,
+            subset_ops,
             remainder_periodic_ops: planner_result.remainder_periodic_ops,
             plan: planner_result.plan,
             node_scratch_descriptors,
@@ -128,7 +134,10 @@ impl<
         &self,
         node_id: usize,
         aabb: &AABB<GRID_DIMENSION>,
-    ) -> (SliceDomain<GRID_DIMENSION>, SliceDomain<GRID_DIMENSION>) {
+    ) -> (
+        SliceDomain<'a, GRID_DIMENSION>,
+        SliceDomain<'a, GRID_DIMENSION>,
+    ) {
         let scratch_descriptor = &self.node_scratch_descriptors[node_id];
         let input_buffer = self.scratch_space.unsafe_get_buffer(
             scratch_descriptor.input_offset,
@@ -268,14 +277,17 @@ impl<
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(periodic_solve.input_aabb);
-        input_domain.par_from_superset(output_domain, self.chunk_size);
+        self.subset_ops
+            .copy_to_subdomain(output_domain, input_domain);
         output_domain.set_aabb(periodic_solve.input_aabb);
 
         self.periodic_solve(node_id, input_domain, output_domain, global_time);
 
+        // TODO (rb): Do we need this?
         std::mem::swap(input_domain, output_domain);
         output_domain.set_aabb(periodic_solve.output_aabb);
-        output_domain.par_from_superset(input_domain, self.chunk_size);
+        self.subset_ops
+            .copy_to_subdomain(input_domain, output_domain);
         input_domain.set_aabb(periodic_solve.output_aabb);
 
         // call time cut if needed
@@ -304,7 +316,7 @@ impl<
             self.get_input_output(node_id, &periodic_solve.input_aabb);
 
         // copy input
-        input_domain.par_from_superset(input, self.chunk_size);
+        self.subset_ops.copy_to_subdomain(input, &mut input_domain);
 
         self.periodic_solve(
             node_id,
@@ -317,7 +329,8 @@ impl<
         // if we had an extra method for copying from AABB
         std::mem::swap(&mut input_domain, &mut output_domain);
         output_domain.set_aabb(periodic_solve.output_aabb);
-        output_domain.par_from_superset(&input_domain, self.chunk_size);
+        self.subset_ops
+            .copy_to_subdomain(&input_domain, &mut output_domain);
         input_domain.set_aabb(periodic_solve.output_aabb);
 
         // call time cut if needed
@@ -333,7 +346,7 @@ impl<
         }
 
         // copy output to output
-        output.par_set_subdomain(&output_domain, self.chunk_size);
+        self.subset_ops.copy_from_subdomain(&output_domain, output);
     }
 
     pub fn periodic_solve(
@@ -396,7 +409,7 @@ impl<
             self.get_input_output(node_id, &direct_solve.input_aabb);
 
         // copy input
-        input_domain.par_from_superset(input, self.chunk_size);
+        self.subset_ops.copy_to_subdomain(input, &mut input_domain);
 
         // invoke direct solver
         self.direct_solver.apply(
@@ -409,7 +422,7 @@ impl<
         );
 
         // copy output to output
-        output.par_set_subdomain(&output_domain, self.chunk_size);
+        self.subset_ops.copy_from_subdomain(&output_domain, output);
     }
 
     pub fn direct_solve_preallocated_io(
@@ -431,7 +444,8 @@ impl<
         // the expected input domain
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(direct_solve.input_aabb);
-        input_domain.par_from_superset(output_domain, self.chunk_size);
+        self.subset_ops
+            .copy_to_subdomain(output_domain, input_domain);
         output_domain.set_aabb(direct_solve.input_aabb);
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
 

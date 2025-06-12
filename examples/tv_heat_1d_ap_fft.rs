@@ -33,7 +33,7 @@ fn main() {
         aabb: grid_bound,
     };
     let mut solver =
-        generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_tv_ap_solver_1d(&stencil, direct_solver, &planner_params);
 
     if args.gen_only {
         args.save_wisdom();

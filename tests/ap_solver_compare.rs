@@ -52,7 +52,7 @@ fn heat_1d_ap_compare() {
         chunk_size,
     };
     let mut fft_solver =
-        generate_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_ap_solver_1d(&stencil, direct_solver, &planner_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
@@ -120,7 +120,7 @@ fn heat_2d_ap_compare() {
     };
 
     let mut fft_solver =
-        generate_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_ap_solver_2d(&stencil, direct_solver, &planner_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
