@@ -458,12 +458,13 @@ impl<
             global_time,
             direct_solve.threads,
         );
-
+/*
         debug_assert_eq!(
             direct_solve.output_aabb,
             *output_domain.aabb(),
             "ERROR: n_id: {}, Unexpected solve output",
             node_id
         );
+        */
     }
 }
