@@ -5,6 +5,7 @@ mod slice;
 mod subset_ops;
 mod subset_ops_1d;
 mod subset_ops_2d;
+mod subset_ops_3d;
 
 pub use chunk::*;
 pub use debug_io::*;
@@ -13,6 +14,7 @@ pub use slice::*;
 pub use subset_ops::*;
 pub use subset_ops_1d::*;
 pub use subset_ops_2d::*;
+pub use subset_ops_3d::*;
 
 use crate::util::*;
 use rayon::prelude::*;
