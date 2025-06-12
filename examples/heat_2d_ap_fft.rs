@@ -4,6 +4,7 @@ use nhls::fft_solver::DirectFrustrumSolver;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init;
+use std::time::*;
 
 fn main() {
     let args = Args::cli_parse("heat_2d_ap_fft");
@@ -63,7 +64,11 @@ fn main() {
 
     let mut global_time = 0;
     for t in 1..args.images {
+        let now = Instant::now();
         solver.apply(&mut input_domain, &mut output_domain, global_time);
+        let elapsed_time = now.elapsed();
+        eprintln!("{}", elapsed_time.as_nanos() as f64 / 1000000000.0);
+
         global_time += args.steps_per_image;
         std::mem::swap(&mut input_domain, &mut output_domain);
         if args.write_images {
