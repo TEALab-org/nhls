@@ -1,33 +1,30 @@
+use core::f64;
+
 use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::DirectFrustrumSolver;
 use nhls::image::*;
 use nhls::image_2d_example::*;
-use nhls::init;
+use nhls::init::*;
 use std::time::*;
 
 fn main() {
-    let args = Args::cli_parse("heat_2d_ap_fft");
+    let args = Args::cli_parse("tv_rotating_2d");
 
-    let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
+    // Grid size
     let grid_bound = args.grid_bounds();
+
+    let freq = (2.0 * std::f64::consts::PI) / 1500.0;
+    let stencil =
+        nhls::standard_stencils::RotatingAdvectionStencil::new(freq, 0.2);
 
     // Create domains
     let mut buffer_1 = OwnedDomain::new(grid_bound);
     let mut buffer_2 = OwnedDomain::new(grid_bound);
     let mut input_domain = buffer_1.as_slice_domain();
     let mut output_domain = buffer_2.as_slice_domain();
+    normal_ic_2d(&mut input_domain, args.chunk_size);
 
-    // Create BC
-    let bc = ConstantCheck::new(1.0, grid_bound);
-
-    let direct_solver = DirectFrustrumSolver {
-        bc: &bc,
-        stencil: &stencil,
-        stencil_slopes: stencil.slopes(),
-        chunk_size: args.chunk_size,
-    };
-
+    let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
     // Create AP Solver
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
@@ -39,29 +36,18 @@ fn main() {
         aabb: grid_bound,
     };
     let mut solver =
-        generate_ap_solver_2d(&stencil, direct_solver, &planner_params);
-
-    solver.print_report();
-
-    if args.write_dot {
-        solver.to_dot_file(&args.dot_path());
-    }
+        generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
 
     if args.gen_only {
         args.save_wisdom();
         std::process::exit(0);
     }
 
-    if args.rand_init {
-        init::rand(&mut input_domain, 1024, args.chunk_size);
-    } else {
-        init::normal_ic_2d(&mut input_domain, args.chunk_size);
-    }
-
     if args.write_images {
         image2d(&input_domain, &args.frame_name(0));
     }
 
+    // Apply direct solver
     let mut global_time = 0;
     for t in 1..args.images {
         let now = Instant::now();
