@@ -29,5 +29,4 @@ codegen-units = 1
 
 [features]
 profile-with-puffin = ["profiling/profile-with-puffin", "puffin_http"]
-profile-with-tracing = ["profiling/profile-with-tracing"]
 default = ["profile-with-puffin"]
