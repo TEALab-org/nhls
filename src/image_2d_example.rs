@@ -3,6 +3,8 @@ use crate::fft_solver::PlanType;
 use crate::util::*;
 use clap::Parser;
 use std::path::PathBuf;
+
+#[cfg(feature = "profile-with-puffin")]
 use std::sync::Mutex;
 
 #[cfg(feature = "profile-with-puffin")]

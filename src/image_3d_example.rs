@@ -4,6 +4,23 @@ use crate::util::*;
 use clap::Parser;
 use std::path::PathBuf;
 
+#[cfg(feature = "profile-with-puffin")]
+use std::sync::Mutex;
+
+#[cfg(feature = "profile-with-puffin")]
+lazy_static::lazy_static! {
+    static ref puffin_server: Mutex<Option<puffin_http::Server>> = {
+        println!("Initializing profiling server:");
+        let server_addr =
+                format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
+        println!(
+                "Run this to view profiling data:  puffin_viewer {server_addr}"
+            );
+        let server = puffin_http::Server::new(&server_addr).unwrap();
+        Mutex::new(Some(server))
+    };
+}
+
 /// nhls 2D stencil executable
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -86,6 +103,17 @@ impl Args {
             std::fs::create_dir(output_dir).unwrap();
         }
 
+        #[cfg(feature = "profile-with-puffin")]
+        {
+            let server_lock = &puffin_server.lock().unwrap();
+            let server: &puffin_http::Server = server_lock.as_ref().unwrap();
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            profiling::puffin::set_scopes_on(true);
+            profiling::finish_frame!();
+            println!("t: {}", &server.num_clients());
+        }
+
+
         rayon::ThreadPoolBuilder::new()
             .num_threads(args.threads)
             .build_global()
@@ -98,15 +126,6 @@ impl Args {
                 fftw::wisdom::import_wisdom_file_f64(&wisdom_path).unwrap();
             }
         }
-
-        #[cfg(feature = "profile-with-puffin")]
-        let server_addr = format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
-        let _puffin_server =
-            puffin_http::Server::new(&server_addr).unwrap();
-        println!(
-            "Run this to view profiling data:  puffin_viewer {server_addr}"
-        );
-        profiling::puffin::set_scopes_on(true);
 
         args
     }
@@ -129,9 +148,19 @@ impl Args {
     }
 
     pub fn finish(&self) {
-        profiling::finish_frame!();
         if let Some(ref wisdom_path) = self.wisdom_file {
+            profiling::scope!("fftw3::saving_wisdom");
+            println!("Saving wisdom: {:?}", wisdom_path);
             fftw::wisdom::export_wisdom_file_f64(&wisdom_path).unwrap();
+        }
+
+        #[cfg(feature = "profile-with-puffin")]
+        {
+            println!("Flusing profiler");
+
+            // We want to drop the server so we can flush the profiling data
+            // https://stackoverflow.com/questions/68866598/how-do-i-free-memory-in-a-lazy-static
+            puffin_server.lock().unwrap().take();
         }
     }
 }

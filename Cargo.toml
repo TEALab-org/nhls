@@ -29,4 +29,4 @@ codegen-units = 1
 
 [features]
 profile-with-puffin = ["profiling/profile-with-puffin", "puffin_http"]
-default = ["profile-with-puffin"]
+default = []
