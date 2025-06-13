@@ -8,7 +8,7 @@ use nhls::init::*;
 use std::time::*;
 
 fn main() {
-    let args = Args::cli_parse("tv_heat_2d_ap_fft");
+    let args = Args::cli_setup("tv_heat_2d_ap_fft");
 
     // Grid size
     let grid_bound = args.grid_bounds();
@@ -37,7 +37,7 @@ fn main() {
         generate_tv_ap_solver_2d(&stencil, direct_solver, &planner_params);
 
     if args.gen_only {
-        args.save_wisdom();
+        args.finish();
         std::process::exit(0);
     }
 
@@ -60,5 +60,5 @@ fn main() {
         }
     }
 
-    args.save_wisdom();
+    args.finish();
 }

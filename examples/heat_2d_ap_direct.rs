@@ -4,7 +4,7 @@ use nhls::image_2d_example::*;
 use nhls::init;
 
 fn main() {
-    let args = Args::cli_parse("heat_2d_ap_direct");
+    let args = Args::cli_setup("heat_2d_ap_direct");
 
     // Grid size
     let grid_bound = args.grid_bounds();

@@ -5,6 +5,7 @@ use crate::ap_solver::plan::*;
 use crate::ap_solver::planner::*;
 use crate::ap_solver::scratch::*;
 use crate::ap_solver::scratch_builder::*;
+
 use crate::domain::*;
 
 use crate::mem_fmt::*;
@@ -83,6 +84,8 @@ impl<
         planner_result: PlannerResult<GRID_DIMENSION, PeriodicOpsType>,
         complex_buffer_type: ComplexBufferType,
     ) -> Self {
+        profiling::scope!("ap_solver::new");
+
         let (node_scratch_descriptors, scratch_space) =
             ScratchBuilder::build(&planner_result.plan, complex_buffer_type);
 
@@ -114,6 +117,7 @@ impl<
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        profiling::scope!("ap_solver::apply");
         self.central_global_time = global_time;
         self.solve_root(input_domain, output_domain, global_time);
     }
@@ -184,6 +188,7 @@ impl<
             );
             global_time += repeat_steps;
             std::mem::swap(input_domain, output_domain);
+            profiling::finish_frame!();
         }
         if let Some(next) = repeat_solve.next {
             std::mem::swap(
@@ -196,6 +201,7 @@ impl<
                 &mut self.periodic_ops,
                 &mut self.remainder_periodic_ops,
             );
+            profiling::finish_frame!();
         } else {
             std::mem::swap(input_domain, output_domain);
         }
@@ -274,6 +280,7 @@ impl<
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         mut global_time: usize,
     ) {
+        profiling::scope!("ap_solver::periodic_solve_preallocated_io");
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(periodic_solve.input_aabb);
@@ -310,6 +317,8 @@ impl<
         output: &mut SliceDomain<'a, GRID_DIMENSION>,
         mut global_time: usize,
     ) {
+        profiling::scope!("ap_solver::periodic_solve_allocate_io");
+
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
         let (mut input_domain, mut output_domain) =
@@ -356,6 +365,7 @@ impl<
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        profiling::scope!("ap_solver::periodic_solve");
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
         // Apply convolution
@@ -403,6 +413,8 @@ impl<
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        profiling::scope!("ap_solver::direct_solve_allocate_io");
+
         let direct_solve = self.plan.unwrap_direct_node(node_id);
 
         let (mut input_domain, mut output_domain) =
@@ -432,6 +444,7 @@ impl<
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        profiling::scope!("ap_solver::direct_solve_preallocated_io");
         let direct_solve = self.plan.unwrap_direct_node(node_id);
 
         debug_assert!(input_domain

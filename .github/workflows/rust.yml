@@ -10,8 +10,14 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build_and_test:
+    name: Build and Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - default
+          - profile-with-puffin
     steps:
     - uses: actions/checkout@v4
     - name: Setup toolchain
@@ -27,10 +33,10 @@ jobs:
           ~/.cargo/git
           ~/.rustup
           target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{steps.toolchain.outputs.name}}
+        key: ${{matrix.feature}}-{{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{steps.toolchain.outputs.name}}
     - name: Formatting
       run: cargo fmt --check
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --features ${{matrix.features}} --verbose
     - name: Test
-      run: cargo test --verbose
+      run: cargo test --features ${{matrix.features}} --verbose

@@ -13,6 +13,7 @@ pub fn set_value<NumType: NumTrait>(
     a_slice
         .par_chunks_mut(chunk_size)
         .for_each(|a_chunk: &mut [NumType]| {
+            profiling::scope!("par_slice::set_value Thread Callback");
             for a in a_chunk {
                 *a = value;
             }
@@ -23,6 +24,7 @@ pub fn square<NumType: NumTrait>(a_slice: &mut [NumType], chunk_size: usize) {
     a_slice
         .par_chunks_mut(chunk_size)
         .for_each(|a_chunk: &mut [NumType]| {
+            profiling::scope!("par_slice::square Thread Callback");
             for a in a_chunk {
                 *a = *a * *a;
             }
@@ -39,6 +41,7 @@ pub fn multiply_by<NumType: NumTrait>(
         .par_chunks_mut(chunk_size)
         .zip(b_slice.par_chunks(chunk_size))
         .for_each(|(a_chunk, b_chunk)| {
+            profiling::scope!("par_slice::multiply_by Thread Callback");
             for (a, b) in a_chunk.iter_mut().zip(b_chunk.iter()) {
                 *a = *a * *b;
             }
@@ -52,6 +55,7 @@ pub fn div<NumType: NumTrait>(
     chunk_size: usize,
 ) {
     a_slice.par_chunks_mut(chunk_size).for_each(|a_chunk| {
+        profiling::scope!("par_slice::div Thread Callback");
         for a in a_chunk.iter_mut() {
             *a = *a / c;
         }
@@ -68,6 +72,7 @@ pub fn copy<NumType: NumTrait>(
         .par_chunks_mut(chunk_size)
         .zip(b_slice.par_chunks(chunk_size))
         .for_each(|(a_chunk, b_chunk)| {
+            profiling::scope!("par_slice::copy Thread Callback");
             for (a, b) in a_chunk.iter_mut().zip(b_chunk.iter()) {
                 *a = *b;
             }

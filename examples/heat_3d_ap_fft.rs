@@ -6,7 +6,7 @@ use nhls::vtk::*;
 use std::time::*;
 
 fn main() {
-    let args = Args::cli_parse("heat_3d_ap_fft");
+    let args = Args::cli_setup("heat_3d_ap_fft");
 
     let stencil =
         nhls::standard_stencils::heat_3d(1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.1);
@@ -47,7 +47,7 @@ fn main() {
         solver.to_dot_file(&args.dot_path());
     }
     if args.gen_only {
-        args.save_wisdom();
+        args.finish();
         std::process::exit(0);
     }
 
@@ -69,5 +69,5 @@ fn main() {
         }
     }
 
-    args.save_wisdom();
+    args.finish();
 }
