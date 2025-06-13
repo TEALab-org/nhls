@@ -89,7 +89,7 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn cli_setup(name: &str) -> (Self, PathBuf) {
+    pub fn cli_setup(name: &str) -> (Self, Option<PathBuf>) {
         let args = Args::parse();
 
         if args.build_info {
@@ -113,8 +113,11 @@ impl Args {
             println!("t: {}", &server.num_clients());
         }
 
-        let mut output_image_path = args.output_dir.as_ref().unwrap().clone();
-        output_image_path.push("image.png");
+        let output_image_path = args.output_dir.as_ref().map(|op| {
+            let mut op_ = op.to_path_buf();
+            op_.push("image.png");
+            op_
+        });
 
         rayon::ThreadPoolBuilder::new()
             .num_threads(args.threads)

@@ -40,6 +40,6 @@ fn main() {
         }
     }
     if let Some(i) = img {
-        i.write(&output_image_path);
+        i.write(&output_image_path.unwrap());
     }
 }
