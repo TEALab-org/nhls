@@ -8,6 +8,7 @@ impl SubsetOps<2> for SubsetOps2d {
         bigger_domain: &DomainType,
         smaller_domain: &mut DomainType,
     ) {
+        profiling::scope!("SubsetOps2d::copy_to_subdomain");
         debug_assert!(bigger_domain
             .aabb()
             .contains_aabb(smaller_domain.aabb()));
@@ -46,6 +47,7 @@ impl SubsetOps<2> for SubsetOps2d {
         smaller_domain: &DomainType,
         bigger_domain: &mut DomainType,
     ) {
+        profiling::scope!("SubsetOps2d::copy_from_subdomain");
         debug_assert!(bigger_domain
             .aabb()
             .contains_aabb(smaller_domain.aabb()));
