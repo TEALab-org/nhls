@@ -1,39 +1,83 @@
+use crate::ap_solver::direct_solver::*;
+use crate::ap_solver::index_types::*;
+use crate::ap_solver::periodic_ops::*;
+use crate::ap_solver::plan::*;
+use crate::ap_solver::planner::*;
+use crate::ap_solver::scratch::*;
+use crate::ap_solver::scratch_builder::*;
+
 use crate::domain::*;
-use crate::fft_solver::*;
+
 use crate::mem_fmt::*;
-use crate::stencil::*;
 use crate::util::*;
 use std::io::prelude::*;
 
-pub struct APSolver<
-    'a,
-    BC: BCCheck<GRID_DIMENSION>,
-    const GRID_DIMENSION: usize,
-    const NEIGHBORHOOD_SIZE: usize,
-> where
-    BC: BCCheck<GRID_DIMENSION>,
+pub trait SolverInterface<'a, const GRID_DIMENSION: usize> {
+    fn apply(
+        &mut self,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        global_time: usize,
+    );
+
+    fn print_report(&self);
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P);
+}
+
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        DirectSolverType: DirectSolver<GRID_DIMENSION>,
+        PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+    > SolverInterface<'a, GRID_DIMENSION>
+    for Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
 {
-    pub direct_frustrum_solver:
-        DirectFrustrumSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    pub convolution_store: ConvolutionStore,
-    pub plan: APPlan<GRID_DIMENSION>,
+    fn apply(
+        &mut self,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        global_time: usize,
+    ) {
+        self.apply(input_domain, output_domain, global_time);
+    }
+
+    fn print_report(&self) {
+        self.print_report();
+    }
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P) {
+        self.plan.to_dot_file(path);
+    }
+}
+
+pub struct Solver<
+    const GRID_DIMENSION: usize,
+    DirectSolverType: DirectSolver<GRID_DIMENSION>,
+    PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+> {
+    pub direct_solver: DirectSolverType,
+    pub periodic_ops: PeriodicOpsType,
+    pub remainder_periodic_ops: PeriodicOpsType,
+    pub plan: Plan<GRID_DIMENSION>,
     pub node_scratch_descriptors: Vec<ScratchDescriptor>,
-    pub scratch_space: APScratch,
+    pub scratch_space: Scratch,
+    pub central_global_time: usize,
     pub chunk_size: usize,
 }
 
-impl<'a, BC, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
-    APSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
-where
-    BC: BCCheck<GRID_DIMENSION>,
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        DirectSolverType: DirectSolver<GRID_DIMENSION>,
+        PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
+    > Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
 {
     pub fn new(
-        bc: &'a BC,
-        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        aabb: AABB<GRID_DIMENSION>,
-        steps: usize,
-        params: &PlannerParameters,
-        threads: usize,
+        direct_solver: DirectSolverType,
+        params: &PlannerParameters<GRID_DIMENSION>,
+        planner_result: PlannerResult<GRID_DIMENSION, PeriodicOpsType>,
+        complex_buffer_type: ComplexBufferType,
     ) -> Self {
         profiling::scope!("ap_solver::new");
 
@@ -45,22 +89,17 @@ where
         let stencil_slopes = planner_result.stencil_slopes;
 
         let (node_scratch_descriptors, scratch_space) =
-            APScratchBuilder::build(&plan);
+            ScratchBuilder::build(&planner_result.plan, complex_buffer_type);
 
-        let direct_frustrum_solver = DirectFrustrumSolver {
-            bc,
-            stencil,
-            stencil_slopes,
-            chunk_size: params.chunk_size,
-        };
-
-        APSolver {
-            direct_frustrum_solver,
-            convolution_store,
-            plan,
+        Solver {
+            direct_solver,
+            periodic_ops: planner_result.periodic_ops,
+            remainder_periodic_ops: planner_result.remainder_periodic_ops,
+            plan: planner_result.plan,
             node_scratch_descriptors,
             scratch_space,
             chunk_size: params.chunk_size,
+            central_global_time: 0,
         }
     }
 
@@ -74,12 +113,13 @@ where
     }
 
     pub fn apply(
-        &self,
+        &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
         profiling::scope!("ap_solver::apply");
+        self.central_global_time = global_time;
         self.solve_root(input_domain, output_domain, global_time);
     }
 
@@ -126,7 +166,7 @@ where
     }
 
     pub fn solve_root(
-        &self,
+        &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         mut global_time: usize,
@@ -137,9 +177,9 @@ where
         let repeat_steps = repeat_periodic_solve.steps;
 
         for _ in 0..repeat_solve.n {
-            self.periodic_solve_preallocated_io(
+            self.periodic_ops.build_ops(global_time);
+            self.periodic_solve(
                 repeat_solve.node,
-                false,
                 input_domain,
                 output_domain,
                 global_time,
@@ -148,23 +188,26 @@ where
             std::mem::swap(input_domain, output_domain);
         }
         if let Some(next) = repeat_solve.next {
-            self.periodic_solve_preallocated_io(
-                next,
-                false,
-                input_domain,
-                output_domain,
-                global_time,
-            )
+            std::mem::swap(
+                &mut self.periodic_ops,
+                &mut self.remainder_periodic_ops,
+            );
+            self.remainder_periodic_ops.build_ops(global_time);
+            self.periodic_solve(next, input_domain, output_domain, global_time);
+            std::mem::swap(
+                &mut self.periodic_ops,
+                &mut self.remainder_periodic_ops,
+            );
         } else {
             std::mem::swap(input_domain, output_domain);
         }
     }
 
-    pub fn unknown_solve_allocate_io<'b>(
+    pub fn unknown_solve_allocate_io(
         &self,
         node_id: NodeId,
-        input: &SliceDomain<'b, GRID_DIMENSION>,
-        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input: &SliceDomain<'a, GRID_DIMENSION>,
+        output: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
         match self.plan.get_node(node_id) {
@@ -193,11 +236,11 @@ where
         }
     }
 
-    pub fn unknown_solve_preallocated_io<'b>(
+    pub fn unknown_solve_preallocated_io(
         &self,
         node_id: NodeId,
-        input: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
         match self.plan.get_node(node_id) {
@@ -212,7 +255,6 @@ where
             PlanNode::PeriodicSolve(_) => {
                 self.periodic_solve_preallocated_io(
                     node_id,
-                    true,
                     input,
                     output,
                     global_time,
@@ -227,12 +269,11 @@ where
         }
     }
 
-    pub fn periodic_solve_preallocated_io<'b>(
+    pub fn periodic_solve_preallocated_io(
         &self,
         node_id: NodeId,
-        resize: bool,
-        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         mut global_time: usize,
     ) {
         profiling::scope!("ap_solver::periodic_solve_preallocated_io");
@@ -242,23 +283,95 @@ where
         input_domain.par_from_superset(output_domain, self.chunk_size);
         output_domain.set_aabb(periodic_solve.input_aabb);
 
-        // Apply convolution
-        {
-            let convolution_op =
-                self.convolution_store.get(periodic_solve.convolution_id);
-            convolution_op.apply(
+        self.periodic_solve(node_id, input_domain, output_domain, global_time);
+
+        std::mem::swap(input_domain, output_domain);
+        output_domain.set_aabb(periodic_solve.output_aabb);
+        output_domain.par_from_superset(input_domain, self.chunk_size);
+        input_domain.set_aabb(periodic_solve.output_aabb);
+
+        // call time cut if needed
+        if let Some(next_id) = periodic_solve.time_cut {
+            global_time += periodic_solve.steps;
+            std::mem::swap(input_domain, output_domain);
+            self.unknown_solve_preallocated_io(
+                next_id,
                 input_domain,
                 output_domain,
-                self.get_complex(node_id),
-                self.chunk_size,
+                global_time,
             );
         }
+    }
+
+    pub fn periodic_solve_allocate_io(
+        &self,
+        node_id: NodeId,
+        input: &SliceDomain<'a, GRID_DIMENSION>,
+        output: &mut SliceDomain<'a, GRID_DIMENSION>,
+        mut global_time: usize,
+    ) {
+        let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+
+        let (mut input_domain, mut output_domain) =
+            self.get_input_output(node_id, &periodic_solve.input_aabb);
+
+        // copy input
+        input_domain.par_from_superset(input, self.chunk_size);
+
+        self.periodic_solve(
+            node_id,
+            &mut input_domain,
+            &mut output_domain,
+            global_time,
+        );
+
+        // TODO: this could get merged with the copy instruction below
+        // if we had an extra method for copying from AABB
+        std::mem::swap(&mut input_domain, &mut output_domain);
+        output_domain.set_aabb(periodic_solve.output_aabb);
+        output_domain.par_from_superset(&input_domain, self.chunk_size);
+        input_domain.set_aabb(periodic_solve.output_aabb);
+
+        // call time cut if needed
+        if let Some(next_id) = periodic_solve.time_cut {
+            global_time += periodic_solve.steps;
+            std::mem::swap(&mut input_domain, &mut output_domain);
+            self.unknown_solve_preallocated_io(
+                next_id,
+                &mut input_domain,
+                &mut output_domain,
+                global_time,
+            );
+        }
+
+        // copy output to output
+        output.par_set_subdomain(&output_domain, self.chunk_size);
+    }
+
+    pub fn periodic_solve(
+        &self,
+        node_id: NodeId,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        global_time: usize,
+    ) {
+        let periodic_solve = self.plan.unwrap_periodic_node(node_id);
+
+        // Apply convolution
+        self.periodic_ops.apply_operation(
+            periodic_solve.convolution_id,
+            input_domain,
+            output_domain,
+            self.get_complex(node_id),
+            self.central_global_time,
+            self.chunk_size,
+        );
 
         // Boundary
         // In a rayon scope, we fork for each of the boundary solves,
         // each of which will fill in their part of of output_domain
         {
-            let input_domain_const: &SliceDomain<'b, GRID_DIMENSION> =
+            let input_domain_const: &SliceDomain<'a, GRID_DIMENSION> =
                 input_domain;
             rayon::scope(|s| {
                 for node_id in periodic_solve.boundary_nodes.clone() {
@@ -280,52 +393,6 @@ where
                 }
             });
         }
-
-        if resize {
-            std::mem::swap(input_domain, output_domain);
-            output_domain.set_aabb(periodic_solve.output_aabb);
-            output_domain.par_from_superset(input_domain, self.chunk_size);
-            input_domain.set_aabb(periodic_solve.output_aabb);
-        }
-
-        // call time cut if needed
-        if let Some(next_id) = periodic_solve.time_cut {
-            global_time += periodic_solve.steps;
-            std::mem::swap(input_domain, output_domain);
-            self.unknown_solve_preallocated_io(
-                next_id,
-                input_domain,
-                output_domain,
-                global_time,
-            );
-        }
-    }
-
-    pub fn periodic_solve_allocate_io<'b>(
-        &self,
-        node_id: NodeId,
-        input: &SliceDomain<'b, GRID_DIMENSION>,
-        output: &mut SliceDomain<'b, GRID_DIMENSION>,
-        global_time: usize,
-    ) {
-        let periodic_solve = self.plan.unwrap_periodic_node(node_id);
-
-        let (mut input_domain, mut output_domain) =
-            self.get_input_output(node_id, &periodic_solve.input_aabb);
-
-        // copy input
-        input_domain.par_from_superset(input, self.chunk_size);
-
-        self.periodic_solve_preallocated_io(
-            node_id,
-            true,
-            &mut input_domain,
-            &mut output_domain,
-            global_time,
-        );
-
-        // copy output to output
-        output.par_set_subdomain(&output_domain, self.chunk_size);
     }
 
     pub fn direct_solve_allocate_io<'b>(
@@ -343,23 +410,25 @@ where
         // copy input
         input_domain.par_from_superset(input, self.chunk_size);
 
-        self.direct_solve_preallocated_io(
-            node_id,
+        // invoke direct solver
+        self.direct_solver.apply(
             &mut input_domain,
             &mut output_domain,
+            &direct_solve.sloped_sides,
+            direct_solve.steps,
             global_time,
+            direct_solve.threads,
         );
-        //debug_assert_eq!(*output_domain.aabb(), direct_solve.output_aabb);
 
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
     }
 
-    pub fn direct_solve_preallocated_io<'b>(
+    pub fn direct_solve_preallocated_io(
         &self,
         node_id: NodeId,
-        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
         profiling::scope!("ap_solver::direct_solve_preallocated_io");
@@ -380,12 +449,13 @@ where
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
 
         // invoke direct solver
-        self.direct_frustrum_solver.apply(
+        self.direct_solver.apply(
             input_domain,
             output_domain,
             &direct_solve.sloped_sides,
             direct_solve.steps,
             global_time,
+            direct_solve.threads,
         );
 
         debug_assert_eq!(

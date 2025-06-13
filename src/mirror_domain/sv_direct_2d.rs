@@ -1,6 +1,6 @@
 use crate::domain::*;
-use crate::space_hack::*;
-use crate::time_varying::*;
+use crate::mirror_domain::*;
+use crate::stencil::TVStencil;
 use crate::util::*;
 
 pub struct SV2DDirectSolver<'a, StencilType: TVStencil<2, 5>> {

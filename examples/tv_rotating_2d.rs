@@ -8,19 +8,21 @@ use nhls::init::*;
 use std::time::*;
 
 fn main() {
-    let args = Args::cli_setup("tv_heat_2d_ap_fft");
+    let args = Args::cli_parse("tv_rotating_2d");
 
     // Grid size
     let grid_bound = args.grid_bounds();
 
-    let stencil = nhls::standard_stencils::TVHeat2D::new();
+    let freq = (2.0 * std::f64::consts::PI) / 1500.0;
+    let stencil =
+        nhls::standard_stencils::RotatingAdvectionStencil::new(freq, 0.2);
 
     // Create domains
     let mut buffer_1 = OwnedDomain::new(grid_bound);
     let mut buffer_2 = OwnedDomain::new(grid_bound);
     let mut input_domain = buffer_1.as_slice_domain();
     let mut output_domain = buffer_2.as_slice_domain();
-    rand(&mut input_domain, 10, args.chunk_size);
+    normal_ic_2d(&mut input_domain, args.chunk_size);
 
     let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
     // Create AP Solver
@@ -37,7 +39,7 @@ fn main() {
         generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
 
     if args.gen_only {
-        args.finish();
+        args.save_wisdom();
         std::process::exit(0);
     }
 
@@ -60,5 +62,5 @@ fn main() {
         }
     }
 
-    args.finish();
+    args.save_wisdom();
 }

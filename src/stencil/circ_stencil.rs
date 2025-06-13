@@ -1,8 +1,11 @@
 use crate::domain::*;
 use crate::par_slice;
-use crate::time_varying::*;
+use crate::stencil::TVStencil;
 use crate::util::*;
 
+/// Stencil in a suitable format for FFT multiplication,
+/// i.e. has a rectangular domain,
+/// can translate offset coords into this domain
 pub struct CircStencil<'a, const GRID_DIMENSION: usize> {
     pub slopes: Bounds<GRID_DIMENSION>,
     pub domain: SliceDomain<'a, GRID_DIMENSION>,
@@ -33,7 +36,6 @@ impl<'a, const GRID_DIMENSION: usize> CircStencil<'a, GRID_DIMENSION> {
         let rn_i: Coord<GRID_DIMENSION> = offset * -1;
         let periodic_coord = self.domain.aabb().periodic_coord(&rn_i);
         self.domain.set_coord(&periodic_coord, weight);
-        //println!("    --- view: {:?} -> {}, s: {}", periodic_coord, self.domain.view(&periodic_coord), self.domain.buffer().iter().sum::<f64>());
     }
 
     pub fn add_tv_stencil<
@@ -61,20 +63,10 @@ impl<'a, const GRID_DIMENSION: usize> CircStencil<'a, GRID_DIMENSION> {
         }
     }
 
-    pub fn from_dynamic_stencil(
-        &mut self,
-        ds: &DynamicLinearStencil<GRID_DIMENSION>,
-    ) {
-        for (offset, weight) in ds.offset_weights() {
-            self.add_offset_weight(*offset, *weight);
-        }
-    }
-
     pub fn to_offset_weights(
         &'a self,
     ) -> impl Iterator<Item = (Coord<GRID_DIMENSION>, f64)> + 'a {
         let total_width = self.slopes.column(0) + self.slopes.column(1);
-        //let max: Coord<GRID_DIMENSION> = self.slopes.column(1);
         self.domain.aabb().coord_iter().map(move |domain_coord| {
             let weight = self.domain.view(&domain_coord);
             let mut offset = Coord::zero();
@@ -84,19 +76,11 @@ impl<'a, const GRID_DIMENSION: usize> CircStencil<'a, GRID_DIMENSION> {
                     - self.slopes[(d, 0)]);
                 offset[d] = o;
             }
-            //println!("domainc: {:?} -> {:?}, {:?}", domain_coord, offset, total_width);
             (offset, weight)
         })
     }
 
     pub fn add_circ_stencil(&mut self, other: &Self) {
-        //println!("  --- add_circ pre add size: {}", self.domain.aabb());
         self.add_offset_weights(other.to_offset_weights());
-        /*
-        println!(
-            "  --- add_circ post add sum: {}",
-            self.domain.buffer().iter().sum::<f64>()
-        );
-        */
     }
 }

@@ -1,12 +1,13 @@
+use crate::ap_solver::direct_solver::DirectSolver;
 use crate::domain::*;
-use crate::time_varying::*;
+use crate::stencil::TVStencil;
 use crate::util::*;
 
-pub struct AP2DDirectSolver<'a, StencilType: TVStencil<2, 5>> {
+pub struct DirectSolver5Pt2DOpt<'a, StencilType: TVStencil<2, 5>> {
     stencil: &'a StencilType,
 }
 
-impl<'a, StencilType: TVStencil<2, 5>> AP2DDirectSolver<'a, StencilType> {
+impl<'a, StencilType: TVStencil<2, 5>> DirectSolver5Pt2DOpt<'a, StencilType> {
     pub fn new(stencil: &'a StencilType) -> Self {
         let expected_offsets = [
             vector![1, 0],  // 0
@@ -16,7 +17,7 @@ impl<'a, StencilType: TVStencil<2, 5>> AP2DDirectSolver<'a, StencilType> {
             vector![0, 0],  // 4
         ];
         assert_eq!(&expected_offsets, stencil.offsets());
-        AP2DDirectSolver { stencil }
+        DirectSolver5Pt2DOpt { stencil }
     }
 
     fn apply_step<DomainType: DomainView<2> + Send>(
@@ -259,8 +260,8 @@ impl<'a, StencilType: TVStencil<2, 5>> AP2DDirectSolver<'a, StencilType> {
     }
 }
 
-impl<'a, StencilType: TVStencil<2, 5>> TVDirectSolver<2>
-    for AP2DDirectSolver<'a, StencilType>
+impl<StencilType: TVStencil<2, 5>> DirectSolver<2>
+    for DirectSolver5Pt2DOpt<'_, StencilType>
 {
     fn apply<'b>(
         &self,

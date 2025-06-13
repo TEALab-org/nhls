@@ -1,4 +1,4 @@
-use crate::fft_solver::*;
+use crate::ap_solver::index_types::*;
 use crate::util::*;
 use std::io::prelude::*;
 use std::ops::Range;
@@ -27,6 +27,9 @@ pub struct PeriodicSolveNode<const GRID_DIMENSION: usize> {
 
     /// Is there a time cut following this solve
     pub time_cut: Option<NodeId>,
+
+    /// Number of threads to use
+    pub threads: usize,
 }
 
 /// Direct solves have an input and output AABB,
@@ -35,10 +38,21 @@ pub struct PeriodicSolveNode<const GRID_DIMENSION: usize> {
 /// but its remains useful for debugging.
 #[derive(Debug)]
 pub struct DirectSolveNode<const GRID_DIMENSION: usize> {
+    /// Required Input buffer
     pub input_aabb: AABB<GRID_DIMENSION>,
+
+    /// Required Output buffer
     pub output_aabb: AABB<GRID_DIMENSION>,
+
+    /// For each axis,
+    /// For each direction
+    /// 1 if side is sloped, 0 if facing BC
     pub sloped_sides: Bounds<GRID_DIMENSION>,
+
+    /// How many steps to solve for.
     pub steps: usize,
+
+    /// Number of threads to use
     pub threads: usize,
 }
 
@@ -72,12 +86,12 @@ pub enum PlanNode<const GRID_DIMENSION: usize> {
 /// An `APPlan` describes an aperiodic solve over a fixed AABB
 /// for fixed number of time steps.
 /// The root node should always be the only repeat node in the tree.
-pub struct APPlan<const GRID_DIMENSION: usize> {
+pub struct Plan<const GRID_DIMENSION: usize> {
     pub nodes: Vec<PlanNode<GRID_DIMENSION>>,
     pub root: NodeId,
 }
 
-impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
+impl<const GRID_DIMENSION: usize> Plan<GRID_DIMENSION> {
     /// Retrieve a node
     pub fn get_node(&self, node: NodeId) -> &PlanNode<GRID_DIMENSION> {
         &self.nodes[node]
@@ -90,7 +104,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         node_id: NodeId,
     ) -> &PeriodicSolveNode<GRID_DIMENSION> {
         if let PlanNode::PeriodicSolve(periodic_node) = self.get_node(node_id) {
-            periodic_node
+            &periodic_node
         } else {
             panic!("ERROR: Not a periodic node, {}", node_id);
         }
@@ -103,7 +117,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
         node_id: NodeId,
     ) -> &DirectSolveNode<GRID_DIMENSION> {
         if let PlanNode::DirectSolve(direct_node) = self.get_node(node_id) {
-            direct_node
+            &direct_node
         } else {
             panic!("ERROR: Not a direct node, {}", node_id);
         }
@@ -113,7 +127,7 @@ impl<const GRID_DIMENSION: usize> APPlan<GRID_DIMENSION> {
     #[track_caller]
     pub fn unwrap_repeat_node(&self, node_id: NodeId) -> &RepeatNode {
         if let PlanNode::Repeat(repeat_node) = self.get_node(node_id) {
-            repeat_node
+            &repeat_node
         } else {
             panic!("ERROR: Not a repeat node, {}", node_id);
         }
