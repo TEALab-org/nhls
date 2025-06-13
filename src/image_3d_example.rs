@@ -113,7 +113,6 @@ impl Args {
             println!("t: {}", &server.num_clients());
         }
 
-
         rayon::ThreadPoolBuilder::new()
             .num_threads(args.threads)
             .build_global()

@@ -68,7 +68,7 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
         aabb: &AABB<GRID_DIMENSION>,
         //threads: usize,
     ) {
-       profiling::scope!("domain::par_set_from (SINGLE THREADED)");
+        profiling::scope!("domain::par_set_from (SINGLE THREADED)");
 
         for coord in aabb.coord_iter() {
             self.set_coord(&coord, other.view(&coord));
