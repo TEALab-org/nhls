@@ -179,6 +179,7 @@ impl<
             );
             global_time += repeat_steps;
             std::mem::swap(input_domain, output_domain);
+            profiling::finish_frame!();
         }
         if let Some(next) = repeat_solve.next {
             std::mem::swap(
@@ -191,6 +192,7 @@ impl<
                 &mut self.periodic_ops,
                 &mut self.remainder_periodic_ops,
             );
+            profiling::finish_frame!();
         } else {
             std::mem::swap(input_domain, output_domain);
         }
