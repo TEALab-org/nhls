@@ -8,7 +8,7 @@ use nhls::mirror_domain::*;
 use std::time::*;
 
 fn main() {
-    let (args, output_image_path) = Args::cli_parse("sv_heat_1d_fft");
+    let (args, output_image_path) = Args::cli_setup("sv_heat_1d_fft");
 
     // Grid size
     let mut grid_bound = args.grid_bounds();
@@ -43,7 +43,7 @@ fn main() {
     let solver = SVSolver::new(&stencil, &planner_params, direct_solver);
 
     if args.gen_only {
-        args.save_wisdom();
+        args.finish();
         std::process::exit(0);
     }
 
@@ -77,7 +77,7 @@ fn main() {
         }
     }
     if let Some(i) = img {
-        i.write(&output_image_path);
+        i.write(&output_image_path.unwrap());
     }
-    args.save_wisdom();
+    args.finish();
 }

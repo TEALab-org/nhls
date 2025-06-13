@@ -4,7 +4,7 @@ use nhls::image_1d_example::*;
 use nhls::init;
 
 fn main() {
-    let (args, output_image_path) = Args::cli_parse("heat_1d_p_fft");
+    let (args, output_image_path) = Args::cli_setup("heat_1d_p_fft");
 
     let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
 
@@ -43,8 +43,8 @@ fn main() {
         }
     }
     if let Some(i) = img {
-        i.write(&output_image_path);
+        i.write(&output_image_path.unwrap());
     }
 
-    args.save_wisdom();
+    args.finish();
 }

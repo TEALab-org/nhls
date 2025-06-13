@@ -115,6 +115,7 @@ impl ConvolutionOperation {
         complex_buffer: &mut [c64],
         chunk_size: usize,
     ) {
+        profiling::scope!("convolution_op::apply");
         let n_r = input.aabb().buffer_size();
         let n_c = input.aabb().complex_buffer_size();
         self.forward_plan

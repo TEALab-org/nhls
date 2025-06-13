@@ -78,3 +78,30 @@ For example, to run the file `examples/example_1.rs`
 cargo run --example example_1           # Debug 
 cargo run --release --example example_1 # Release, recommended
 ```
+
+### Profiling
+
+NHLS and the [fftw3-bindings](https://github.com/SallySoul/fftw3-rs) are instrumented with macros from the [profiling](https://github.com/aclysma/profiling) crate.
+When built with the `profiling-with-puffin` feature,
+examples become clients for the [Puffin](https://github.com/EmbarkStudios/puffin) profiler.
+In the following example we profile `heat_2d_ap_fft` using `puffin_viewer`.
+
+```bash
+# Start the puffin viewer.
+# You can run it from source with:
+cargo run --bin puffin_viewer --release
+
+# Here we run an expensive operation
+cargo run \
+    --example heat_2d_ap_fft \
+    --release \
+    --features profile-with-puffin \  # The image_*_example start a puffin client
+    -- \
+    --domain-size 4000 \
+    --steps-per-image 4000 \
+    --images 2 \                      # We just want one solver application
+    --threads 8
+
+# Wait for the example to finish running.
+# Sometimes the profiling takes a while to buffer before it starts streaming
+```
