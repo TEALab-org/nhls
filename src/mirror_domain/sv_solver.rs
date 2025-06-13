@@ -76,11 +76,14 @@ impl<
         );
     }
 
-    fn get_input_output_1(
-        &self,
+    fn get_input_output_1<'b>(
+        &'b self,
         node_id: usize,
         aabb: &AABB<GRID_DIMENSION>,
-    ) -> (SliceDomain<GRID_DIMENSION>, SliceDomain<GRID_DIMENSION>) {
+    ) -> (
+        SliceDomain<'b, GRID_DIMENSION>,
+        SliceDomain<'b, GRID_DIMENSION>,
+    ) {
         let scratch_descriptor = &self.node_scratch_descriptors[node_id];
         let input_buffer = self.scratch_space_1.unsafe_get_buffer(
             scratch_descriptor.input_offset,
@@ -98,11 +101,14 @@ impl<
         (input_domain, output_domain)
     }
 
-    fn get_input_output_2(
-        &self,
+    fn get_input_output_2<'b>(
+        &'b self,
         node_id: usize,
         aabb: &AABB<GRID_DIMENSION>,
-    ) -> (SliceDomain<GRID_DIMENSION>, SliceDomain<GRID_DIMENSION>) {
+    ) -> (
+        SliceDomain<'b, GRID_DIMENSION>,
+        SliceDomain<'b, GRID_DIMENSION>,
+    ) {
         let scratch_descriptor = &self.node_scratch_descriptors[node_id];
         let input_buffer = self.scratch_space_2.unsafe_get_buffer(
             scratch_descriptor.input_offset,
