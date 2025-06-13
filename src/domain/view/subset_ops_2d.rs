@@ -7,6 +7,7 @@ impl SubsetOps<2> for SubsetOps2d {
         &self,
         bigger_domain: &DomainType,
         smaller_domain: &mut DomainType,
+        _threads: usize,
     ) {
         profiling::scope!("SubsetOps2d::copy_to_subdomain");
         debug_assert!(bigger_domain
@@ -46,6 +47,7 @@ impl SubsetOps<2> for SubsetOps2d {
         &self,
         smaller_domain: &DomainType,
         bigger_domain: &mut DomainType,
+        _threads: usize,
     ) {
         profiling::scope!("SubsetOps2d::copy_from_subdomain");
         debug_assert!(bigger_domain

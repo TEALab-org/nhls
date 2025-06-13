@@ -7,6 +7,7 @@ impl SubsetOps<3> for SubsetOps3d {
         &self,
         bigger_domain: &DomainType,
         smaller_domain: &mut DomainType,
+        _threads: usize,
     ) {
         debug_assert!(bigger_domain
             .aabb()
@@ -51,6 +52,7 @@ impl SubsetOps<3> for SubsetOps3d {
         &self,
         smaller_domain: &DomainType,
         bigger_domain: &mut DomainType,
+        _threads: usize,
     ) {
         debug_assert!(bigger_domain
             .aabb()

@@ -7,6 +7,7 @@ pub trait SubsetOps<const GRID_DIMENSION: usize>: Sync {
         &self,
         src_domain: &DomainType,
         target_domain: &mut DomainType,
+        threads: usize,
     );
 
     /// target domain is a sub-set of source domain,
@@ -16,5 +17,6 @@ pub trait SubsetOps<const GRID_DIMENSION: usize>: Sync {
         &self,
         src_domain: &DomainType,
         target_domain: &mut DomainType,
+        threads: usize,
     );
 }

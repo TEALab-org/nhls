@@ -7,6 +7,7 @@ impl SubsetOps<1> for SubsetOps1d {
         &self,
         src_domain: &DomainType,
         dst_domain: &mut DomainType,
+        _threads: usize,
     ) {
         debug_assert!(src_domain.aabb().contains_aabb(dst_domain.aabb()));
         // Get src domain slice, whole thing
@@ -22,6 +23,7 @@ impl SubsetOps<1> for SubsetOps1d {
         &self,
         src_domain: &DomainType,
         dst_domain: &mut DomainType,
+        _threads: usize,
     ) {
         debug_assert!(dst_domain.aabb().contains_aabb(src_domain.aabb()));
         let src_size = src_domain.aabb().buffer_size();
