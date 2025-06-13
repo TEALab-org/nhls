@@ -81,13 +81,6 @@ impl<
     ) -> Self {
         profiling::scope!("ap_solver::new");
 
-        // Create our plan and convolution_store
-        let planner_result =
-            create_ap_plan(stencil, aabb, steps, threads, params);
-        let plan = planner_result.plan;
-        let convolution_store = planner_result.convolution_store;
-        let stencil_slopes = planner_result.stencil_slopes;
-
         let (node_scratch_descriptors, scratch_space) =
             ScratchBuilder::build(&planner_result.plan, complex_buffer_type);
 
@@ -310,6 +303,8 @@ impl<
         output: &mut SliceDomain<'a, GRID_DIMENSION>,
         mut global_time: usize,
     ) {
+        profiling::scope!("ap_solver::periodic_solve_allocate_io");
+
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
         let (mut input_domain, mut output_domain) =
@@ -355,6 +350,7 @@ impl<
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        profiling::scope!("ap_solver::periodic_solve");
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
         // Apply convolution
@@ -402,6 +398,8 @@ impl<
         output: &mut SliceDomain<'b, GRID_DIMENSION>,
         global_time: usize,
     ) {
+        profiling::scope!("ap_solver::direct_solve_allocate_io");
+
         let direct_solve = self.plan.unwrap_direct_node(node_id);
 
         let (mut input_domain, mut output_domain) =
