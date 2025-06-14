@@ -19,14 +19,8 @@ fn main() {
     let mut output_domain = buffer_2.as_slice_domain();
 
     // Create BC
-    let bc = ConstantCheck::new(1.0, grid_bound);
 
-    let direct_solver = DirectFrustrumSolver {
-        bc: &bc,
-        stencil: &stencil,
-        stencil_slopes: stencil.slopes(),
-        chunk_size: args.chunk_size,
-    };
+    let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
 
     // Create AP Solver
     let planner_params = PlannerParameters {

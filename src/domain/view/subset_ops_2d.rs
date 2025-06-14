@@ -37,6 +37,8 @@ impl SubsetOps<2> for SubsetOps2d {
         let chunks = smaller_height.div_ceil(chunk_size);
         //println!("threads: {threads}, chunk_size: {chunk_size}, chunks: {chunks}, smaller_height: {smaller_height}");
         (0..chunks).into_par_iter().for_each(move |c| {
+            profiling::scope!("copy_to_subdomain threading callback");
+
             //println!("THREAD: c: {c}");
             let mut smaller_domain_t = smaller_domain.unsafe_mut_access();
             //let bigger_domain_t = bigger_domain.unsafe_mut_access();
@@ -95,6 +97,7 @@ impl SubsetOps<2> for SubsetOps2d {
         let chunks = smaller_height.div_ceil(chunk_size);
         //println!("threads: {threads}, chunk_size: {chunk_size}, chunks: {chunks}, smaller_height: {smaller_height}");
         (0..chunks).into_par_iter().for_each(move |c| {
+            profiling::scope!("copy_from_subdomain threading callback");
             //println!("THREAD: c: {c}");
             //let mut smaller_domain_t = smaller_domain.unsafe_mut_access();
             let mut bigger_domain_t = bigger_domain.unsafe_mut_access();

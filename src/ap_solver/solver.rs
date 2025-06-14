@@ -284,8 +284,11 @@ impl<
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(periodic_solve.input_aabb);
-        self.subset_ops
-            .copy_to_subdomain(output_domain, input_domain, periodic_solve.threads);
+        self.subset_ops.copy_to_subdomain(
+            output_domain,
+            input_domain,
+            periodic_solve.threads,
+        );
         output_domain.set_aabb(periodic_solve.input_aabb);
 
         self.periodic_solve(node_id, input_domain, output_domain, global_time);
@@ -293,8 +296,11 @@ impl<
         // TODO (rb): Do we need this?
         std::mem::swap(input_domain, output_domain);
         output_domain.set_aabb(periodic_solve.output_aabb);
-        self.subset_ops
-            .copy_to_subdomain(input_domain, output_domain, periodic_solve.threads);
+        self.subset_ops.copy_to_subdomain(
+            input_domain,
+            output_domain,
+            periodic_solve.threads,
+        );
         input_domain.set_aabb(periodic_solve.output_aabb);
 
         // call time cut if needed
@@ -325,7 +331,11 @@ impl<
             self.get_input_output(node_id, &periodic_solve.input_aabb);
 
         // copy input
-        self.subset_ops.copy_to_subdomain(input, &mut input_domain, periodic_solve.threads);
+        self.subset_ops.copy_to_subdomain(
+            input,
+            &mut input_domain,
+            periodic_solve.threads,
+        );
 
         self.periodic_solve(
             node_id,
@@ -338,8 +348,11 @@ impl<
         // if we had an extra method for copying from AABB
         std::mem::swap(&mut input_domain, &mut output_domain);
         output_domain.set_aabb(periodic_solve.output_aabb);
-        self.subset_ops
-            .copy_to_subdomain(&input_domain, &mut output_domain, periodic_solve.threads);
+        self.subset_ops.copy_to_subdomain(
+            &input_domain,
+            &mut output_domain,
+            periodic_solve.threads,
+        );
         input_domain.set_aabb(periodic_solve.output_aabb);
 
         // call time cut if needed
@@ -355,7 +368,11 @@ impl<
         }
 
         // copy output to output
-        self.subset_ops.copy_from_subdomain(&output_domain, output, periodic_solve.threads);
+        self.subset_ops.copy_from_subdomain(
+            &output_domain,
+            output,
+            periodic_solve.threads,
+        );
     }
 
     pub fn periodic_solve(
@@ -375,7 +392,7 @@ impl<
             output_domain,
             self.get_complex(node_id),
             self.central_global_time,
-            self.chunk_size,
+            periodic_solve.threads,
         );
 
         // Boundary
@@ -421,7 +438,11 @@ impl<
             self.get_input_output(node_id, &direct_solve.input_aabb);
 
         // copy input
-        self.subset_ops.copy_to_subdomain(input, &mut input_domain, direct_solve.threads);
+        self.subset_ops.copy_to_subdomain(
+            input,
+            &mut input_domain,
+            direct_solve.threads,
+        );
 
         // invoke direct solver
         self.direct_solver.apply(
@@ -434,7 +455,11 @@ impl<
         );
 
         // copy output to output
-        self.subset_ops.copy_from_subdomain(&output_domain, output, direct_solve.threads);
+        self.subset_ops.copy_from_subdomain(
+            &output_domain,
+            output,
+            direct_solve.threads,
+        );
     }
 
     pub fn direct_solve_preallocated_io(
@@ -457,8 +482,11 @@ impl<
         // the expected input domain
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(direct_solve.input_aabb);
-        self.subset_ops
-            .copy_to_subdomain(output_domain, input_domain, direct_solve.threads);
+        self.subset_ops.copy_to_subdomain(
+            output_domain,
+            input_domain,
+            direct_solve.threads,
+        );
         output_domain.set_aabb(direct_solve.input_aabb);
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
 

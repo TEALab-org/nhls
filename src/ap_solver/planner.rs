@@ -119,7 +119,11 @@ impl<
                 as usize);
 
         for bf in boundary_frustrums {
-            sub_nodes.push(self.generate_frustrum(bf, rel_time_0, sub_threads));
+            sub_nodes.push(self.generate_frustrum(
+                bf,
+                rel_time_0,
+                sub_threads + 2,
+            ));
         }
 
         // Ensure boundary solve nodes are contiguous in the plan

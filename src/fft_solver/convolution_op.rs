@@ -113,7 +113,7 @@ impl ConvolutionOperation {
         input: &mut DomainType,
         output: &mut DomainType,
         complex_buffer: &mut [c64],
-        chunk_size: usize,
+        threads: usize,
     ) {
         profiling::scope!("convolution_op::apply");
         let n_r = input.aabb().buffer_size();
@@ -121,14 +121,14 @@ impl ConvolutionOperation {
         self.forward_plan
             .r2c(input.buffer_mut(), &mut complex_buffer[0..n_c])
             .unwrap();
-        par_slice::multiply_by(
+        par_slice::multiply_by_t(
             &mut complex_buffer[0..n_c],
             self.convolution.as_slice(),
-            chunk_size,
+            threads,
         );
         self.backward_plan
             .c2r(&mut complex_buffer[0..n_c], output.buffer_mut())
             .unwrap();
-        par_slice::div(output.buffer_mut(), n_r as f64, chunk_size);
+        par_slice::div_t(output.buffer_mut(), n_r as f64, threads);
     }
 }
