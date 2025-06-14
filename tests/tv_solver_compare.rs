@@ -67,7 +67,7 @@ fn tv_rotating_advection_compare() {
         chunk_size,
     };
     let mut solver =
-        generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_tv_ap_solver_2d(&stencil, direct_solver, &planner_params);
     solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     for i in 0..buffer_size {
