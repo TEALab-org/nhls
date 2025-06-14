@@ -100,6 +100,7 @@ mod unit_tests {
 
     #[test]
     fn subdomain_3d() {
+        let threads = 2;
         let chunk_size = 10;
         let bigger_domain_bounds = AABB::new(matrix![0, 9; 0, 9; 0, 9]);
         let mut bigger_domain = OwnedDomain::new(bigger_domain_bounds);
@@ -113,7 +114,7 @@ mod unit_tests {
         // Bigger domain should be same,
         // smaller domain should be 1s
         let ops = SubsetOps3d {};
-        ops.copy_to_subdomain(&bigger_domain, &mut smaller_domain);
+        ops.copy_to_subdomain(&bigger_domain, &mut smaller_domain, threads);
         for x in 0..=9 {
             for y in 0..=9 {
                 for z in 0..=9 {
@@ -141,7 +142,7 @@ mod unit_tests {
         // bigger domain should have some twos too
         smaller_domain.par_set_values(|_| 2.0, chunk_size);
         bigger_domain.par_set_values(|_| 1.0, chunk_size);
-        ops.copy_from_subdomain(&smaller_domain, &mut bigger_domain);
+        ops.copy_from_subdomain(&smaller_domain, &mut bigger_domain, threads);
         for x in 0..=9 {
             for y in 0..=9 {
                 for z in 0..=9 {

@@ -40,6 +40,7 @@ mod unit_tests {
 
     #[test]
     fn subdomain_1d() {
+        let threads = 2;
         let chunk_size = 10;
         let bigger_domain_bounds = AABB::new(matrix![0, 9]);
         let mut bigger_domain = OwnedDomain::new(bigger_domain_bounds);
@@ -53,7 +54,7 @@ mod unit_tests {
         // Bigger domain should be same,
         // smaller domain should be 1s
         let ops = SubsetOps1d {};
-        ops.copy_to_subdomain(&bigger_domain, &mut smaller_domain);
+        ops.copy_to_subdomain(&bigger_domain, &mut smaller_domain, threads);
         for i in 0..=9 {
             assert_eq!(bigger_domain.view(&vector![i]), 1.0);
         }
@@ -74,7 +75,7 @@ mod unit_tests {
         smaller_domain.par_set_values(|_| 2.0, chunk_size);
         bigger_domain.par_set_values(|_| 1.0, chunk_size);
 
-        ops.copy_from_subdomain(&smaller_domain, &mut bigger_domain);
+        ops.copy_from_subdomain(&smaller_domain, &mut bigger_domain, threads);
         for i in 0..=9 {
             if (3..=7).contains(&i) {
                 assert_eq!(bigger_domain.view(&vector![i]), 2.0);

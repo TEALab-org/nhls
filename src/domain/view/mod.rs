@@ -19,7 +19,7 @@ pub use subset_ops_3d::*;
 use crate::util::*;
 use rayon::prelude::*;
 
-pub trait DomainView<const GRID_DIMENSION: usize>: Sync {
+pub trait DomainView<const GRID_DIMENSION: usize>: Sync + Send {
     /// Get the AABB for this domain
     fn aabb(&self) -> &AABB<GRID_DIMENSION>;
 
