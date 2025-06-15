@@ -22,7 +22,9 @@ fn main() {
     let mut output_domain = buffer_2.as_slice_domain();
     rand(&mut input_domain, 10, args.chunk_size);
 
+    // This optimized direct solver implement a uniform boundary condition of 0.0
     let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
+
     // Create AP Solver
     let planner_params = SolverParameters {
         plan_type: args.plan_type,

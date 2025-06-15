@@ -1,6 +1,5 @@
 use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::DirectFrustrumSolver;
 use nhls::image::*;
 use nhls::image_2d_example::*;
 use nhls::init;
@@ -18,15 +17,8 @@ fn main() {
     let mut input_domain = buffer_1.as_slice_domain();
     let mut output_domain = buffer_2.as_slice_domain();
 
-    // Create BC
-    let bc = ConstantCheck::new(1.0, grid_bound);
-
-    let direct_solver = DirectFrustrumSolver {
-        bc: &bc,
-        stencil: &stencil,
-        stencil_slopes: stencil.slopes(),
-        chunk_size: args.chunk_size,
-    };
+    // This optimized direct solver implement a uniform boundary condition of 0.0
+    let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
 
     // Create AP Solver
     let planner_params = SolverParameters {
