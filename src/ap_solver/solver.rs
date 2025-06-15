@@ -13,8 +13,8 @@ use crate::mem_fmt::*;
 use crate::util::*;
 use std::io::prelude::*;
 
-pub trait SolverInterface<'a, const GRID_DIMENSION: usize> {
-    fn apply(
+pub trait SolverInterface<const GRID_DIMENSION: usize> {
+    fn apply<'a>(
         &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
@@ -27,14 +27,13 @@ pub trait SolverInterface<'a, const GRID_DIMENSION: usize> {
 }
 
 impl<
-        'a,
         const GRID_DIMENSION: usize,
         DirectSolverType: DirectSolver<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
-    > SolverInterface<'a, GRID_DIMENSION>
+    > SolverInterface<GRID_DIMENSION>
     for Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
 {
-    fn apply(
+    fn apply<'a>(
         &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,

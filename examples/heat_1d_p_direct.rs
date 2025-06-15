@@ -1,3 +1,4 @@
+/*
 use nhls::domain::*;
 use nhls::image_1d_example::*;
 use nhls::init;
@@ -43,3 +44,4 @@ fn main() {
         i.write(&output_image_path.unwrap());
     }
 }
+*/
