@@ -23,9 +23,9 @@ fn main() {
 
     let direct_solver = DirectSolver3Pt1DOpt::new(&stencil);
     // Create AP Solver
-    let planner_params = args.solver_parameters();
+    let solver_params = args.solver_parameters();
     let mut solver =
-        generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_tv_ap_solver(&stencil, direct_solver, &solver_params);
 
     if args.gen_only {
         args.finish();

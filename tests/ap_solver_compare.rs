@@ -36,7 +36,7 @@ fn heat_1d_ap_compare() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let planner_params = SolverParameters {
+    let solver_params = SolverParameters {
         plan_type: PlanType::Estimate,
         cutoff: 40,
         chunk_size,
@@ -52,7 +52,7 @@ fn heat_1d_ap_compare() {
         chunk_size,
     };
     let mut fft_solver =
-        generate_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_ap_solver(&stencil, direct_solver, &solver_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
@@ -103,7 +103,7 @@ fn heat_2d_ap_compare() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let planner_params = SolverParameters {
+    let solver_params = SolverParameters {
         cutoff: 40,
         chunk_size,
         threads: TEST_SOLVE_THREADS,
@@ -119,7 +119,7 @@ fn heat_2d_ap_compare() {
     };
 
     let mut fft_solver =
-        generate_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_ap_solver(&stencil, direct_solver, &solver_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(

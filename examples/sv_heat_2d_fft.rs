@@ -30,8 +30,8 @@ fn main() {
     rand(&mut input_domain_2, 10, args.chunk_size);
 
     let direct_solver = SV2DDirectSolver::new(&stencil);
-    let planner_params = args.solver_parameters();
-    let solver = SVSolver::new(&stencil, &planner_params, direct_solver);
+    let solver_params = args.solver_parameters();
+    let solver = SVSolver::new(&stencil, &solver_params, direct_solver);
 
     if args.gen_only {
         args.finish();
