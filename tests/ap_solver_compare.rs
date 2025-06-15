@@ -36,14 +36,14 @@ fn heat_1d_ap_compare() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let planner_params = SolverParameters {
+    let solver_params = SolverParameters {
         plan_type: PlanType::Estimate,
         cutoff: 40,
-        ratio: 0.5,
         chunk_size,
         threads: TEST_SOLVE_THREADS,
         aabb: grid_bound,
         steps: n_steps,
+        ..Default::default()
     };
     let direct_solver = DirectFrustrumSolver {
         bc: &bc,
@@ -52,7 +52,7 @@ fn heat_1d_ap_compare() {
         chunk_size,
     };
     let mut fft_solver =
-        generate_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_ap_solver(&stencil, direct_solver, &solver_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(
@@ -103,14 +103,13 @@ fn heat_2d_ap_compare() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let planner_params = SolverParameters {
-        plan_type: PlanType::Estimate,
+    let solver_params = SolverParameters {
         cutoff: 40,
-        ratio: 0.5,
         chunk_size,
         threads: TEST_SOLVE_THREADS,
         aabb: grid_bound,
         steps: n_steps,
+        ..Default::default()
     };
     let direct_solver = DirectFrustrumSolver {
         bc: &bc,
@@ -120,7 +119,7 @@ fn heat_2d_ap_compare() {
     };
 
     let mut fft_solver =
-        generate_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_ap_solver(&stencil, direct_solver, &solver_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(

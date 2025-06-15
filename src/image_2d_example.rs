@@ -1,3 +1,4 @@
+use crate::ap_solver::SolverParameters;
 use crate::build_info;
 use crate::fft_solver::PlanType;
 use crate::util::*;
@@ -89,6 +90,19 @@ pub struct Args {
 }
 
 impl Args {
+    pub fn solver_parameters(&self) -> SolverParameters<2> {
+        let grid_bound = self.grid_bounds();
+        SolverParameters {
+            plan_type: self.plan_type,
+            cutoff: self.cutoff,
+            ratio: self.ratio,
+            chunk_size: self.chunk_size,
+            threads: self.threads,
+            steps: self.steps_per_image,
+            aabb: grid_bound,
+        }
+    }
+
     pub fn cli_setup(name: &str) -> Self {
         let args = Args::parse();
 

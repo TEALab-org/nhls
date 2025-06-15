@@ -26,17 +26,9 @@ fn main() {
     let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
 
     // Create AP Solver
-    let planner_params = SolverParameters {
-        plan_type: args.plan_type,
-        cutoff: args.cutoff,
-        ratio: args.ratio,
-        chunk_size: args.chunk_size,
-        threads: args.threads,
-        steps: args.steps_per_image,
-        aabb: grid_bound,
-    };
+    let solver_params = args.solver_parameters();
     let mut solver =
-        generate_tv_ap_solver(&stencil, direct_solver, &planner_params);
+        generate_tv_ap_solver(&stencil, direct_solver, &solver_params);
 
     if args.gen_only {
         args.finish();
