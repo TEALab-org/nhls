@@ -129,8 +129,8 @@ impl Args {
     /// this function takes care of the rest!
     /// Saving plans, creating frames, ect!
     /// Let it handle the control flow until program exit please.
-    pub fn run_solver<'a, 'b, SolverType: SolverInterface<'b, 1>>(
-        &'a self,
+    pub fn run_solver<SolverType: SolverInterface<1>>(
+        &self,
         solver: &mut SolverType,
     ) {
         // Create domains
@@ -140,21 +140,20 @@ impl Args {
         let mut input_domain = buffer_1.as_slice_domain();
         let mut output_domain = buffer_2.as_slice_domain();
 
+        solver.apply(&mut input_domain, &mut output_domain, 0);
+        /*
         self.run_solver_with_domains(
             &mut input_domain,
             &mut output_domain,
             solver,
         );
+        */
     }
 
-    pub fn run_solver_with_domains<
-        'b,
-        'a: 'b,
-        SolverType: SolverInterface<'a, 1>,
-    >(
-        &'a self,
-        input_domain: &'a mut SliceDomain<'b, 1>,
-        output_domain: &'a mut SliceDomain<'b, 1>,
+    pub fn run_solver_with_domains<'a, SolverType: SolverInterface<1>>(
+        &self,
+        input_domain: &mut SliceDomain<'a, 1>,
+        output_domain: &mut SliceDomain<'a, 1>,
         solver: &mut SolverType,
     ) {
         // Solver Diagnostics

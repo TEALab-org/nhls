@@ -8,7 +8,6 @@ use crate::ap_solver::tv_periodic_ops_collector::*;
 use crate::stencil::*;
 
 pub fn generate_ap_solver<
-    'a,
     const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     DirectSolverType: DirectSolver<GRID_DIMENSION>,
@@ -16,7 +15,7 @@ pub fn generate_ap_solver<
     stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
     direct_solver: DirectSolverType,
     params: &SolverParameters<GRID_DIMENSION>,
-) -> impl SolverInterface<'a, GRID_DIMENSION> {
+) -> impl SolverInterface<GRID_DIMENSION> {
     let create_ops_builder = || ApPeriodicOpsBuilder::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainOnly;
@@ -35,7 +34,7 @@ pub fn generate_tv_ap_solver<
     stencil: &'a StencilType,
     direct_solver: DirectSolverType,
     params: &'a SolverParameters<GRID_DIMENSION>,
-) -> impl SolverInterface<'a, GRID_DIMENSION> + 'a {
+) -> impl SolverInterface<GRID_DIMENSION> + 'a {
     let create_ops_builder = || TvPeriodicOpsCollector::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainAndOp;
