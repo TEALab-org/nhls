@@ -5,20 +5,9 @@ use crate::fft_solver::PlanType;
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::plan::*;
+use crate::ap_solver::solver_parameters::*;
 
 use crate::util::*;
-
-/// Planner recurses by finding periodic solves.
-/// These solves are configured with these parameters.
-pub struct PlannerParameters<const GRID_DIMENSION: usize> {
-    pub steps: usize,
-    pub plan_type: PlanType,
-    pub cutoff: i32,
-    pub ratio: f64,
-    pub chunk_size: usize,
-    pub threads: usize,
-    pub aabb: AABB<GRID_DIMENSION>,
-}
 
 /// Creating a plan results in both a plan and convolution store.
 /// Someday we may separate the creation, if for example we
