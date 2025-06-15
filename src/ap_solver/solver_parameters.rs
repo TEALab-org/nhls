@@ -24,12 +24,6 @@ pub struct SolverParameters<const GRID_DIMENSION: usize> {
 
     /// Domain bounds
     pub aabb: AABB<GRID_DIMENSION>,
-
-    /// Minimum number of tasks a plan node can use
-    pub task_min: usize,
-
-    /// Assume total tasks available relative to threads
-    pub task_mult: f64,
 }
 
 impl<const GRID_DIMENSION: usize> std::default::Default
@@ -44,8 +38,6 @@ impl<const GRID_DIMENSION: usize> std::default::Default
             chunk_size: 1000,
             threads: 1,
             aabb: AABB::new(Bounds::zeros()),
-            task_min: 1,
-            task_mult: 1.0,
         }
     }
 }
