@@ -86,6 +86,14 @@ pub struct Args {
     /// Print build information and quit
     #[arg(long)]
     pub build_info: bool,
+
+    /// Minimum number of tasks a plan node can use
+    #[arg(long, default_value = "1")]
+    pub task_min: usize,
+
+    /// Assume total tasks available relative to threads
+    #[arg(long, default_value = "1")]
+    pub task_mult: f64,
 }
 
 impl Args {
