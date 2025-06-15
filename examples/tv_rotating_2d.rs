@@ -25,6 +25,7 @@ fn main() {
     normal_ic_2d(&mut input_domain, args.chunk_size);
 
     let direct_solver = DirectSolver5Pt2DOpt::new(&stencil);
+
     // Create AP Solver
     let planner_params = PlannerParameters {
         plan_type: args.plan_type,
