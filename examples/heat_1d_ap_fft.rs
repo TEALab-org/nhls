@@ -1,5 +1,5 @@
 use nhls::ap_solver::generate_solver::*;
-use nhls::ap_solver::planner::PlannerParameters;
+use nhls::ap_solver::planner::SolverParameters;
 use nhls::ap_solver::solver::SolverInterface;
 use nhls::domain::*;
 use nhls::fft_solver::DirectFrustrumSolver;
@@ -29,7 +29,7 @@ fn main() {
     };
 
     // Create AP Solver
-    let planner_params = PlannerParameters {
+    let planner_params = SolverParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
         ratio: args.ratio,

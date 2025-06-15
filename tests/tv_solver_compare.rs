@@ -51,7 +51,7 @@ fn tv_rotating_advection_compare() {
         threads,
     );
 
-    let planner_params = PlannerParameters {
+    let planner_params = SolverParameters {
         plan_type,
         cutoff: 20,
         ratio: 0.5,

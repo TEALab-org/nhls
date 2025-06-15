@@ -1,6 +1,7 @@
 use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::plan::*;
 use crate::ap_solver::planner::*;
+use crate::ap_solver::solver_parameters::*;
 use crate::stencil::TVStencil;
 
 /// Create the root repeat node.
@@ -14,7 +15,7 @@ pub fn generate_plan<
 >(
     stencil: &StencilType,
     create_builder: CreateBuilderFn,
-    params: &PlannerParameters<GRID_DIMENSION>,
+    params: &SolverParameters<GRID_DIMENSION>,
 ) -> PlannerResult<GRID_DIMENSION, PeriodicOpsType> {
     let stencil_slopes = stencil.slopes();
     let nodes = Vec::new();

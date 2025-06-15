@@ -5,6 +5,7 @@ use crate::ap_solver::plan::*;
 use crate::ap_solver::planner::*;
 use crate::ap_solver::scratch::*;
 use crate::ap_solver::scratch_builder::*;
+use crate::ap_solver::solver_parameters::*;
 
 use crate::domain::*;
 
@@ -75,7 +76,7 @@ impl<
 {
     pub fn new(
         direct_solver: DirectSolverType,
-        params: &PlannerParameters<GRID_DIMENSION>,
+        params: &SolverParameters<GRID_DIMENSION>,
         planner_result: PlannerResult<GRID_DIMENSION, PeriodicOpsType>,
         complex_buffer_type: ComplexBufferType,
     ) -> Self {

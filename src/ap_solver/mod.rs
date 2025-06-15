@@ -24,7 +24,6 @@ pub use crate::fft_solver::PlanType;
 pub use direct_3pt1d_opt::*;
 pub use direct_5pt2d_opt::*;
 pub use generate_solver::*;
-pub use planner::PlannerParameters;
 pub use solver::SolverInterface;
 pub use solver_parameters::*;
 

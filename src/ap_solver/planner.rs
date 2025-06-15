@@ -1,6 +1,5 @@
 use crate::fft_solver::ap_frustrum::*;
 use crate::fft_solver::find_periodic_solve::*;
-use crate::fft_solver::PlanType;
 
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
@@ -31,7 +30,7 @@ pub struct Planner<
 > {
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
     pub nodes: Vec<PlanNode<GRID_DIMENSION>>,
-    pub params: &'a PlannerParameters<GRID_DIMENSION>,
+    pub params: &'a SolverParameters<GRID_DIMENSION>,
     pub ops_builder: OpsBuilderType,
     pub ops_type_marker: std::marker::PhantomData<PeriodicOpsType>,
 }

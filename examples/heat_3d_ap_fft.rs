@@ -30,7 +30,7 @@ fn main() {
     };
 
     // Create AP Solver
-    let planner_params = PlannerParameters {
+    let planner_params = SolverParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
         ratio: args.ratio,
