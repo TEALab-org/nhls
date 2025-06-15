@@ -6,13 +6,13 @@ use fftw::types::Flag;
 #[derive(Copy, Clone, Debug, ValueEnum, Default)]
 pub enum PlanType {
     /// Create optimziated plan
-    #[default]
     Measure,
 
     /// Create optimized plan with more exhaustive search than Measaure
     Patient,
 
     /// Create an un-optimal plan quickly
+    #[default]
     Estimate,
 
     /// Create plan only based on loaded wisdom
