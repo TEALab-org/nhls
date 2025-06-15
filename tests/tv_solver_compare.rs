@@ -20,8 +20,6 @@ fn tv_rotating_advection_compare() {
 
     let chunk_size = 100;
 
-    let plan_type = PlanType::Estimate;
-
     let stencil = RotatingAdvectionStencil::new(100.0, 0.2);
 
     // Create domains
@@ -52,13 +50,12 @@ fn tv_rotating_advection_compare() {
     );
 
     let planner_params = SolverParameters {
-        plan_type,
         cutoff: 20,
-        ratio: 0.5,
         chunk_size,
         aabb: grid_bound,
         threads,
         steps: n_steps,
+        ..Default::default()
     };
     let direct_solver = TVDirectFrustrumSolver {
         bc: &bc,

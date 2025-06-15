@@ -1,6 +1,4 @@
 use core::f64;
-
-use nhls::ap_solver::*;
 use nhls::domain::*;
 use nhls::image_1d_example::*;
 use nhls::init::*;
@@ -31,15 +29,7 @@ fn main() {
     rand(&mut input_domain_2, 10, args.chunk_size);
 
     let direct_solver = SV1DDirectSolver::new(&stencil);
-    let planner_params = SolverParameters {
-        plan_type: args.plan_type,
-        cutoff: args.cutoff,
-        ratio: args.ratio,
-        chunk_size: args.chunk_size,
-        threads: args.threads,
-        steps: args.steps_per_line,
-        aabb: grid_bound,
-    };
+    let planner_params = args.solver_parameters();
     let solver = SVSolver::new(&stencil, &planner_params, direct_solver);
 
     if args.gen_only {

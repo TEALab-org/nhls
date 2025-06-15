@@ -19,15 +19,7 @@ fn main() {
     let direct_solver = DirectSolver3Pt1DOpt::new(&stencil);
 
     // Create AP Solver
-    let planner_params = SolverParameters {
-        plan_type: args.plan_type,
-        cutoff: args.cutoff,
-        ratio: args.ratio,
-        chunk_size: args.chunk_size,
-        threads: args.threads,
-        steps: args.steps_per_line,
-        aabb: grid_bound,
-    };
+    let planner_params = args.solver_parameters();
     let mut solver =
         generate_ap_solver(&stencil, direct_solver, &planner_params);
 

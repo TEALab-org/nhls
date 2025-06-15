@@ -39,11 +39,11 @@ fn heat_1d_ap_compare() {
     let planner_params = SolverParameters {
         plan_type: PlanType::Estimate,
         cutoff: 40,
-        ratio: 0.5,
         chunk_size,
         threads: TEST_SOLVE_THREADS,
         aabb: grid_bound,
         steps: n_steps,
+        ..Default::default()
     };
     let direct_solver = DirectFrustrumSolver {
         bc: &bc,
@@ -104,13 +104,12 @@ fn heat_2d_ap_compare() {
 
     // Create AP Solver
     let planner_params = SolverParameters {
-        plan_type: PlanType::Estimate,
         cutoff: 40,
-        ratio: 0.5,
         chunk_size,
         threads: TEST_SOLVE_THREADS,
         aabb: grid_bound,
         steps: n_steps,
+        ..Default::default()
     };
     let direct_solver = DirectFrustrumSolver {
         bc: &bc,
