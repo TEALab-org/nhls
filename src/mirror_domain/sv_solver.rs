@@ -3,9 +3,9 @@ use crate::ap_solver::ap_periodic_ops_builder::*;
 use crate::ap_solver::generate_plan::*;
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::plan::*;
-use crate::ap_solver::planner::*;
 use crate::ap_solver::scratch::*;
 use crate::ap_solver::scratch_builder::*;
+use crate::ap_solver::solver_parameters::*;
 use crate::domain::*;
 use crate::mirror_domain::*;
 use crate::stencil::*;
@@ -34,7 +34,7 @@ impl<
 {
     pub fn new(
         stencil: &Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        params: &PlannerParameters<GRID_DIMENSION>,
+        params: &SolverParameters<GRID_DIMENSION>,
         solver: SolverType,
     ) -> Self {
         let create_ops_builder = || ApPeriodicOpsBuilder::new(stencil, params);

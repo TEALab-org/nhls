@@ -7,6 +7,7 @@ pub mod planner;
 pub mod scratch;
 pub mod scratch_builder;
 pub mod solver;
+pub mod solver_parameters;
 
 pub mod ap_periodic_ops;
 pub mod ap_periodic_ops_builder;
@@ -23,7 +24,7 @@ pub use crate::fft_solver::PlanType;
 pub use direct_3pt1d_opt::*;
 pub use direct_5pt2d_opt::*;
 pub use generate_solver::*;
-pub use planner::PlannerParameters;
 pub use solver::SolverInterface;
+pub use solver_parameters::*;
 
 pub const MIN_ALIGNMENT: usize = 128;

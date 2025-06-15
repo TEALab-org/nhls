@@ -32,7 +32,7 @@ fn main() {
     rand(&mut input_domain_2, 10, args.chunk_size);
 
     let direct_solver = SV2DDirectSolver::new(&stencil);
-    let planner_params = PlannerParameters {
+    let planner_params = SolverParameters {
         plan_type: args.plan_type,
         cutoff: args.cutoff,
         ratio: args.ratio,

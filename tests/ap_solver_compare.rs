@@ -36,7 +36,7 @@ fn heat_1d_ap_compare() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let planner_params = PlannerParameters {
+    let planner_params = SolverParameters {
         plan_type: PlanType::Estimate,
         cutoff: 40,
         ratio: 0.5,
@@ -103,7 +103,7 @@ fn heat_2d_ap_compare() {
     let bc = ConstantCheck::new(1.0, grid_bound);
 
     // Create AP Solver
-    let planner_params = PlannerParameters {
+    let planner_params = SolverParameters {
         plan_type: PlanType::Estimate,
         cutoff: 40,
         ratio: 0.5,
