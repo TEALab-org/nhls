@@ -127,9 +127,10 @@ impl<'a, const GRID_DIMENSION: usize> AccountBuilder<'a, GRID_DIMENSION> {
             periodic_node.boundary_nodes.clone(),
             node_requirements,
         );
-        let complex =
-            self.complex_buffer_requirement(&periodic_node.input_aabb);
-        let mut node_requirement = remainder.max(complex);
+        let complex = self
+            .complex_buffer_requirement(&periodic_node.input_aabb)
+            + 2 * self.real_buffer_requirement(&periodic_node.input_aabb);
+        let mut node_requirement = remainder + complex;
         if let Some(time_cut) = periodic_node.time_cut {
             // Time cuts can re-use io buffers
             let pre_allocated_io = true;

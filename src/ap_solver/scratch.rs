@@ -14,6 +14,9 @@ pub struct ScratchDescriptor {
     /// Offset for output domain
     pub output_offset: usize,
 
+    pub p_i: usize,
+    pub p_o: usize,
+
     /// Size (in bytes) for input / output domains
     pub real_buffer_size: usize,
 

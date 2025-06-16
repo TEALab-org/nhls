@@ -116,6 +116,32 @@ impl<
         }
     }
 
+    fn p_get_input_output<'b>(
+        &'b self,
+        node_id: usize,
+        aabb: &AABB<GRID_DIMENSION>,
+    ) -> (
+        SliceDomain<'b, GRID_DIMENSION>,
+        SliceDomain<'b, GRID_DIMENSION>,
+    ) {
+        let scratch_descriptor = &self.node_scratch_descriptors[node_id];
+        let input_buffer = self.scratch_space.unsafe_get_buffer(
+            scratch_descriptor.p_i,
+            scratch_descriptor.real_buffer_size,
+        );
+        let output_buffer = self.scratch_space.unsafe_get_buffer(
+            scratch_descriptor.p_o,
+            scratch_descriptor.real_buffer_size,
+        );
+
+        debug_assert!(input_buffer.len() >= aabb.buffer_size());
+        debug_assert!(output_buffer.len() >= aabb.buffer_size());
+
+        let input_domain = SliceDomain::new(*aabb, input_buffer);
+        let output_domain = SliceDomain::new(*aabb, output_buffer);
+        (input_domain, output_domain)
+    }
+
     fn get_input_output<'b>(
         &'b self,
         node_id: usize,
@@ -346,28 +372,56 @@ impl<
         profiling::scope!("ap_solver::periodic_solve");
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
 
-        // Apply convolution
-        self.periodic_ops.apply_operation(
-            periodic_solve.convolution_id,
-            input_domain,
-            output_domain,
-            self.get_complex(node_id),
-            self.central_global_time,
-            self.chunk_size,
-        );
-
         // Boundary
         // In a rayon scope, we fork for each of the boundary solves,
         // each of which will fill in their part of of output_domain
         {
             let input_domain_const: &SliceDomain<'a, GRID_DIMENSION> =
                 input_domain;
+            let output_domain_const: &SliceDomain<'a, GRID_DIMENSION> =
+                output_domain;
+
             rayon::scope(|s| {
+                s.spawn(move |_| {
+                    // Our plan should provide the guarantee that
+                    // that boundary nodes have mutually exclusive
+                    // access to the output_domain
+                    let mut node_output =
+                        output_domain_const.unsafe_mut_access();
+
+                    let (mut p_input_domain, mut p_output_domain) = self
+                        .p_get_input_output(
+                            node_id,
+                            &periodic_solve.input_aabb,
+                        );
+
+                    // copy input
+                    p_input_domain
+                        .par_from_superset(input_domain_const, self.chunk_size);
+
+                    // Apply convolution
+                    self.periodic_ops.apply_operation(
+                        periodic_solve.convolution_id,
+                        &mut p_input_domain,
+                        &mut p_output_domain,
+                        self.get_complex(node_id),
+                        self.central_global_time,
+                        self.chunk_size,
+                    );
+
+                    p_input_domain.set_aabb(periodic_solve.output_aabb);
+                    p_input_domain
+                        .par_from_superset(&p_output_domain, self.chunk_size);
+                    node_output
+                        .par_set_subdomain(&p_input_domain, self.chunk_size);
+                });
+
                 for node_id in periodic_solve.boundary_nodes.clone() {
                     // Our plan should provide the guarantee that
                     // that boundary nodes have mutually exclusive
                     // access to the output_domain
-                    let mut node_output = output_domain.unsafe_mut_access();
+                    let mut node_output =
+                        output_domain_const.unsafe_mut_access();
 
                     // Each boundary solve will need
                     // new input / output domains from the scratch space

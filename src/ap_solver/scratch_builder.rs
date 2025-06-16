@@ -169,21 +169,32 @@ impl<'a, const GRID_DIMENSION: usize> ScratchBuilder<'a, GRID_DIMENSION> {
     ) {
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
         let scratch_descriptor = &mut scratch_descriptors[node_id];
+        let buffer_len = self.real_buffer_bytes(&periodic_solve.input_aabb);
+        scratch_descriptor.real_buffer_size = buffer_len;
 
         // Input / Output scratch?
         if !pre_allocated_io {
-            let buffer_len = self.real_buffer_bytes(&periodic_solve.input_aabb);
             scratch_descriptor.input_offset = offset;
-            scratch_descriptor.output_offset = offset + buffer_len;
-            scratch_descriptor.real_buffer_size = buffer_len;
-            offset += 2 * buffer_len;
+            offset += buffer_len;
+
+            scratch_descriptor.output_offset = offset;
+            offset += buffer_len;
         }
+
+        let tc_offset = offset;
+
+        scratch_descriptor.p_i = offset;
+        offset += buffer_len;
+
+        scratch_descriptor.p_o = offset;
+        offset += buffer_len;
 
         // Complex buffer scratch?
         let complex_buffer_len =
             self.complex_buffer_bytes(&periodic_solve.input_aabb);
         scratch_descriptor.complex_offset = offset;
         scratch_descriptor.complex_buffer_size = complex_buffer_len;
+        offset += complex_buffer_len;
 
         // Boundary solves scratch
         // Each boundary solve needs to allocate io buffers
@@ -205,7 +216,7 @@ impl<'a, const GRID_DIMENSION: usize> ScratchBuilder<'a, GRID_DIMENSION> {
             let pre_allocated_io = true;
             self.handle_unknown(
                 time_cut,
-                offset,
+                tc_offset,
                 pre_allocated_io,
                 scratch_descriptors,
             );
