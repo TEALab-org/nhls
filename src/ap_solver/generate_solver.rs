@@ -73,7 +73,7 @@ pub fn generate_ap_solver_3d<
 }
 
 pub fn generate_tv_ap_solver_1d<
-    'a, 
+    'a,
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<1, NEIGHBORHOOD_SIZE>,
     DirectSolverType: DirectSolver<1> + 'a,
@@ -96,7 +96,7 @@ pub fn generate_tv_ap_solver_1d<
 }
 
 pub fn generate_tv_ap_solver_2d<
-    'a, 
+    'a,
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<2, NEIGHBORHOOD_SIZE>,
     DirectSolverType: DirectSolver<2> + 'a,
