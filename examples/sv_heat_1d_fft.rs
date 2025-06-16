@@ -1,3 +1,6 @@
+fn main() {}
+
+/*
 use core::f64;
 use nhls::domain::*;
 use nhls::image_1d_example::*;
@@ -71,3 +74,4 @@ fn main() {
     }
     args.finish();
 }
+*/
