@@ -53,7 +53,7 @@ fn heat_1d_ap_compare() {
         chunk_size,
     };
     let mut fft_solver =
-        generate_ap_solver_1d(&stencil, direct_solver, solver_params);
+        generate_ap_solver_1d(&stencil, direct_solver, &solver_params);
     fft_solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     box_apply(

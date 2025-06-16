@@ -10,14 +10,13 @@ use crate::stencil::*;
 use crate::SolverInterface;
 
 pub fn generate_ap_solver_1d<
-    const GRID_DIMENSION: usize,
     const NEIGHBORHOOD_SIZE: usize,
     DirectSolverType: DirectSolver<1>,
 >(
     stencil: &Stencil<1, NEIGHBORHOOD_SIZE>,
     direct_solver: DirectSolverType,
     params: &SolverParameters<1>,
-) -> impl SolverInterface<GRID_DIMENSION> {
+) -> impl SolverInterface<1> {
     let create_ops_builder = || ApPeriodicOpsBuilder::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainOnly;
@@ -74,14 +73,15 @@ pub fn generate_ap_solver_3d<
 }
 
 pub fn generate_tv_ap_solver_1d<
+    'a, 
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<1, NEIGHBORHOOD_SIZE>,
-    DirectSolverType: DirectSolver<1>,
+    DirectSolverType: DirectSolver<1> + 'a,
 >(
-    stencil: & StencilType,
+    stencil: &'a StencilType,
     direct_solver: DirectSolverType,
-    params: &SolverParameters<1>,
-) -> impl SolverInterface<1> {
+    params: &'a SolverParameters<1>,
+) -> impl SolverInterface<1> + 'a {
     let create_ops_builder = || TvPeriodicOpsCollector::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainAndOp;
@@ -96,14 +96,15 @@ pub fn generate_tv_ap_solver_1d<
 }
 
 pub fn generate_tv_ap_solver_2d<
+    'a, 
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<2, NEIGHBORHOOD_SIZE>,
-    DirectSolverType: DirectSolver<2>,
+    DirectSolverType: DirectSolver<2> + 'a,
 >(
-    stencil: &StencilType,
+    stencil: &'a StencilType,
     direct_solver: DirectSolverType,
-    params: &SolverParameters<2>,
-) -> impl SolverInterface<2> {
+    params: &'a SolverParameters<2>,
+) -> impl SolverInterface<2> + 'a {
     let create_ops_builder = || TvPeriodicOpsCollector::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainAndOp;
