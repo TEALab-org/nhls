@@ -78,8 +78,8 @@ fn heat_2d_p_compare() {
     let mut fft_input_domain = OwnedDomain::new(grid_bound);
     let mut fft_output_domain = OwnedDomain::new(grid_bound);
 
-    normal_ic_2d(&mut direct_input_domain, chunk_size);
-    normal_ic_2d(&mut fft_input_domain, chunk_size);
+    normal_ic_2d(&mut direct_input_domain, 25.0, chunk_size);
+    normal_ic_2d(&mut fft_input_domain, 25.0, chunk_size);
 
     let plan_type = PlanType::Estimate;
     let mut periodic_solver = PeriodicSolver::create(

@@ -1,10 +1,85 @@
 use crate::domain::*;
 use crate::par_stencil;
+use crate::solver_interface::*;
 use crate::stencil::*;
 
 /// Global time doesn't matter for periodic solves
 /// since its only used for boundary conditions
 const GLOBAL_TIME: usize = 0;
+
+pub struct GeneralDirectPeriodicBoxSolver<
+    'a,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+> {
+    stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    steps: usize,
+    chunk_size: usize,
+}
+
+impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    GeneralDirectPeriodicBoxSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+{
+    pub fn new(
+        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        steps: usize,
+        chunk_size: usize,
+    ) -> Self {
+        GeneralDirectPeriodicBoxSolver {
+            stencil,
+            steps,
+            chunk_size,
+        }
+    }
+}
+
+impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    SolverInterface<GRID_DIMENSION>
+    for GeneralDirectPeriodicBoxSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+{
+    fn apply<'b>(
+        &mut self,
+        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        _global_time: usize,
+    ) {
+        debug_assert_eq!(input_domain.aabb(), output_domain.aabb());
+        for _ in 0..self.steps - 1 {
+            {
+                let bc = PeriodicCheck::new(input_domain);
+                par_stencil::apply(
+                    &bc,
+                    self.stencil,
+                    input_domain,
+                    output_domain,
+                    GLOBAL_TIME,
+                    self.chunk_size,
+                );
+            }
+            std::mem::swap(input_domain, output_domain);
+        }
+
+        let bc = PeriodicCheck::new(input_domain);
+        par_stencil::apply(
+            &bc,
+            self.stencil,
+            input_domain,
+            output_domain,
+            GLOBAL_TIME,
+            self.chunk_size,
+        );
+    }
+
+    fn print_report(&self) {
+        println!("GeneralDirectPeriodicBoxSolver: No Report");
+    }
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, _path: &P) {
+        eprintln!(
+            "WARNING: GeneralDirectPeriodicBoxSolver cannot save to dot file"
+        );
+    }
+}
 
 pub fn direct_periodic_apply<
     const GRID_DIMENSION: usize,
