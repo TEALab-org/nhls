@@ -7,6 +7,7 @@ use crate::initial_conditions::*;
 use crate::util::*;
 use crate::SolverInterface;
 use clap::Parser;
+use std::io::prelude::*;
 use std::path::PathBuf;
 use std::time::*;
 
@@ -101,6 +102,10 @@ pub struct Args {
     /// Assume total tasks available relative to threads
     #[arg(long, default_value = "1")]
     pub task_mult: f64,
+
+    /// Write out the solver apply time in seconds to file
+    #[arg(long)]
+    pub timings_file: Option<PathBuf>,
 }
 
 impl Args {
@@ -156,9 +161,17 @@ impl Args {
         // Setup initial conditions
         let ic_type = self.ic_type.to_ic_type(self.ic_dial);
         generate_ic_2d(input_domain, ic_type, self.chunk_size);
-
         if self.write_images.is_some() {
             image2d(input_domain, &self.frame_name(0));
+        }
+
+        // Setup timings file (maybe)
+        let mut timings_writer = None;
+        if let Some(timings_file) = self.timings_file.as_ref() {
+            let writer = std::io::BufWriter::new(
+                std::fs::File::create(timings_file).unwrap(),
+            );
+            timings_writer = Some(writer);
         }
 
         // Main solver loop
@@ -168,7 +181,11 @@ impl Args {
             let now = Instant::now();
             solver.apply(input_domain, output_domain, global_time);
             let elapsed_time = now.elapsed();
-            eprintln!("{}", elapsed_time.as_nanos() as f64 / 1000000000.0);
+            let s_elapsed = elapsed_time.as_nanos() as f64 / 1000000000.0;
+            println!("{}", s_elapsed);
+            if let Some(writer) = timings_writer.as_mut() {
+                writeln!(writer, "{}", s_elapsed).unwrap();
+            }
 
             // Prepare for the next frame
             global_time += self.steps_per_image;
