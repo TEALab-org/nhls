@@ -2,6 +2,7 @@ use crate::domain::*;
 use crate::fft_solver::*;
 use crate::stencil::*;
 use crate::util::*;
+use crate::SolverInterface;
 use fftw::array::*;
 use indexing::complex_buffer_size;
 
@@ -59,6 +60,32 @@ impl PeriodicSolver {
             &mut self.complex_buffer,
             self.chunk_size,
         );
+    }
+}
+
+impl<const GRID_DIMENSION: usize> SolverInterface<GRID_DIMENSION>
+    for PeriodicSolver
+{
+    fn apply<'a>(
+        &mut self,
+        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
+        _global_time: usize,
+    ) {
+        self.operation.apply(
+            input_domain,
+            output_domain,
+            &mut self.complex_buffer,
+            self.chunk_size,
+        );
+    }
+
+    fn print_report(&self) {
+        println!("PeriodicSolver: No Report");
+    }
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, _path: &P) {
+        eprintln!("WARNING: PerodicSolver cannot save to dot file");
     }
 }
 

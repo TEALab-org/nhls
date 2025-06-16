@@ -1,4 +1,3 @@
-use crate::ap_solver::solver::*;
 use crate::ap_solver::SolverParameters;
 use crate::build_info;
 use crate::domain::*;
@@ -6,6 +5,7 @@ use crate::fft_solver::PlanType;
 use crate::image::*;
 use crate::initial_conditions::*;
 use crate::util::*;
+use crate::SolverInterface;
 use clap::Parser;
 use std::path::PathBuf;
 use std::time::*;
@@ -31,12 +31,6 @@ lazy_static::lazy_static! {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    /// Directory for output files, will be created.
-    /// WARNING, if this Directory
-    /// already exists, current contents will be removed.
-    #[arg(short, long)]
-    pub output_dir: Option<std::path::PathBuf>,
-
     /// Chunk size to use for parallelism.
     #[arg(short, long, default_value = "1000")]
     pub chunk_size: usize,
@@ -70,15 +64,14 @@ pub struct Args {
     pub wisdom_file: Option<PathBuf>,
 
     /// The type of initial condition to use.
-    /// Some can be parameterized with --ic-dial <f64>
-    /// Fill with random values matching 2023 implementation
-    /// TODO (rb): check on this
-    #[arg(long)]
+    /// Some can be parameterized with --ic-dial <f64>.
+    /// Use --ic-type rand --ic-dial 1024.0 to match 2023 implementation.
+    #[arg(long, default_value = "zero")]
     pub ic_type: ClapICType,
 
-    /// Fill with random values matching 2023 implementation
+    /// Parameter for initial_conditions
     #[arg(long)]
-    pub ic_dial: f64,
+    pub ic_dial: Option<f64>,
 
     /// Write out a dot file for the ap plan
     #[arg(long, short)]
@@ -140,14 +133,11 @@ impl Args {
         let mut input_domain = buffer_1.as_slice_domain();
         let mut output_domain = buffer_2.as_slice_domain();
 
-        solver.apply(&mut input_domain, &mut output_domain, 0);
-        /*
         self.run_solver_with_domains(
             &mut input_domain,
             &mut output_domain,
             solver,
         );
-        */
     }
 
     pub fn run_solver_with_domains<'a, SolverType: SolverInterface<1>>(
@@ -238,12 +228,6 @@ impl Args {
 
     pub fn grid_bounds(&self) -> AABB<1> {
         AABB::new(matrix![0, self.domain_size as i32 - 1])
-    }
-
-    pub fn dot_path(&self) -> PathBuf {
-        let mut dot_path = self.output_dir.as_ref().unwrap().clone();
-        dot_path.push("plan.dot");
-        dot_path
     }
 
     pub fn finish(&self) {

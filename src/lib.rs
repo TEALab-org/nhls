@@ -19,11 +19,13 @@ pub mod mirror_domain;
 pub mod par_slice;
 pub mod par_stencil;
 pub mod solver;
+pub mod solver_interface;
 pub mod stencil;
 pub mod time_varying;
 pub mod util;
 pub mod vtk;
 
+pub use solver_interface::*;
 pub use stencil::standard_stencils;
 
 /// Please call this first thing!

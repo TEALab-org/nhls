@@ -6,6 +6,7 @@ use crate::ap_solver::solver::*;
 use crate::ap_solver::solver_parameters::*;
 use crate::ap_solver::tv_periodic_ops_collector::*;
 use crate::stencil::*;
+use crate::SolverInterface;
 
 pub fn generate_ap_solver<
     const GRID_DIMENSION: usize,

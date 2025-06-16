@@ -1,9 +1,14 @@
 use crate::ap_solver::SolverParameters;
 use crate::build_info;
+use crate::domain::*;
 use crate::fft_solver::PlanType;
+use crate::image::image2d;
+use crate::initial_conditions::*;
 use crate::util::*;
+use crate::SolverInterface;
 use clap::Parser;
 use std::path::PathBuf;
+use std::time::*;
 
 #[cfg(feature = "profile-with-puffin")]
 use std::sync::Mutex;
@@ -26,12 +31,6 @@ lazy_static::lazy_static! {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    /// Directory for output files, will be created.
-    /// WARNING, if this Directory
-    /// already exists, current contents will be removed.
-    #[arg(short, long)]
-    pub output_dir: Option<std::path::PathBuf>,
-
     /// Chunk size to use for parallelism.
     #[arg(short, long, default_value = "1000")]
     pub chunk_size: usize,
@@ -48,9 +47,10 @@ pub struct Args {
     #[arg(short, long, default_value = "1000")]
     pub domain_size: usize,
 
-    /// Write out image, WARNING: we do not check image size, so be reasonable.
-    #[arg(short, long, requires("output_dir"))]
-    pub write_images: bool,
+    /// Optionally write out images to this directory.
+    /// WARNING: we do not check image size, so be reasonable.
+    #[arg(short, long)]
+    pub write_images: Option<PathBuf>,
 
     /// The number of threads to use.
     #[arg(short, long, default_value = "8")]
@@ -64,13 +64,19 @@ pub struct Args {
     #[arg(long)]
     pub wisdom_file: Option<PathBuf>,
 
+    /// The type of initial condition to use.
+    /// Some can be parameterized with --ic-dial <f64>.
+    /// Use --ic-type rand --ic-dial 1024.0 to match 2023 implementation.
+    #[arg(long, default_value = "zero")]
+    pub ic_type: ClapICType,
+
     /// Fill with random values matching 2023 implementation
-    #[arg(short, long)]
-    pub rand_init: bool,
+    #[arg(long)]
+    pub ic_dial: Option<f64>,
 
     /// Write out a dot file for the ap plan
-    #[arg(long, requires("output_dir"))]
-    pub write_dot: bool,
+    #[arg(long)]
+    pub write_dot: Option<PathBuf>,
 
     /// Target ratio for fft solves
     #[arg(long, default_value = "0.5")]
@@ -113,18 +119,76 @@ impl Args {
         }
     }
 
+    pub fn run_solver<SolverType: SolverInterface<2>>(
+        &self,
+        solver: &mut SolverType,
+    ) {
+        // Create domains
+        let grid_bound = self.grid_bounds();
+        let mut buffer_1 = OwnedDomain::new(grid_bound);
+        let mut buffer_2 = OwnedDomain::new(grid_bound);
+        let mut input_domain = buffer_1.as_slice_domain();
+        let mut output_domain = buffer_2.as_slice_domain();
+
+        self.run_solver_with_domains(
+            &mut input_domain,
+            &mut output_domain,
+            solver,
+        );
+    }
+
+    pub fn run_solver_with_domains<'a, SolverType: SolverInterface<2>>(
+        &self,
+        input_domain: &mut SliceDomain<'a, 2>,
+        output_domain: &mut SliceDomain<'a, 2>,
+        solver: &mut SolverType,
+    ) {
+        // Solver Diagnostics
+        solver.print_report();
+        if let Some(dot_path) = self.write_dot.as_ref() {
+            solver.to_dot_file(&dot_path);
+        }
+        if self.gen_only {
+            self.finish();
+            std::process::exit(0);
+        }
+
+        // Setup initial conditions
+        let ic_type = self.ic_type.to_ic_type(self.ic_dial);
+        generate_ic_2d(input_domain, ic_type, self.chunk_size);
+
+        if self.write_images.is_some() {
+            image2d(input_domain, &self.frame_name(0));
+        }
+
+        // Main solver loop
+        let mut global_time = 0;
+        for t in 1..self.images {
+            // Run and time solver application
+            let now = Instant::now();
+            solver.apply(input_domain, output_domain, global_time);
+            let elapsed_time = now.elapsed();
+            eprintln!("{}", elapsed_time.as_nanos() as f64 / 1000000000.0);
+
+            // Prepare for the next frame
+            global_time += self.steps_per_image;
+            std::mem::swap(input_domain, output_domain);
+
+            // Write output (maybe)
+            if self.write_images.is_some() {
+                image2d(input_domain, &self.frame_name(t));
+            }
+        }
+
+        self.finish();
+    }
+
     pub fn cli_setup(name: &str) -> Self {
         let args = Args::parse();
 
         if args.build_info {
             build_info::print_report(name);
             std::process::exit(0);
-        }
-
-        if let Some(output_dir) = &args.output_dir {
-            let output_dir = output_dir.to_str().unwrap();
-            let _ = std::fs::remove_dir_all(output_dir);
-            std::fs::create_dir(output_dir).unwrap();
         }
 
         #[cfg(feature = "profile-with-puffin")]
@@ -137,13 +201,7 @@ impl Args {
             println!("t: {}", &server.num_clients());
         }
 
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(args.threads)
-            .thread_name(|i| format!("rayon_thread_{}", i))
-            .build_global()
-            .unwrap();
-        fftw::threading::init_threads_f64().unwrap();
-        fftw::threading::plan_with_nthreads_f64(args.threads);
+        crate::init_threads(args.threads);
 
         if let Some(ref wisdom_path) = args.wisdom_file {
             if wisdom_path.exists() {
@@ -160,37 +218,13 @@ impl Args {
     }
 
     pub fn frame_name(&self, i: usize) -> PathBuf {
-        let mut result = self.output_dir.as_ref().unwrap().clone();
+        let mut result = self.write_images.as_ref().unwrap().clone();
         result.push(format!("frame_{:04}.png", i));
         result
     }
 
-    pub fn dot_path(&self) -> PathBuf {
-        let mut dot_path = self.output_dir.as_ref().unwrap().clone();
-        dot_path.push("plan.dot");
-        dot_path
-    }
-
-    pub fn tree_dot_path(&self) -> PathBuf {
-        let mut dot_path = self.output_dir.as_ref().unwrap().clone();
-        dot_path.push("tree_plan.dot");
-        dot_path
-    }
-
-    pub fn query_file_path(&self) -> PathBuf {
-        let mut dot_path = self.output_dir.as_ref().unwrap().clone();
-        dot_path.push("tree_query_file.txt");
-        dot_path
-    }
-
-    pub fn tpb_debug_path(&self) -> PathBuf {
-        let mut dot_path = self.output_dir.as_ref().unwrap().clone();
-        dot_path.push("tpb_debug_file.txt");
-        dot_path
-    }
-
     pub fn finish(&self) {
-        if let Some(ref wisdom_path) = self.wisdom_file {
+        if let Some(wisdom_path) = self.wisdom_file.as_ref() {
             profiling::scope!("fftw3::saving_wisdom");
             println!("Saving wisdom: {:?}", wisdom_path);
             fftw::wisdom::export_wisdom_file_f64(&wisdom_path).unwrap();
