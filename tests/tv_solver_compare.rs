@@ -3,7 +3,8 @@ use nhls::ap_solver::direct_solver::*;
 use nhls::ap_solver::DirectSolver5Pt2DOpt;
 use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::init::*;
+use nhls::initial_conditions::normal_impulse::*;
+use nhls::solver_interface::SolverInterface;
 use nhls::standard_stencils::*;
 use nhls::stencil::TVStencil;
 use nhls::time_varying::tv_direct_frustrum_solver::*;
@@ -20,8 +21,6 @@ fn tv_rotating_advection_compare() {
 
     let chunk_size = 100;
 
-    let plan_type = PlanType::Estimate;
-
     let stencil = RotatingAdvectionStencil::new(100.0, 0.2);
 
     // Create domains
@@ -36,8 +35,8 @@ fn tv_rotating_advection_compare() {
     let mut fft_output_domain = fft_buffer_2.as_slice_domain();
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    normal_ic_2d(&mut direct_input_domain, chunk_size);
-    normal_ic_2d(&mut fft_input_domain, chunk_size);
+    normal_ic_2d(&mut direct_input_domain, 25.0, chunk_size);
+    normal_ic_2d(&mut fft_input_domain, 25.0, chunk_size);
 
     let bc = ConstantCheck::new(0.0, grid_bound);
 
@@ -51,14 +50,13 @@ fn tv_rotating_advection_compare() {
         threads,
     );
 
-    let planner_params = PlannerParameters {
-        plan_type,
+    let solver_params = SolverParameters {
         cutoff: 20,
-        ratio: 0.5,
         chunk_size,
         aabb: grid_bound,
         threads,
         steps: n_steps,
+        ..Default::default()
     };
     let direct_solver = TVDirectFrustrumSolver {
         bc: &bc,
@@ -67,7 +65,7 @@ fn tv_rotating_advection_compare() {
         chunk_size,
     };
     let mut solver =
-        generate_tv_ap_solver_2d(&stencil, direct_solver, &planner_params);
+        generate_tv_ap_solver_2d(&stencil, direct_solver, &solver_params);
     solver.apply(&mut fft_input_domain, &mut fft_output_domain, 0);
 
     for i in 0..buffer_size {

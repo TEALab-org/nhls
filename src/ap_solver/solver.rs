@@ -5,6 +5,8 @@ use crate::ap_solver::plan::*;
 use crate::ap_solver::planner::*;
 use crate::ap_solver::scratch::*;
 use crate::ap_solver::scratch_builder::*;
+use crate::ap_solver::solver_parameters::*;
+use crate::SolverInterface;
 
 use crate::domain::*;
 
@@ -12,29 +14,15 @@ use crate::mem_fmt::*;
 use crate::util::*;
 use std::io::prelude::*;
 
-pub trait SolverInterface<'a, const GRID_DIMENSION: usize> {
-    fn apply(
-        &mut self,
-        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
-        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
-        global_time: usize,
-    );
-
-    fn print_report(&self);
-
-    fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P);
-}
-
 impl<
-        'a,
         const GRID_DIMENSION: usize,
         DirectSolverType: DirectSolver<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
         SubsetOpsType: SubsetOps<GRID_DIMENSION>,
-    > SolverInterface<'a, GRID_DIMENSION>
+    > SolverInterface<GRID_DIMENSION>
     for Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType, SubsetOpsType>
 {
-    fn apply(
+    fn apply<'a>(
         &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
@@ -80,7 +68,7 @@ impl<
     pub fn new(
         direct_solver: DirectSolverType,
         subset_ops: SubsetOpsType,
-        params: &PlannerParameters<GRID_DIMENSION>,
+        params: &SolverParameters<GRID_DIMENSION>,
         planner_result: PlannerResult<GRID_DIMENSION, PeriodicOpsType>,
         complex_buffer_type: ComplexBufferType,
     ) -> Self {
@@ -454,6 +442,18 @@ impl<
             direct_solve.threads,
         );
 
+        // NOTE (rb): until opt solvers handle_frustrum solves...
+        input_domain.set_aabb(direct_solve.output_aabb);
+        input_domain.par_from_superset(&output_domain, self.chunk_size);
+        std::mem::swap(&mut input_domain, &mut output_domain);
+
+        debug_assert_eq!(
+            direct_solve.output_aabb,
+            *output_domain.aabb(),
+            "ERROR: n_id: {}, Unexpected solve output",
+            node_id
+        );
+
         // copy output to output
         self.subset_ops.copy_from_subdomain(
             &output_domain,
@@ -498,6 +498,18 @@ impl<
             direct_solve.steps,
             global_time,
             direct_solve.threads,
+        );
+
+        // NOTE (rb): until opt solvers handle_frustrum solves...
+        input_domain.set_aabb(direct_solve.output_aabb);
+        input_domain.par_from_superset(output_domain, self.chunk_size);
+        std::mem::swap(input_domain, output_domain);
+
+        debug_assert_eq!(
+            direct_solve.output_aabb,
+            *output_domain.aabb(),
+            "ERROR: n_id: {}, Unexpected solve output",
+            node_id
         );
     }
 }

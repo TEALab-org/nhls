@@ -162,9 +162,8 @@ impl<'a, StencilType: TVStencil<2, 5>> DirectSolver5Pt2DOpt<'a, StencilType> {
                     }
                 });
 
-                let chunk_size = (*exclusive_bounds.get_unchecked(0) as usize
-                    - 2)
-                    / (threads * 2);
+                let chunk_size =
+                    (*exclusive_bounds.get_unchecked(0) as usize - 2) / threads;
                 let mut start: usize = 1;
                 while start < (exclusive_bounds.get_unchecked(0) - 1) as usize {
                     let end = (start + chunk_size)

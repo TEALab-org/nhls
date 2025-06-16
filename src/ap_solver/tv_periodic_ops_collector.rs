@@ -1,12 +1,11 @@
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
+use crate::ap_solver::solver_parameters::SolverParameters;
 use crate::ap_solver::tv_periodic_ops::*;
 use crate::ap_solver::tv_periodic_ops_builder::*;
 use crate::stencil::TVStencil;
 use crate::util::*;
 use std::collections::HashMap;
-
-use crate::ap_solver::planner::PlannerParameters;
 
 /// Collect all periodic solves needed
 /// during plan creation
@@ -20,7 +19,7 @@ pub struct TvPeriodicOpsCollector<
     next_id: usize,
     stencil: &'a StencilType,
     aabb: AABB<GRID_DIMENSION>,
-    params: &'a PlannerParameters<GRID_DIMENSION>,
+    params: &'a SolverParameters<GRID_DIMENSION>,
     steps: usize,
 }
 
@@ -34,7 +33,7 @@ impl<
 {
     pub fn new(
         stencil: &'a StencilType,
-        params: &'a PlannerParameters<GRID_DIMENSION>,
+        params: &'a SolverParameters<GRID_DIMENSION>,
     ) -> Self {
         TvPeriodicOpsCollector {
             descriptor_map: HashMap::new(),

@@ -1,6 +1,86 @@
 use crate::domain::*;
 use crate::par_stencil;
+use crate::solver_interface::*;
 use crate::stencil::*;
+
+pub struct GeneralDirectBoxSolver<
+    'a,
+    BC,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+> where
+    BC: BCCheck<GRID_DIMENSION>,
+{
+    bc: &'a BC,
+    stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    steps: usize,
+    chunk_size: usize,
+}
+
+impl<'a, BC, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    GeneralDirectBoxSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+where
+    BC: BCCheck<GRID_DIMENSION>,
+{
+    pub fn new(
+        bc: &'a BC,
+        stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+        steps: usize,
+        chunk_size: usize,
+    ) -> Self {
+        GeneralDirectBoxSolver {
+            bc,
+            stencil,
+            steps,
+            chunk_size,
+        }
+    }
+}
+
+impl<'a, BC, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
+    SolverInterface<GRID_DIMENSION>
+    for GeneralDirectBoxSolver<'a, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+where
+    BC: BCCheck<GRID_DIMENSION>,
+{
+    fn apply<'b>(
+        &mut self,
+        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        mut global_time: usize,
+    ) {
+        debug_assert_eq!(input_domain.aabb(), output_domain.aabb());
+        for _ in 0..self.steps - 1 {
+            global_time += 1;
+            par_stencil::apply(
+                self.bc,
+                self.stencil,
+                input_domain,
+                output_domain,
+                global_time,
+                self.chunk_size,
+            );
+            std::mem::swap(input_domain, output_domain);
+        }
+        global_time += 1;
+        par_stencil::apply(
+            self.bc,
+            self.stencil,
+            input_domain,
+            output_domain,
+            global_time,
+            self.chunk_size,
+        );
+    }
+
+    fn print_report(&self) {
+        println!("GeneralDirectBoxSolver: No Report");
+    }
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, _path: &P) {
+        eprintln!("WARNING: GeneralDirectBoxSolver cannot save to dot file");
+    }
+}
 
 pub fn box_apply<
     BC,

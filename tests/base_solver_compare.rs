@@ -1,7 +1,7 @@
 use float_cmp::assert_approx_eq;
 use nhls::domain::*;
 use nhls::fft_solver::*;
-use nhls::init::*;
+use nhls::initial_conditions::normal_impulse::*;
 use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
@@ -26,8 +26,8 @@ fn heat_1d_p_compare() {
     let mut fft_output_domain = OwnedDomain::new(grid_bound);
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    normal_ic_1d(&mut direct_input_domain, chunk_size);
-    normal_ic_1d(&mut fft_input_domain, chunk_size);
+    normal_ic_1d(&mut direct_input_domain, 25.0, chunk_size);
+    normal_ic_1d(&mut fft_input_domain, 25.0, chunk_size);
 
     let plan_type = PlanType::Estimate;
     let mut periodic_solver = PeriodicSolver::create(
@@ -78,8 +78,8 @@ fn heat_2d_p_compare() {
     let mut fft_input_domain = OwnedDomain::new(grid_bound);
     let mut fft_output_domain = OwnedDomain::new(grid_bound);
 
-    normal_ic_2d(&mut direct_input_domain, chunk_size);
-    normal_ic_2d(&mut fft_input_domain, chunk_size);
+    normal_ic_2d(&mut direct_input_domain, 25.0, chunk_size);
+    normal_ic_2d(&mut fft_input_domain, 25.0, chunk_size);
 
     let plan_type = PlanType::Estimate;
     let mut periodic_solver = PeriodicSolver::create(

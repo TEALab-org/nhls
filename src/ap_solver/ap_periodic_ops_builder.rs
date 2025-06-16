@@ -1,7 +1,7 @@
 use crate::ap_solver::ap_periodic_ops::*;
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
-use crate::ap_solver::planner::PlannerParameters;
+use crate::ap_solver::solver_parameters::SolverParameters;
 use crate::fft_solver::ConvolutionOperation;
 use crate::fft_solver::PlanType;
 use crate::stencil::*;
@@ -37,7 +37,7 @@ impl<'a, const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
 {
     pub fn new(
         stencil: &'a Stencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-        params: &PlannerParameters<GRID_DIMENSION>,
+        params: &SolverParameters<GRID_DIMENSION>,
     ) -> Self {
         let max_real_size = params.aabb.buffer_size();
         let real_buffer = fftw::array::AlignedVec::new(max_real_size);

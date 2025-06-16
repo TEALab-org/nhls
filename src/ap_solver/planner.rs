@@ -1,24 +1,10 @@
-use crate::fft_solver::ap_frustrum::*;
-use crate::fft_solver::find_periodic_solve::*;
-use crate::fft_solver::PlanType;
-
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::plan::*;
-
+use crate::ap_solver::solver_parameters::*;
+use crate::fft_solver::ap_frustrum::*;
+use crate::fft_solver::find_periodic_solve::*;
 use crate::util::*;
-
-/// Planner recurses by finding periodic solves.
-/// These solves are configured with these parameters.
-pub struct PlannerParameters<const GRID_DIMENSION: usize> {
-    pub steps: usize,
-    pub plan_type: PlanType,
-    pub cutoff: i32,
-    pub ratio: f64,
-    pub chunk_size: usize,
-    pub threads: usize,
-    pub aabb: AABB<GRID_DIMENSION>,
-}
 
 /// Creating a plan results in both a plan and convolution store.
 /// Someday we may separate the creation, if for example we
@@ -42,7 +28,7 @@ pub struct Planner<
 > {
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
     pub nodes: Vec<PlanNode<GRID_DIMENSION>>,
-    pub params: &'a PlannerParameters<GRID_DIMENSION>,
+    pub params: &'a SolverParameters<GRID_DIMENSION>,
     pub ops_builder: OpsBuilderType,
     pub ops_type_marker: std::marker::PhantomData<PeriodicOpsType>,
 }
@@ -65,7 +51,7 @@ impl<
     fn generate_direct_node(
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
-        threads: usize,
+        tasks: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
         let direct_node = DirectSolveNode {
@@ -73,7 +59,7 @@ impl<
             output_aabb: frustrum.output_aabb,
             sloped_sides: frustrum.sloped_sides(),
             steps: frustrum.steps,
-            threads,
+            threads: tasks,
         };
         PlanNode::DirectSolve(direct_node)
     }
@@ -83,7 +69,7 @@ impl<
         mut frustrum: APFrustrum<GRID_DIMENSION>,
         periodic_solve: PeriodicSolve<GRID_DIMENSION>,
         rel_time_0: usize,
-        threads: usize,
+        tasks: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         // Create the convolution operation and get the id
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
@@ -93,7 +79,7 @@ impl<
             step_max: rel_time_post,
             steps: periodic_solve.steps,
             exclusive_bounds: input_aabb.exclusive_bounds(),
-            threads,
+            threads: tasks,
         };
         let convolution_id = self.ops_builder.get_op_id(op_descriptor);
 
@@ -104,7 +90,7 @@ impl<
             frustrum.time_cut(periodic_solve.steps, &self.stencil_slopes);
         if let Some(next_frustrum) = maybe_next_frustrum {
             let next_node =
-                self.generate_frustrum(next_frustrum, rel_time_post, threads);
+                self.generate_frustrum(next_frustrum, rel_time_post, tasks);
             time_cut = Some(self.add_node(next_node));
         }
         debug_assert!(frustrum
@@ -114,16 +100,14 @@ impl<
         // Generate nodes for the boundary solves
         let boundary_frustrums = frustrum.decompose(&self.stencil_slopes);
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
-        let sub_threads = 1
-            .max((threads as f64 / boundary_frustrums.len() as f64).ceil()
+        let sub_tasks = self
+            .params
+            .task_min
+            .max((tasks as f64 / boundary_frustrums.len() as f64).ceil()
                 as usize);
 
         for bf in boundary_frustrums {
-            sub_nodes.push(self.generate_frustrum(
-                bf,
-                rel_time_0,
-                sub_threads + 2,
-            ));
+            sub_nodes.push(self.generate_frustrum(bf, rel_time_0, sub_tasks));
         }
 
         // Ensure boundary solve nodes are contiguous in the plan
@@ -138,7 +122,7 @@ impl<
             steps: periodic_solve.steps,
             boundary_nodes: first_node..last_node,
             time_cut,
-            threads,
+            threads: tasks,
         })
     }
 
@@ -150,7 +134,7 @@ impl<
         &mut self,
         frustrum: APFrustrum<GRID_DIMENSION>,
         rel_time_0: usize,
-        threads: usize,
+        tasks: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         let solve_params = PeriodicSolveParams {
             stencil_slopes: self.stencil_slopes,
@@ -165,14 +149,14 @@ impl<
         let maybe_periodic_solve =
             find_periodic_solve(&input_aabb, &solve_params);
         if maybe_periodic_solve.is_none() {
-            self.generate_direct_node(frustrum, threads)
+            self.generate_direct_node(frustrum, tasks)
         } else {
             let periodic_solve = maybe_periodic_solve.unwrap();
             self.generate_periodic_node(
                 frustrum,
                 periodic_solve,
                 rel_time_0,
-                threads,
+                tasks,
             )
         }
     }
@@ -211,10 +195,10 @@ impl<
         let decomposition =
             self.params.aabb.decomposition(&periodic_solve.output_aabb);
         let mut sub_nodes = Vec::with_capacity(2 * GRID_DIMENSION);
-        let sub_threads =
-            1.max(
-                (threads as f64 / (GRID_DIMENSION * 2) as f64).ceil() as usize
-            );
+        let sub_tasks = self.params.task_min.max(
+            (self.params.task_mult * threads as f64 / GRID_DIMENSION as f64)
+                .ceil() as usize,
+        );
 
         for d in 0..GRID_DIMENSION {
             for side in [Side::Min, Side::Max] {
@@ -226,7 +210,7 @@ impl<
                         periodic_solve.steps,
                     ),
                     rel_time_0,
-                    sub_threads,
+                    sub_tasks,
                 ));
             }
         }

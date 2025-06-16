@@ -1,14 +1,12 @@
 use core::f64;
-
-use nhls::ap_solver::*;
 use nhls::domain::*;
 use nhls::image_1d_example::*;
-use nhls::init::*;
+use nhls::initial_conditions::*;
 use nhls::mirror_domain::*;
 use std::time::*;
 
 fn main() {
-    let (args, output_image_path) = Args::cli_setup("sv_heat_1d_fft");
+    let args = Args::cli_setup("sv_heat_1d_fft");
 
     // Grid size
     let mut grid_bound = args.grid_bounds();
@@ -22,41 +20,29 @@ fn main() {
     let mut buffer_12 = OwnedDomain::new(grid_bound);
     let mut input_domain_1 = buffer_11.as_slice_domain();
     let mut output_domain_1 = buffer_12.as_slice_domain();
-    rand(&mut input_domain_1, 10, args.chunk_size);
 
     let mut buffer_21 = OwnedDomain::new(grid_bound);
     let mut buffer_22 = OwnedDomain::new(grid_bound);
     let mut input_domain_2 = buffer_21.as_slice_domain();
     let mut output_domain_2 = buffer_22.as_slice_domain();
-    rand(&mut input_domain_2, 10, args.chunk_size);
+
+    // Setup initial conditions
+    let ic_type = args.ic_type.to_ic_type(args.ic_dial);
+    generate_ic_1d(&mut input_domain_1, ic_type, args.chunk_size);
+    generate_ic_1d(&mut input_domain_2, ic_type, args.chunk_size);
 
     let direct_solver = SV1DDirectSolver::new(&stencil);
-    let planner_params = PlannerParameters {
-        plan_type: args.plan_type,
-        cutoff: args.cutoff,
-        ratio: args.ratio,
-        chunk_size: args.chunk_size,
-        threads: args.threads,
-        steps: args.steps_per_line,
-        aabb: grid_bound,
-    };
-    let solver = SVSolver::new(&stencil, &planner_params, direct_solver);
+    let solver_params = args.solver_parameters();
+    let solver = SVSolver::new(&stencil, &solver_params, direct_solver);
 
     if args.gen_only {
         args.finish();
         std::process::exit(0);
     }
 
-    let mut img = None;
-    if args.write_image {
-        let mut i = nhls::image::Image1D::new(grid_bound, args.lines as u32);
-        i.add_line(0, input_domain_1.buffer());
-        img = Some(i);
-    }
-
     // Apply direct solver
     let mut global_time = 0;
-    for t in 1..args.lines {
+    for _ in 1..args.lines {
         let now = Instant::now();
         solver.apply(
             &mut input_domain_1,
@@ -71,13 +57,7 @@ fn main() {
         global_time += args.steps_per_line;
         std::mem::swap(&mut input_domain_1, &mut output_domain_1);
         std::mem::swap(&mut input_domain_2, &mut output_domain_2);
+    }
 
-        if let Some(i) = img.as_mut() {
-            i.add_line(t as u32, input_domain_1.buffer());
-        }
-    }
-    if let Some(i) = img {
-        i.write(&output_image_path.unwrap());
-    }
     args.finish();
 }
