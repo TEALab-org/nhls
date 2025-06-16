@@ -411,6 +411,18 @@ impl<
             direct_solve.threads,
         );
 
+        // NOTE (rb): until opt solvers handle_frustrum solves...
+        input_domain.set_aabb(direct_solve.output_aabb);
+        input_domain.par_from_superset(&output_domain, self.chunk_size);
+        std::mem::swap(&mut input_domain, &mut output_domain);
+
+        debug_assert_eq!(
+            direct_solve.output_aabb,
+            *output_domain.aabb(),
+            "ERROR: n_id: {}, Unexpected solve output",
+            node_id
+        );
+
         // copy output to output
         output.par_set_subdomain(&output_domain, self.chunk_size);
     }
@@ -448,6 +460,11 @@ impl<
             global_time,
             direct_solve.threads,
         );
+
+        // NOTE (rb): until opt solvers handle_frustrum solves...
+        input_domain.set_aabb(direct_solve.output_aabb);
+        input_domain.par_from_superset(output_domain, self.chunk_size);
+        std::mem::swap(input_domain, output_domain);
 
         debug_assert_eq!(
             direct_solve.output_aabb,
