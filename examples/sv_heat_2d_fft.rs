@@ -1,8 +1,7 @@
 use core::f64;
 use nhls::domain::*;
-use nhls::image::*;
 use nhls::image_2d_example::*;
-use nhls::init::*;
+use nhls::initial_conditions::*;
 use nhls::mirror_domain::*;
 use std::time::*;
 
@@ -21,13 +20,16 @@ fn main() {
     let mut buffer_12 = OwnedDomain::new(grid_bound);
     let mut input_domain_1 = buffer_11.as_slice_domain();
     let mut output_domain_1 = buffer_12.as_slice_domain();
-    rand(&mut input_domain_1, 10, args.chunk_size);
 
     let mut buffer_21 = OwnedDomain::new(grid_bound);
     let mut buffer_22 = OwnedDomain::new(grid_bound);
     let mut input_domain_2 = buffer_21.as_slice_domain();
     let mut output_domain_2 = buffer_22.as_slice_domain();
-    rand(&mut input_domain_2, 10, args.chunk_size);
+
+    // Setup initial conditions
+    let ic_type = args.ic_type.to_ic_type(args.ic_dial);
+    generate_ic_2d(&mut input_domain_1, ic_type, args.chunk_size);
+    generate_ic_2d(&mut input_domain_2, ic_type, args.chunk_size);
 
     let direct_solver = SV2DDirectSolver::new(&stencil);
     let solver_params = args.solver_parameters();
@@ -38,13 +40,9 @@ fn main() {
         std::process::exit(0);
     }
 
-    if args.write_images {
-        image2d(&input_domain_1, &args.frame_name(0));
-    }
-
     // Apply direct solver
     let mut global_time = 0;
-    for t in 1..args.images {
+    for _ in 1..args.images {
         let now = Instant::now();
         solver.apply(
             &mut input_domain_1,
@@ -59,10 +57,6 @@ fn main() {
         global_time += args.steps_per_image;
         std::mem::swap(&mut input_domain_1, &mut output_domain_1);
         std::mem::swap(&mut input_domain_2, &mut output_domain_2);
-
-        if args.write_images {
-            image2d(&input_domain_1, &args.frame_name(t));
-        }
     }
 
     args.finish();

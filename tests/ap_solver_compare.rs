@@ -2,9 +2,10 @@ use float_cmp::assert_approx_eq;
 use nhls::ap_solver::*;
 use nhls::domain::*;
 use nhls::fft_solver::DirectFrustrumSolver;
-use nhls::init::*;
+use nhls::initial_conditions::normal_impulse::*;
 use nhls::solver::*;
 use nhls::util::*;
+use nhls::SolverInterface;
 
 pub const TEST_SOLVE_THREADS: usize = 8;
 
@@ -29,8 +30,8 @@ fn heat_1d_ap_compare() {
     let mut fft_output_domain = fft_buffer_2.as_slice_domain();
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    normal_ic_1d(&mut direct_input_domain, chunk_size);
-    normal_ic_1d(&mut fft_input_domain, chunk_size);
+    normal_ic_1d(&mut direct_input_domain, 25.0, chunk_size);
+    normal_ic_1d(&mut fft_input_domain, 25.0, chunk_size);
 
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);
@@ -96,8 +97,8 @@ fn heat_2d_ap_compare() {
     let mut fft_output_domain = fft_buffer_2.as_slice_domain();
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    normal_ic_2d(&mut direct_input_domain, chunk_size);
-    normal_ic_2d(&mut fft_input_domain, chunk_size);
+    normal_ic_2d(&mut direct_input_domain, 25.0, chunk_size);
+    normal_ic_2d(&mut fft_input_domain, 25.0, chunk_size);
 
     // Create BC
     let bc = ConstantCheck::new(1.0, grid_bound);

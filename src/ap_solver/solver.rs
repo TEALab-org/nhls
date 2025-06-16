@@ -6,6 +6,7 @@ use crate::ap_solver::planner::*;
 use crate::ap_solver::scratch::*;
 use crate::ap_solver::scratch_builder::*;
 use crate::ap_solver::solver_parameters::*;
+use crate::SolverInterface;
 
 use crate::domain::*;
 
@@ -13,28 +14,14 @@ use crate::mem_fmt::*;
 use crate::util::*;
 use std::io::prelude::*;
 
-pub trait SolverInterface<'a, const GRID_DIMENSION: usize> {
-    fn apply(
-        &mut self,
-        input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
-        output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
-        global_time: usize,
-    );
-
-    fn print_report(&self);
-
-    fn to_dot_file<P: AsRef<std::path::Path>>(&self, path: &P);
-}
-
 impl<
-        'a,
         const GRID_DIMENSION: usize,
         DirectSolverType: DirectSolver<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
-    > SolverInterface<'a, GRID_DIMENSION>
+    > SolverInterface<GRID_DIMENSION>
     for Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
 {
-    fn apply(
+    fn apply<'a>(
         &mut self,
         input_domain: &mut SliceDomain<'a, GRID_DIMENSION>,
         output_domain: &mut SliceDomain<'a, GRID_DIMENSION>,

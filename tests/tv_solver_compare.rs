@@ -3,7 +3,8 @@ use nhls::ap_solver::direct_solver::*;
 use nhls::ap_solver::DirectSolver5Pt2DOpt;
 use nhls::ap_solver::*;
 use nhls::domain::*;
-use nhls::init::*;
+use nhls::initial_conditions::normal_impulse::*;
+use nhls::solver_interface::SolverInterface;
 use nhls::standard_stencils::*;
 use nhls::stencil::TVStencil;
 use nhls::time_varying::tv_direct_frustrum_solver::*;
@@ -34,8 +35,8 @@ fn tv_rotating_advection_compare() {
     let mut fft_output_domain = fft_buffer_2.as_slice_domain();
 
     // Fill in with IC values (use normal dist for spike in the middle)
-    normal_ic_2d(&mut direct_input_domain, chunk_size);
-    normal_ic_2d(&mut fft_input_domain, chunk_size);
+    normal_ic_2d(&mut direct_input_domain, 25.0, chunk_size);
+    normal_ic_2d(&mut fft_input_domain, 25.0, chunk_size);
 
     let bc = ConstantCheck::new(0.0, grid_bound);
 

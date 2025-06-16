@@ -2,6 +2,7 @@ use crate::ap_solver::scratch::*;
 use crate::ap_solver::*;
 use crate::domain::*;
 use crate::par_slice;
+use crate::solver_interface::*;
 use crate::stencil::*;
 use crate::time_varying::tv_periodic_solver_builder::*;
 use crate::time_varying::*;
@@ -439,6 +440,32 @@ impl<
         for layer in self.intermediate_nodes.iter_mut() {
             layer.par_iter_mut().for_each(|n| n.clear_stencils());
         }
+    }
+}
+
+impl<
+        'a,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+        StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+    > SolverInterface<GRID_DIMENSION>
+    for TVPeriodicSolver<'a, GRID_DIMENSION, NEIGHBORHOOD_SIZE, StencilType>
+{
+    fn apply<'b>(
+        &mut self,
+        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        global_time: usize,
+    ) {
+        self.apply(input_domain, output_domain, global_time);
+    }
+
+    fn print_report(&self) {
+        println!("PeriodicSolver: No Report");
+    }
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, _path: &P) {
+        eprintln!("WARNING: PerodicSolver cannot save to dot file");
     }
 }
 
