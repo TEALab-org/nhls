@@ -1,7 +1,9 @@
 use crate::domain::view::*;
 use rayon::prelude::*;
 
-pub struct SubsetOps2d {}
+pub struct SubsetOps2d {
+    pub chunk_size: usize,
+}
 
 impl SubsetOps<2> for SubsetOps2d {
     fn copy_to_subdomain<DomainType: DomainView<2>>(
@@ -33,7 +35,7 @@ impl SubsetOps<2> for SubsetOps2d {
             (bigger_bounds[(1, 1)] - bigger_bounds[(1, 0)]) as usize + 1;
 
         let smaller_height = smaller_exclusive_bounds[0] as usize;
-        let chunk_size = smaller_height / threads;
+        let chunk_size = self.chunk_size.max(smaller_height / threads);
         let chunks = smaller_height.div_ceil(chunk_size);
         //println!("threads: {threads}, chunk_size: {chunk_size}, chunks: {chunks}, smaller_height: {smaller_height}");
         (0..chunks).into_par_iter().for_each(move |c| {
@@ -93,7 +95,7 @@ impl SubsetOps<2> for SubsetOps2d {
             (bigger_bounds[(1, 1)] - bigger_bounds[(1, 0)]) as usize + 1;
 
         let smaller_height = smaller_exclusive_bounds[0] as usize;
-        let chunk_size = smaller_height / threads;
+        let chunk_size = self.chunk_size.max(smaller_height / threads);
         let chunks = smaller_height.div_ceil(chunk_size);
         //println!("threads: {threads}, chunk_size: {chunk_size}, chunks: {chunks}, smaller_height: {smaller_height}");
         (0..chunks).into_par_iter().for_each(move |c| {
