@@ -19,5 +19,5 @@ pub fn human_readable_bytes(bytes: usize) -> String {
         .unwrap()
         * 1_f64;
     let unit = units[exponent as usize];
-    format!("{}{} {}", negative, pretty_bytes, unit)
+    format!("{negative}{pretty_bytes} {unit}")
 }

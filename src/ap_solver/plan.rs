@@ -104,9 +104,9 @@ impl<const GRID_DIMENSION: usize> Plan<GRID_DIMENSION> {
         node_id: NodeId,
     ) -> &PeriodicSolveNode<GRID_DIMENSION> {
         if let PlanNode::PeriodicSolve(periodic_node) = self.get_node(node_id) {
-            &periodic_node
+            periodic_node
         } else {
-            panic!("ERROR: Not a periodic node, {}", node_id);
+            panic!("ERROR: Not a periodic node, {node_id}");
         }
     }
 
@@ -117,9 +117,9 @@ impl<const GRID_DIMENSION: usize> Plan<GRID_DIMENSION> {
         node_id: NodeId,
     ) -> &DirectSolveNode<GRID_DIMENSION> {
         if let PlanNode::DirectSolve(direct_node) = self.get_node(node_id) {
-            &direct_node
+            direct_node
         } else {
-            panic!("ERROR: Not a direct node, {}", node_id);
+            panic!("ERROR: Not a direct node, {node_id}");
         }
     }
 
@@ -127,9 +127,9 @@ impl<const GRID_DIMENSION: usize> Plan<GRID_DIMENSION> {
     #[track_caller]
     pub fn unwrap_repeat_node(&self, node_id: NodeId) -> &RepeatNode {
         if let PlanNode::Repeat(repeat_node) = self.get_node(node_id) {
-            &repeat_node
+            repeat_node
         } else {
-            panic!("ERROR: Not a repeat node, {}", node_id);
+            panic!("ERROR: Not a repeat node, {node_id}");
         }
     }
 
@@ -186,12 +186,8 @@ impl<const GRID_DIMENSION: usize> Plan<GRID_DIMENSION> {
                     .unwrap();
                 }
                 PlanNode::Range(_) => {
-                    writeln!(
-                        writer,
-                        " n_{id} [label=\"n_{id}: RANGE\"];",
-                        id = i,
-                    )
-                    .unwrap();
+                    writeln!(writer, " n_{i} [label=\"n_{i}: RANGE\"];",)
+                        .unwrap();
                 }
             }
         }
@@ -200,11 +196,11 @@ impl<const GRID_DIMENSION: usize> Plan<GRID_DIMENSION> {
             match node {
                 PlanNode::PeriodicSolve(p) => {
                     for r in p.boundary_nodes.clone() {
-                        writeln!(writer, " n_{} -> n_{} [color=blue];", i, r)
+                        writeln!(writer, " n_{i} -> n_{r} [color=blue];")
                             .unwrap();
                     }
                     if let Some(r) = p.time_cut {
-                        writeln!(writer, " n_{} -> n_{} [color=red];", i, r)
+                        writeln!(writer, " n_{i} -> n_{r} [color=red];")
                             .unwrap();
                     }
                 }
@@ -213,13 +209,13 @@ impl<const GRID_DIMENSION: usize> Plan<GRID_DIMENSION> {
                     writeln!(writer, " n_{} -> n_{} [color=green];", i, r.node)
                         .unwrap();
                     if let Some(r2) = r.next {
-                        writeln!(writer, " n_{} -> n_{} [color=black];", i, r2)
+                        writeln!(writer, " n_{i} -> n_{r2} [color=black];")
                             .unwrap();
                     }
                 }
                 PlanNode::Range(r) => {
                     for r in r.range.clone() {
-                        writeln!(writer, " n_{} -> n_{} [color=green];", i, r)
+                        writeln!(writer, " n_{i} -> n_{r} [color=green];")
                             .unwrap();
                     }
                 }

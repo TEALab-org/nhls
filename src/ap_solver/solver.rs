@@ -112,7 +112,7 @@ impl<
         let mut writer =
             std::io::BufWriter::new(std::fs::File::create(path).unwrap());
         for (i, d) in self.node_scratch_descriptors.iter().enumerate() {
-            writeln!(writer, "n_id: {} -- {:?}", i, d).unwrap();
+            writeln!(writer, "n_id: {i} -- {d:?}").unwrap();
         }
     }
 
@@ -419,8 +419,7 @@ impl<
         debug_assert_eq!(
             direct_solve.output_aabb,
             *output_domain.aabb(),
-            "ERROR: n_id: {}, Unexpected solve output",
-            node_id
+            "ERROR: n_id: {node_id}, Unexpected solve output"
         );
 
         // copy output to output
@@ -469,8 +468,7 @@ impl<
         debug_assert_eq!(
             direct_solve.output_aabb,
             *output_domain.aabb(),
-            "ERROR: n_id: {}, Unexpected solve output",
-            node_id
+            "ERROR: n_id: {node_id}, Unexpected solve output"
         );
     }
 }

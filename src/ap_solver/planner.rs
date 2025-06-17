@@ -148,16 +148,16 @@ impl<
         // Can we do a periodic solve or do we direct solve?
         let maybe_periodic_solve =
             find_periodic_solve(&input_aabb, &solve_params);
-        if maybe_periodic_solve.is_none() {
-            self.generate_direct_node(frustrum, tasks)
-        } else {
-            let periodic_solve = maybe_periodic_solve.unwrap();
+
+        if let Some(periodic_solve) = maybe_periodic_solve {
             self.generate_periodic_node(
                 frustrum,
                 periodic_solve,
                 rel_time_0,
                 tasks,
             )
+        } else {
+            self.generate_direct_node(frustrum, tasks)
         }
     }
 

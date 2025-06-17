@@ -20,9 +20,7 @@ pub fn generate_ap_solver<
     let create_ops_builder = || ApPeriodicOpsBuilder::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainOnly;
-    let solver =
-        Solver::new(direct_solver, params, planner_result, complex_buffer_type);
-    solver
+    Solver::new(direct_solver, params, planner_result, complex_buffer_type)
 }
 
 pub fn generate_tv_ap_solver<
@@ -39,7 +37,5 @@ pub fn generate_tv_ap_solver<
     let create_ops_builder = || TvPeriodicOpsCollector::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainAndOp;
-    let solver =
-        Solver::new(direct_solver, params, planner_result, complex_buffer_type);
-    solver
+    Solver::new(direct_solver, params, planner_result, complex_buffer_type)
 }
