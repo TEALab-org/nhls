@@ -78,11 +78,11 @@ pub fn solve_tvbase2_node<
     let fft_pair = fft_store.get(node.plan_id);
     fft_pair
         .forward_plan
-        .r2c(node.s1.domain.buffer_mut(), &mut node.c1)
+        .r2c(node.s1.domain.buffer_mut(), node.c1)
         .unwrap();
     fft_pair
         .forward_plan
-        .r2c(node.s2.domain.buffer_mut(), &mut node.c2)
+        .r2c(node.s2.domain.buffer_mut(), node.c2)
         .unwrap();
 
     // Multiply in freq, return result to s1
@@ -314,14 +314,14 @@ impl<
             &self.fft_pairs,
         );
         for layer_id in (0..base_layer_id).rev() {
-            println!("Solver: build layer: {}", layer_id);
+            println!("Solver: build layer: {layer_id}");
             let (new, old) = self.intermediate_nodes.split_at_mut(layer_id + 1);
             solve_tvmiddle_layer(
                 self.stencil,
                 self.threads,
                 global_time,
                 new.last_mut().unwrap(),
-                &old,
+                old,
                 &self.fft_pairs,
             );
         }
