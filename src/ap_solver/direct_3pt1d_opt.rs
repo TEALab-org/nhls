@@ -48,6 +48,7 @@ impl<'a, StencilType: TVStencil<1, 3>> DirectSolver3Pt1DOpt<'a, StencilType> {
 
             let const_output: &DomainType = output;
             rayon::scope(|s| {
+                profiling::scope!("direct_solver: Thread Callback");
                 let chunk_size = (n_r - 2) / (threads * 2);
                 let mut start: usize = 1;
                 while start < n_r - 1 {
