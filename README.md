@@ -16,14 +16,15 @@ cargo run \
     --release \
     -- \
     --wisdom-file target/tv_rotating_2d/wisdom \
+    --write-images target/tv_rotating_2d \
     --plan-type measure \
     --domain-size 1000 \
     --steps-per-image 1000 \
     --images 31 \
-	--ic-type impulse \
-	--ic-dial 10 \
-	--task-min 4 \
-	--task-mult 2 \
+    --ic-type impulse \
+    --ic-dial 10 \
+    --task-min 4 \
+    --task-mult 2 \
     --threads 8
     
 cd target/tv_rotating_2d
@@ -39,7 +40,7 @@ open out.mp4
 ## For Developers
 
 NHLS requires using the nightly Rust toolchain.
-Please refer to the official [Install Rust](https://www.rust-lang.org/tools/install) guide for obtaining `rustup`, the rustup toolchain manager.
+Please refer to the official [Install Rust](https://www.rust-lang.org/tools/install) guide for obtaining `rustup`, the rust toolchain manager.
 All changes should be made through pull requests, which must pass CI.
 
 ### Cargo Commands
