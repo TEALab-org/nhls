@@ -1,7 +1,6 @@
 mod fft_gen;
 mod fft_pair;
 mod fft_store;
-pub mod tv_direct_frustrum_solver;
 pub mod tv_periodic_solver;
 pub mod tv_periodic_solver_builder;
 

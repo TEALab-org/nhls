@@ -4,10 +4,7 @@ pub type NodeId = usize;
 pub const MIN_ALIGNMENT: usize = 128;
 
 pub mod ap_frustrum;
-mod direct_frustrum_solver;
-
 pub use ap_frustrum::*;
-pub use direct_frustrum_solver::*;
 
 mod convolution_op;
 pub mod find_periodic_solve;

@@ -1,46 +1,26 @@
+use crate::direct_solver::*;
 use crate::domain::*;
-use crate::fft_solver::DirectFrustrumSolver;
-use crate::stencil::*;
-use crate::time_varying::tv_direct_frustrum_solver::*;
+use crate::stencil::TVStencil;
 use crate::util::*;
 use rayon::prelude::*;
 
-pub trait DirectSolver<const GRID_DIMENSION: usize>: Send + Sync {
-    fn apply<'b>(
-        &self,
-        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
-        sloped_sides: &Bounds<GRID_DIMENSION>,
-        steps: usize,
-        global_time: usize,
-        threads: usize,
-    );
-}
-
-impl<
-        BC: BCCheck<GRID_DIMENSION>,
-        const GRID_DIMENSION: usize,
-        const NEIGHBORHOOD_SIZE: usize,
-    > DirectSolver<GRID_DIMENSION>
-    for DirectFrustrumSolver<'_, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+/// Generic direct solver for time-varying stencils
+/// in any dimension and of any size.
+/// You should prefer an optimized direct solver if available.
+/// Supports arbitrary boundary conditions.
+pub struct TVDirectFrustrumSolver<
+    'a,
+    BC,
+    const GRID_DIMENSION: usize,
+    const NEIGHBORHOOD_SIZE: usize,
+    StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
+> where
+    BC: BCCheck<GRID_DIMENSION>,
 {
-    fn apply<'b>(
-        &self,
-        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
-        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
-        sloped_sides: &Bounds<GRID_DIMENSION>,
-        steps: usize,
-        global_time: usize,
-        _threads: usize,
-    ) {
-        self.apply(
-            input_domain,
-            output_domain,
-            sloped_sides,
-            steps,
-            global_time,
-        );
-    }
+    pub bc: &'a BC,
+    pub stencil: &'a StencilType,
+    pub stencil_slopes: Bounds<GRID_DIMENSION>,
+    pub chunk_size: usize,
 }
 
 impl<
@@ -49,7 +29,7 @@ impl<
         const GRID_DIMENSION: usize,
         const NEIGHBORHOOD_SIZE: usize,
         StencilType: TVStencil<GRID_DIMENSION, NEIGHBORHOOD_SIZE>,
-    > DirectSolver<GRID_DIMENSION>
+    > DirectSolverInterface<GRID_DIMENSION>
     for TVDirectFrustrumSolver<
         'a,
         BC,

@@ -1,6 +1,6 @@
+use nhls::direct_solver::*;
 use nhls::domain::*;
 use nhls::image_1d_example::*;
-use nhls::solver::*;
 
 fn main() {
     let args = Args::cli_setup("heat_1d_ap_direct");

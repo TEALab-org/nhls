@@ -1,13 +1,11 @@
 use float_cmp::assert_approx_eq;
-use nhls::ap_solver::direct_solver::*;
-use nhls::ap_solver::DirectSolver5Pt2DOpt;
 use nhls::ap_solver::*;
+use nhls::direct_solver::*;
 use nhls::domain::*;
 use nhls::initial_conditions::normal_impulse::*;
 use nhls::solver_interface::SolverInterface;
 use nhls::standard_stencils::*;
 use nhls::stencil::TVStencil;
-use nhls::time_varying::tv_direct_frustrum_solver::*;
 use nhls::util::*;
 
 #[test]

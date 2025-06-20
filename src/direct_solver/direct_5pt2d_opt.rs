@@ -1,8 +1,10 @@
-use crate::ap_solver::direct_solver::DirectSolver;
+use crate::direct_solver::*;
 use crate::domain::*;
 use crate::stencil::TVStencil;
 use crate::util::*;
 
+/// Optimized direct solver for 5pt 2D stencil.
+/// Implements a constant zero boundary condition.
 pub struct DirectSolver5Pt2DOpt<'a, StencilType: TVStencil<2, 5>> {
     stencil: &'a StencilType,
 }
@@ -261,7 +263,7 @@ impl<'a, StencilType: TVStencil<2, 5>> DirectSolver5Pt2DOpt<'a, StencilType> {
     }
 }
 
-impl<StencilType: TVStencil<2, 5>> DirectSolver<2>
+impl<StencilType: TVStencil<2, 5>> DirectSolverInterface<2>
     for DirectSolver5Pt2DOpt<'_, StencilType>
 {
     fn apply<'b>(
