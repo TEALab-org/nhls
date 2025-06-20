@@ -7,6 +7,7 @@
 pub mod ap_solver;
 pub mod build_info;
 pub mod csv;
+pub mod direct_solver;
 pub mod domain;
 pub mod fft_solver;
 pub mod image;
@@ -18,7 +19,6 @@ pub mod mem_fmt;
 pub mod mirror_domain;
 pub mod par_slice;
 pub mod par_stencil;
-pub mod solver;
 pub mod solver_interface;
 pub mod stencil;
 pub mod time_varying;

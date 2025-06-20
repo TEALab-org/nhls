@@ -1,4 +1,3 @@
-use crate::ap_solver::direct_solver::*;
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::plan::*;
@@ -6,6 +5,7 @@ use crate::ap_solver::planner::*;
 use crate::ap_solver::scratch::*;
 use crate::ap_solver::scratch_builder::*;
 use crate::ap_solver::solver_parameters::*;
+use crate::direct_solver::*;
 use crate::SolverInterface;
 
 use crate::domain::*;
@@ -16,7 +16,7 @@ use std::io::prelude::*;
 
 impl<
         const GRID_DIMENSION: usize,
-        DirectSolverType: DirectSolver<GRID_DIMENSION>,
+        DirectSolverType: DirectSolverInterface<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
     > SolverInterface<GRID_DIMENSION>
     for Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
@@ -41,7 +41,7 @@ impl<
 
 pub struct Solver<
     const GRID_DIMENSION: usize,
-    DirectSolverType: DirectSolver<GRID_DIMENSION>,
+    DirectSolverType: DirectSolverInterface<GRID_DIMENSION>,
     PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
 > {
     pub direct_solver: DirectSolverType,
@@ -57,7 +57,7 @@ pub struct Solver<
 impl<
         'a,
         const GRID_DIMENSION: usize,
-        DirectSolverType: DirectSolver<GRID_DIMENSION>,
+        DirectSolverType: DirectSolverInterface<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
     > Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType>
 {

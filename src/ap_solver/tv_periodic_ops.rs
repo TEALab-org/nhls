@@ -299,7 +299,7 @@ impl<
 
     pub fn build_ops(&mut self, global_time: usize) {
         // Build Tree like periodic solver
-        println!("Solver: Build base layer");
+        //println!("Solver: Build base layer");
         for layer in self.intermediate_nodes.iter_mut() {
             layer.par_iter_mut().for_each(|n| n.clear_stencils());
         }
@@ -314,7 +314,7 @@ impl<
             &self.fft_pairs,
         );
         for layer_id in (0..base_layer_id).rev() {
-            println!("Solver: build layer: {layer_id}");
+            //println!("Solver: build layer: {layer_id}");
             let (new, old) = self.intermediate_nodes.split_at_mut(layer_id + 1);
             solve_tvmiddle_layer(
                 self.stencil,

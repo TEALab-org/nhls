@@ -1,4 +1,5 @@
 use nhls::ap_solver::*;
+use nhls::direct_solver::*;
 use nhls::image_1d_example::*;
 
 fn main() {
