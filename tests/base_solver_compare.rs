@@ -1,8 +1,8 @@
 use float_cmp::assert_approx_eq;
+use nhls::direct_solver::*;
 use nhls::domain::*;
 use nhls::fft_solver::*;
 use nhls::initial_conditions::normal_impulse::*;
-use nhls::solver::*;
 use nhls::stencil::*;
 use nhls::util::*;
 

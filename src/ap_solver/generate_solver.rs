@@ -1,17 +1,17 @@
 use crate::ap_solver::ap_periodic_ops_builder::*;
-use crate::ap_solver::direct_solver::*;
 use crate::ap_solver::generate_plan::*;
 use crate::ap_solver::scratch_builder::ComplexBufferType;
 use crate::ap_solver::solver::*;
 use crate::ap_solver::solver_parameters::*;
 use crate::ap_solver::tv_periodic_ops_collector::*;
+use crate::direct_solver::*;
 use crate::domain::*;
 use crate::stencil::*;
 use crate::SolverInterface;
 
 pub fn generate_ap_solver_1d<
     const NEIGHBORHOOD_SIZE: usize,
-    DirectSolverType: DirectSolver<1>,
+    DirectSolverType: DirectSolverInterface<1>,
 >(
     stencil: &Stencil<1, NEIGHBORHOOD_SIZE>,
     direct_solver: DirectSolverType,
@@ -32,7 +32,7 @@ pub fn generate_ap_solver_1d<
 
 pub fn generate_ap_solver_2d<
     const NEIGHBORHOOD_SIZE: usize,
-    DirectSolverType: DirectSolver<2>,
+    DirectSolverType: DirectSolverInterface<2>,
 >(
     stencil: &Stencil<2, NEIGHBORHOOD_SIZE>,
     direct_solver: DirectSolverType,
@@ -53,7 +53,7 @@ pub fn generate_ap_solver_2d<
 
 pub fn generate_ap_solver_3d<
     const NEIGHBORHOOD_SIZE: usize,
-    DirectSolverType: DirectSolver<3>,
+    DirectSolverType: DirectSolverInterface<3>,
 >(
     stencil: &Stencil<3, NEIGHBORHOOD_SIZE>,
     direct_solver: DirectSolverType,
@@ -76,7 +76,7 @@ pub fn generate_tv_ap_solver_1d<
     'a,
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<1, NEIGHBORHOOD_SIZE>,
-    DirectSolverType: DirectSolver<1> + 'a,
+    DirectSolverType: DirectSolverInterface<1> + 'a,
 >(
     stencil: &'a StencilType,
     direct_solver: DirectSolverType,
@@ -99,7 +99,7 @@ pub fn generate_tv_ap_solver_2d<
     'a,
     const NEIGHBORHOOD_SIZE: usize,
     StencilType: TVStencil<2, NEIGHBORHOOD_SIZE>,
-    DirectSolverType: DirectSolver<2> + 'a,
+    DirectSolverType: DirectSolverInterface<2> + 'a,
 >(
     stencil: &'a StencilType,
     direct_solver: DirectSolverType,

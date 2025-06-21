@@ -1,8 +1,10 @@
-use crate::ap_solver::direct_solver::DirectSolver;
+use crate::direct_solver::*;
 use crate::domain::*;
 use crate::stencil::TVStencil;
 use crate::util::*;
 
+/// Optimized direct solver for 3pt 1D stencil.
+/// Implements a constant zero boundary condition.
 pub struct DirectSolver3Pt1DOpt<'a, StencilType: TVStencil<1, 3>> {
     stencil: &'a StencilType,
 }
@@ -48,6 +50,7 @@ impl<'a, StencilType: TVStencil<1, 3>> DirectSolver3Pt1DOpt<'a, StencilType> {
 
             let const_output: &DomainType = output;
             rayon::scope(|s| {
+                profiling::scope!("direct_solver: Thread Callback");
                 let chunk_size = (n_r - 2) / (threads * 2);
                 let mut start: usize = 1;
                 while start < n_r - 1 {
@@ -69,7 +72,7 @@ impl<'a, StencilType: TVStencil<1, 3>> DirectSolver3Pt1DOpt<'a, StencilType> {
     }
 }
 
-impl<StencilType: TVStencil<1, 3>> DirectSolver<1>
+impl<StencilType: TVStencil<1, 3>> DirectSolverInterface<1>
     for DirectSolver3Pt1DOpt<'_, StencilType>
 {
     fn apply<'b>(

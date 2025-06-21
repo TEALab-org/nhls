@@ -1,4 +1,3 @@
-use crate::ap_solver::direct_solver::*;
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::plan::*;
@@ -6,6 +5,7 @@ use crate::ap_solver::planner::*;
 use crate::ap_solver::scratch::*;
 use crate::ap_solver::scratch_builder::*;
 use crate::ap_solver::solver_parameters::*;
+use crate::direct_solver::*;
 use crate::SolverInterface;
 
 use crate::domain::*;
@@ -16,7 +16,7 @@ use std::io::prelude::*;
 
 impl<
         const GRID_DIMENSION: usize,
-        DirectSolverType: DirectSolver<GRID_DIMENSION>,
+        DirectSolverType: DirectSolverInterface<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
         SubsetOpsType: SubsetOps<GRID_DIMENSION>,
     > SolverInterface<GRID_DIMENSION>
@@ -42,7 +42,7 @@ impl<
 
 pub struct Solver<
     const GRID_DIMENSION: usize,
-    DirectSolverType: DirectSolver<GRID_DIMENSION>,
+    DirectSolverType: DirectSolverInterface<GRID_DIMENSION>,
     PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
     SubsetOpsType: SubsetOps<GRID_DIMENSION>,
 > {
@@ -60,7 +60,7 @@ pub struct Solver<
 impl<
         'a,
         const GRID_DIMENSION: usize,
-        DirectSolverType: DirectSolver<GRID_DIMENSION>,
+        DirectSolverType: DirectSolverInterface<GRID_DIMENSION>,
         PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
         SubsetOpsType: SubsetOps<GRID_DIMENSION>,
     > Solver<GRID_DIMENSION, DirectSolverType, PeriodicOpsType, SubsetOpsType>
@@ -118,7 +118,7 @@ impl<
         let mut writer =
             std::io::BufWriter::new(std::fs::File::create(path).unwrap());
         for (i, d) in self.node_scratch_descriptors.iter().enumerate() {
-            writeln!(writer, "n_id: {} -- {:?}", i, d).unwrap();
+            writeln!(writer, "n_id: {i} -- {d:?}").unwrap();
         }
     }
 
@@ -450,8 +450,7 @@ impl<
         debug_assert_eq!(
             direct_solve.output_aabb,
             *output_domain.aabb(),
-            "ERROR: n_id: {}, Unexpected solve output",
-            node_id
+            "ERROR: n_id: {node_id}, Unexpected solve output"
         );
 
         // copy output to output
@@ -508,8 +507,7 @@ impl<
         debug_assert_eq!(
             direct_solve.output_aabb,
             *output_domain.aabb(),
-            "ERROR: n_id: {}, Unexpected solve output",
-            node_id
+            "ERROR: n_id: {node_id}, Unexpected solve output"
         );
     }
 }

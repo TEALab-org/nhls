@@ -66,13 +66,12 @@ impl Scratch {
     /// len in bytes
     pub fn unsafe_get_buffer<
         'a,
-        'b,
         T: bytemuck::NoUninit + bytemuck::AnyBitPattern,
     >(
-        &'a self,
+        &self,
         offset: usize,
         len: usize,
-    ) -> &'b mut [T] {
+    ) -> &'a mut [T] {
         debug_assert!(len > 0);
         let scratch_bytes = unsafe {
             let scratch_ptr_mut = self.scratch_ptr.add(offset) as *mut u8;

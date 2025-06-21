@@ -185,9 +185,9 @@ impl Args {
             solver.apply(input_domain, output_domain, global_time);
             let elapsed_time = now.elapsed();
             let s_elapsed = elapsed_time.as_nanos() as f64 / 1000000000.0;
-            println!("{}", s_elapsed);
+            println!("{s_elapsed}");
             if let Some(writer) = timings_writer.as_mut() {
-                writeln!(writer, "{}", s_elapsed).unwrap();
+                writeln!(writer, "{s_elapsed}").unwrap();
             }
             // Prepare for the next frame
             global_time += self.steps_per_image;
@@ -243,14 +243,14 @@ impl Args {
 
     pub fn frame_name(&self, i: usize) -> PathBuf {
         let mut result = self.write_images.as_ref().unwrap().clone();
-        result.push(format!("frame_{:04}.vtu", i));
+        result.push(format!("frame_{i:04}.vtu"));
         result
     }
 
     pub fn finish(&self) {
         if let Some(ref wisdom_path) = self.wisdom_file {
             profiling::scope!("fftw3::saving_wisdom");
-            println!("Saving wisdom: {:?}", wisdom_path);
+            println!("Saving wisdom: {wisdom_path:?}");
             fftw::wisdom::export_wisdom_file_f64(&wisdom_path).unwrap();
         }
 

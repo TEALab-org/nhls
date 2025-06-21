@@ -1,9 +1,8 @@
 use float_cmp::assert_approx_eq;
 use nhls::ap_solver::*;
+use nhls::direct_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::DirectFrustrumSolver;
 use nhls::initial_conditions::normal_impulse::*;
-use nhls::solver::*;
 use nhls::util::*;
 use nhls::SolverInterface;
 

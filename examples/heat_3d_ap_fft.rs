@@ -1,6 +1,6 @@
 use nhls::ap_solver::*;
+use nhls::direct_solver::*;
 use nhls::domain::*;
-use nhls::fft_solver::DirectFrustrumSolver;
 use nhls::image_3d_example::*;
 
 fn main() {

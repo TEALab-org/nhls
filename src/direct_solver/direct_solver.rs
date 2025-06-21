@@ -1,10 +1,13 @@
+use crate::direct_solver::*;
 use crate::domain::*;
-//use crate::fft_solver::*;
 use crate::par_stencil;
 use crate::stencil::*;
 use crate::util::*;
 
-// Used to direct solve frustrum regions.
+/// Generic direct solver for time-invariant stencils
+/// in any dimension and of any size.
+/// You should prefer an optimized direct solver if available.
+/// Supports arbitrary boundary conditions.
 pub struct DirectFrustrumSolver<
     'a,
     BC,
@@ -58,5 +61,31 @@ where
             std::mem::swap(input_domain, output_domain);
         }
         std::mem::swap(input_domain, output_domain);
+    }
+}
+
+impl<
+        BC: BCCheck<GRID_DIMENSION>,
+        const GRID_DIMENSION: usize,
+        const NEIGHBORHOOD_SIZE: usize,
+    > DirectSolverInterface<GRID_DIMENSION>
+    for DirectFrustrumSolver<'_, BC, GRID_DIMENSION, NEIGHBORHOOD_SIZE>
+{
+    fn apply<'b>(
+        &self,
+        input_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        output_domain: &mut SliceDomain<'b, GRID_DIMENSION>,
+        sloped_sides: &Bounds<GRID_DIMENSION>,
+        steps: usize,
+        global_time: usize,
+        _threads: usize,
+    ) {
+        self.apply(
+            input_domain,
+            output_domain,
+            sloped_sides,
+            steps,
+            global_time,
+        );
     }
 }

@@ -146,7 +146,7 @@ mod unit_tests {
 
         // Bigger domain should be same,
         // smaller domain should be 1s
-        let ops = SubsetOps2d {};
+        let ops = SubsetOps2d { chunk_size };
         ops.copy_to_subdomain(&bigger_domain, &mut smaller_domain, threads);
         //println!("Smaller after:");
         //print_debug(&smaller_domain);

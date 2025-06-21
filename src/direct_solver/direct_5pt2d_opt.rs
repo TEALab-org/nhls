@@ -1,8 +1,10 @@
-use crate::ap_solver::direct_solver::DirectSolver;
+use crate::direct_solver::*;
 use crate::domain::*;
 use crate::stencil::TVStencil;
 use crate::util::*;
 
+/// Optimized direct solver for 5pt 2D stencil.
+/// Implements a constant zero boundary condition.
 pub struct DirectSolver5Pt2DOpt<'a, StencilType: TVStencil<2, 5>> {
     stencil: &'a StencilType,
 }
@@ -35,6 +37,7 @@ impl<'a, StencilType: TVStencil<2, 5>> DirectSolver5Pt2DOpt<'a, StencilType> {
         unsafe {
             rayon::scope(|s| {
                 s.spawn(move |_| {
+                    profiling::scope!("direct_solver: special Thread Callback");
                     let mut o = const_output.unsafe_mut_access();
                     // Corners
                     // (min, min)
@@ -169,6 +172,7 @@ impl<'a, StencilType: TVStencil<2, 5>> DirectSolver5Pt2DOpt<'a, StencilType> {
                     let end = (start + chunk_size)
                         .min(*exclusive_bounds.get_unchecked(0) as usize - 1);
                     s.spawn(move |_| {
+                        profiling::scope!("direct_solver: Thread Callback");
                         let mut o = const_output.unsafe_mut_access();
 
                         // Central (on x axis)
@@ -259,7 +263,7 @@ impl<'a, StencilType: TVStencil<2, 5>> DirectSolver5Pt2DOpt<'a, StencilType> {
     }
 }
 
-impl<StencilType: TVStencil<2, 5>> DirectSolver<2>
+impl<StencilType: TVStencil<2, 5>> DirectSolverInterface<2>
     for DirectSolver5Pt2DOpt<'_, StencilType>
 {
     fn apply<'b>(
@@ -271,6 +275,7 @@ impl<StencilType: TVStencil<2, 5>> DirectSolver<2>
         mut global_time: usize,
         threads: usize,
     ) {
+        profiling::scope!("direct_solver");
         debug_assert_eq!(input.aabb(), output.aabb());
 
         let offsets_i32 =
