@@ -64,7 +64,9 @@ pub fn generate_ap_solver_3d<
     let create_ops_builder = || ApPeriodicOpsBuilder::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainOnly;
-    let subset_ops = SubsetOps3d {};
+    let subset_ops = SubsetOps3d {
+        chunk_size: params.chunk_size,
+    };
     Solver::new(
         direct_solver,
         subset_ops,

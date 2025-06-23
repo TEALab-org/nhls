@@ -477,6 +477,7 @@ impl<
             direct_solve.threads,
         );
 
+        // TODO: this is only needed with box solvers
         input_domain.set_aabb(direct_solve.output_aabb);
         self.subset_ops.copy(
             input_domain,

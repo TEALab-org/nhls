@@ -5,41 +5,27 @@ pub struct SubsetOps1d {}
 impl SubsetOps<1> for SubsetOps1d {
     fn copy<DomainType: DomainView<1>>(
         &self,
-        _src: &DomainType,
-        _dst: &mut DomainType,
-        _aabb: &AABB<1>,
+        src: &DomainType,
+        dst: &mut DomainType,
+        aabb: &AABB<1>,
         _threads: usize,
     ) {
-    }
+        profiling::scope!("subsetops1d::copy");
+        debug_assert!(src.aabb().contains_aabb(aabb));
+        debug_assert!(dst.aabb().contains_aabb(aabb));
 
-    fn copy_to_subdomain<DomainType: DomainView<1>>(
-        &self,
-        src_domain: &DomainType,
-        dst_domain: &mut DomainType,
-        _threads: usize,
-    ) {
-        debug_assert!(src_domain.aabb().contains_aabb(dst_domain.aabb()));
-        // Get src domain slice, whole thing
-        let dst_size = dst_domain.aabb().buffer_size();
-        let dst_min = dst_domain.aabb().min();
-        let src_min_index = src_domain.aabb().coord_to_linear(&dst_min);
-        dst_domain.buffer_mut().copy_from_slice(
-            &src_domain.buffer()[src_min_index..src_min_index + dst_size],
-        );
-    }
+        let aabb_ex_b = aabb.exclusive_bounds();
+        let row_width = aabb_ex_b[0] as usize;
 
-    fn copy_from_subdomain<DomainType: DomainView<1>>(
-        &self,
-        src_domain: &DomainType,
-        dst_domain: &mut DomainType,
-        _threads: usize,
-    ) {
-        debug_assert!(dst_domain.aabb().contains_aabb(src_domain.aabb()));
-        let src_size = src_domain.aabb().buffer_size();
-        let src_min = src_domain.aabb().min();
-        let dst_min_index = dst_domain.aabb().coord_to_linear(&src_min);
-        dst_domain.buffer_mut()[dst_min_index..dst_min_index + src_size]
-            .copy_from_slice(src_domain.buffer());
+        let src_origin = src.aabb().coord_to_linear(&aabb.min());
+        let dst_origin = dst.aabb().coord_to_linear(&aabb.min());
+
+        let src_end_index = src_origin + row_width;
+        let dst_end_index = dst_origin + row_width;
+
+        let src_slice = &src.buffer()[src_origin..src_end_index];
+        let dst_slice = &mut dst.buffer_mut()[dst_origin..dst_end_index];
+        dst_slice.copy_from_slice(src_slice);
     }
 }
 
@@ -63,7 +49,12 @@ mod unit_tests {
         // Bigger domain should be same,
         // smaller domain should be 1s
         let ops = SubsetOps1d {};
-        ops.copy_to_subdomain(&bigger_domain, &mut smaller_domain, threads);
+        ops.copy(
+            &bigger_domain,
+            &mut smaller_domain,
+            &smaller_domain_bounds,
+            threads,
+        );
         for i in 0..=9 {
             assert_eq!(bigger_domain.view(&vector![i]), 1.0);
         }
@@ -84,7 +75,12 @@ mod unit_tests {
         smaller_domain.par_set_values(|_| 2.0, chunk_size);
         bigger_domain.par_set_values(|_| 1.0, chunk_size);
 
-        ops.copy_from_subdomain(&smaller_domain, &mut bigger_domain, threads);
+        ops.copy(
+            &smaller_domain,
+            &mut bigger_domain,
+            &smaller_domain_bounds,
+            threads,
+        );
         for i in 0..=9 {
             if (3..=7).contains(&i) {
                 assert_eq!(bigger_domain.view(&vector![i]), 2.0);

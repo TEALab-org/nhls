@@ -13,10 +13,10 @@ impl SubsetOps<2> for SubsetOps2d {
         aabb: &AABB<2>,
         threads: usize,
     ) {
+        profiling::scope!("subsetops2d::copy");
         debug_assert!(src.aabb().contains_aabb(aabb));
         debug_assert!(dst.aabb().contains_aabb(aabb));
 
-        // Row size comes from AABB
         let aabb_ex_b = aabb.exclusive_bounds();
         let src_ex_b = src.aabb().exclusive_bounds();
         let dst_ex_b = dst.aabb().exclusive_bounds();
@@ -31,9 +31,6 @@ impl SubsetOps<2> for SubsetOps2d {
         let height = aabb_ex_b[0] as usize;
         let chunk_size = self.chunk_size.max(height / threads);
         let chunks = height.div_ceil(chunk_size);
-
-        //println!("rw: {row_width}, sw: {src_width}, dw: {dst_width}, so: {src_origin}, do: {dst_origin}");
-        //println!("h: {height}, {chunk_size}, {chunks}");
 
         (0..chunks).into_par_iter().for_each(move |c| {
             profiling::scope!("subsetops2d::copy Thread callback");
@@ -56,129 +53,6 @@ impl SubsetOps<2> for SubsetOps2d {
 
                 src_index += src_width;
                 dst_index += dst_width;
-            }
-        });
-
-        // Need widths for both
-        // Need start index for both?
-    }
-
-    fn copy_to_subdomain<DomainType: DomainView<2>>(
-        &self,
-        bigger_domain: &DomainType,
-        smaller_domain: &mut DomainType,
-        threads: usize,
-    ) {
-        profiling::scope!("SubsetOps2d::copy_to_subdomain");
-        debug_assert!(bigger_domain
-            .aabb()
-            .contains_aabb(smaller_domain.aabb()));
-
-        // For axis 0, slice copy y axis
-        // I think we can also update bigger_min_index with some constant offet?
-        // bigger width of course!
-
-        // herer though smaller width is the y-axis size for
-        let smaller_exclusive_bounds = smaller_domain.aabb().exclusive_bounds();
-
-        let smaller_min = smaller_domain.aabb().min();
-        let bigger_min_index =
-            bigger_domain.aabb().coord_to_linear(&smaller_min);
-        let smaller_min_index = 0;
-        let smaller_width = smaller_exclusive_bounds[1] as usize;
-
-        let bigger_bounds = bigger_domain.aabb().bounds;
-        let bigger_width =
-            (bigger_bounds[(1, 1)] - bigger_bounds[(1, 0)]) as usize + 1;
-
-        let smaller_height = smaller_exclusive_bounds[0] as usize;
-        let chunk_size = self.chunk_size.max(smaller_height / threads);
-        let chunks = smaller_height.div_ceil(chunk_size);
-        //println!("threads: {threads}, chunk_size: {chunk_size}, chunks: {chunks}, smaller_height: {smaller_height}");
-        (0..chunks).into_par_iter().for_each(move |c| {
-            profiling::scope!("copy_to_subdomain threading callback");
-
-            //println!("THREAD: c: {c}");
-            let mut smaller_domain_t = smaller_domain.unsafe_mut_access();
-            //let bigger_domain_t = bigger_domain.unsafe_mut_access();
-            let mut bigger_min_index_t =
-                bigger_min_index + c * chunk_size * bigger_width;
-            let mut smaller_min_index_t =
-                smaller_min_index + c * chunk_size * smaller_width;
-            let start_i = c * chunk_size;
-            let end_i = smaller_height.min((c + 1) * chunk_size);
-            //println!("THREAD: start_i: {start_i}, end_i: {end_i}");
-            for _ in start_i..end_i {
-                let smaller_end_index = smaller_min_index_t + smaller_width;
-                //println!("THREAD: copy {smaller_min_index_t} -> {smaller_end_index}");
-                smaller_domain_t.buffer_mut()
-                    [smaller_min_index_t..smaller_end_index]
-                    .copy_from_slice(
-                        &bigger_domain.buffer()[bigger_min_index_t
-                            ..bigger_min_index_t + smaller_width],
-                    );
-                bigger_min_index_t += bigger_width;
-                smaller_min_index_t += smaller_width;
-            }
-        });
-    }
-
-    fn copy_from_subdomain<DomainType: DomainView<2>>(
-        &self,
-        smaller_domain: &DomainType,
-        bigger_domain: &mut DomainType,
-        threads: usize,
-    ) {
-        profiling::scope!("SubsetOps2d::copy_from_subdomain");
-        debug_assert!(bigger_domain
-            .aabb()
-            .contains_aabb(smaller_domain.aabb()));
-
-        // For axis 0, slice copy y axis
-        // I think we can also update bigger_min_index with some constant offet?
-        // bigger width of course!
-
-        // herer though smaller width is the y-axis size for
-        let smaller_exclusive_bounds = smaller_domain.aabb().exclusive_bounds();
-
-        let smaller_min = smaller_domain.aabb().min();
-        let bigger_min_index =
-            bigger_domain.aabb().coord_to_linear(&smaller_min);
-        let smaller_min_index = 0;
-        let smaller_width = smaller_exclusive_bounds[1] as usize;
-
-        let bigger_bounds = bigger_domain.aabb().bounds;
-        let bigger_width =
-            (bigger_bounds[(1, 1)] - bigger_bounds[(1, 0)]) as usize + 1;
-
-        let smaller_height = smaller_exclusive_bounds[0] as usize;
-        let chunk_size = self.chunk_size.max(smaller_height / threads);
-        let chunks = smaller_height.div_ceil(chunk_size);
-        //println!("threads: {threads}, chunk_size: {chunk_size}, chunks: {chunks}, smaller_height: {smaller_height}");
-        (0..chunks).into_par_iter().for_each(move |c| {
-            profiling::scope!("copy_from_subdomain threading callback");
-            //println!("THREAD: c: {c}");
-            //let mut smaller_domain_t = smaller_domain.unsafe_mut_access();
-            let mut bigger_domain_t = bigger_domain.unsafe_mut_access();
-            let mut bigger_min_index_t =
-                bigger_min_index + c * chunk_size * bigger_width;
-            let mut smaller_min_index_t =
-                smaller_min_index + c * chunk_size * smaller_width;
-            let start_i = c * chunk_size;
-            let end_i = smaller_height.min((c + 1) * chunk_size);
-            //println!("THREAD: start_i: {start_i}, end_i: {end_i}");
-            for _ in start_i..end_i {
-                let smaller_end_index = smaller_min_index_t + smaller_width;
-                //println!("THREAD: copy {smaller_min_index_t} -> {smaller_end_index}");
-                bigger_domain_t.buffer_mut()
-                    [bigger_min_index_t..bigger_min_index_t + smaller_width]
-                    .copy_from_slice(
-                        &smaller_domain.buffer()
-                            [smaller_min_index_t..smaller_end_index],
-                    );
-
-                bigger_min_index_t += bigger_width;
-                smaller_min_index_t += smaller_width;
             }
         });
     }

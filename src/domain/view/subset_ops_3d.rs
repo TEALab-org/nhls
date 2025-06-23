@@ -1,105 +1,74 @@
 use crate::domain::view::*;
 
-pub struct SubsetOps3d {}
+pub struct SubsetOps3d {
+    pub chunk_size: usize,
+}
 
 impl SubsetOps<3> for SubsetOps3d {
     fn copy<DomainType: DomainView<3>>(
         &self,
-        _src: &DomainType,
-        _dst: &mut DomainType,
-        _aabb: &AABB<3>,
-        _threads: usize,
+        src: &DomainType,
+        dst: &mut DomainType,
+        aabb: &AABB<3>,
+        threads: usize,
     ) {
-    }
+        profiling::scope!("subsetops3d::copy");
+        debug_assert!(src.aabb().contains_aabb(aabb));
+        debug_assert!(dst.aabb().contains_aabb(aabb));
 
-    fn copy_to_subdomain<DomainType: DomainView<3>>(
-        &self,
-        bigger_domain: &DomainType,
-        smaller_domain: &mut DomainType,
-        _threads: usize,
-    ) {
-        debug_assert!(bigger_domain
-            .aabb()
-            .contains_aabb(smaller_domain.aabb()));
+        let aabb_ex_b = aabb.exclusive_bounds();
+        let src_ex_b = src.aabb().exclusive_bounds();
+        let dst_ex_b = dst.aabb().exclusive_bounds();
 
-        // For axis 0, slice copy y axis
-        // I think we can also update bigger_min_index with some constant offet?
-        // bigger width of course!
+        let row_width = aabb_ex_b[2] as usize;
+        let src_width = src_ex_b[2] as usize;
+        let dst_width = dst_ex_b[2] as usize;
 
-        // herer though smaller width is the y-axis size for
-        let smaller_exclusive_bounds = smaller_domain.aabb().exclusive_bounds();
+        let src_layer = (src_ex_b[2] * src_ex_b[1]) as usize;
+        let dst_layer = (dst_ex_b[2] * dst_ex_b[1]) as usize;
 
-        let smaller_min = smaller_domain.aabb().min();
-        let bigger_min_index_o =
-            bigger_domain.aabb().coord_to_linear(&smaller_min);
-        let mut smaller_min_index = 0;
-        let smaller_width = smaller_exclusive_bounds[2] as usize;
+        let src_origin = src.aabb().coord_to_linear(&aabb.min());
+        let dst_origin = dst.aabb().coord_to_linear(&aabb.min());
 
-        //let bigger_bounds = bigger_domain.aabb().bounds;
-        let bigger_exclusive_bounds = bigger_domain.aabb().exclusive_bounds();
-        let bigger_width = bigger_exclusive_bounds[2];
-        let bigger_layer_width =
-            bigger_exclusive_bounds[1] * bigger_exclusive_bounds[2];
+        let height = aabb_ex_b[0] as usize;
+        let chunk_size = self.chunk_size.max(height / threads);
+        let chunks = height.div_ceil(chunk_size);
 
-        for x in 0..smaller_exclusive_bounds[0] {
-            let mut bigger_min_index =
-                bigger_min_index_o + (x as usize * bigger_layer_width as usize);
-            for _y in 0..smaller_exclusive_bounds[1] {
-                smaller_domain.buffer_mut()
-                    [smaller_min_index..smaller_min_index + smaller_width]
-                    .copy_from_slice(
-                        &bigger_domain.buffer()[bigger_min_index
-                            ..bigger_min_index + smaller_width],
-                    );
-                bigger_min_index += bigger_width as usize;
-                smaller_min_index += smaller_width;
+        //println!("h: {height}, cs: {chunk_size}, c: {chunks}");
+        //println!("src_origin: {src_origin}, dst_origin: {dst_origin}");
+
+        (0..chunks).into_par_iter().for_each(move |c| {
+            profiling::scope!("subsetops2d::copy Thread callback");
+            let mut src_index = src_origin + c * chunk_size * src_layer;
+            let mut dst_index = dst_origin + c * chunk_size * dst_layer;
+
+            let start_row = c * chunk_size;
+            let end_row = height.min((c + 1) * chunk_size);
+
+            //println!("c: {c}, src_index: {src_index}, dst_index: {dst_index}, start_row: {start_row}, end_row: {end_row}");
+
+            let mut dst_t = dst.unsafe_mut_access();
+            for _z in start_row..end_row {
+                let mut src_row_index = src_index;
+                let mut dst_row_index = dst_index;
+                for _y in 0..aabb_ex_b[1] {
+                    let src_end_index = src_row_index + row_width;
+                    let dst_end_index = dst_row_index + row_width;
+
+                    //println!("src_row_index: {src_row_index}, dst_row_index: {dst_row_index}, row_width: {row_width}");
+
+                    let src_slice = &src.buffer()[src_row_index..src_end_index];
+                    let dst_slice =
+                        &mut dst_t.buffer_mut()[dst_row_index..dst_end_index];
+                    dst_slice.copy_from_slice(src_slice);
+
+                    src_row_index += src_width;
+                    dst_row_index += dst_width;
+                }
+                src_index += src_layer;
+                dst_index += dst_layer
             }
-        }
-    }
-
-    fn copy_from_subdomain<DomainType: DomainView<3>>(
-        &self,
-        smaller_domain: &DomainType,
-        bigger_domain: &mut DomainType,
-        _threads: usize,
-    ) {
-        debug_assert!(bigger_domain
-            .aabb()
-            .contains_aabb(smaller_domain.aabb()));
-
-        // For axis 0, slice copy y axis
-        // I think we can also update bigger_min_index with some constant offet?
-        // bigger width of course!
-
-        // herer though smaller width is the y-axis size for
-        let smaller_exclusive_bounds = smaller_domain.aabb().exclusive_bounds();
-
-        let smaller_min = smaller_domain.aabb().min();
-        let bigger_min_index_o =
-            bigger_domain.aabb().coord_to_linear(&smaller_min);
-        let mut smaller_min_index = 0;
-        let smaller_width = smaller_exclusive_bounds[2] as usize;
-
-        //let bigger_bounds = bigger_domain.aabb().bounds;
-        let bigger_exclusive_bounds = bigger_domain.aabb().exclusive_bounds();
-        let bigger_width = bigger_exclusive_bounds[2];
-        let bigger_layer_width =
-            bigger_exclusive_bounds[1] * bigger_exclusive_bounds[2];
-
-        for x in 0..smaller_exclusive_bounds[0] {
-            let mut bigger_min_index =
-                bigger_min_index_o + (x as usize * bigger_layer_width as usize);
-            for _y in 0..smaller_exclusive_bounds[1] {
-                bigger_domain.buffer_mut()
-                    [bigger_min_index..bigger_min_index + smaller_width]
-                    .copy_from_slice(
-                        &smaller_domain.buffer()[smaller_min_index
-                            ..smaller_min_index + smaller_width],
-                    );
-                bigger_min_index += bigger_width as usize;
-                smaller_min_index += smaller_width;
-            }
-        }
+        });
     }
 }
 
@@ -109,7 +78,7 @@ mod unit_tests {
 
     #[test]
     fn subdomain_3d() {
-        let threads = 2;
+        let threads = 1;
         let chunk_size = 10;
         let bigger_domain_bounds = AABB::new(matrix![0, 9; 0, 9; 0, 9]);
         let mut bigger_domain = OwnedDomain::new(bigger_domain_bounds);
@@ -122,8 +91,13 @@ mod unit_tests {
 
         // Bigger domain should be same,
         // smaller domain should be 1s
-        let ops = SubsetOps3d {};
-        ops.copy_to_subdomain(&bigger_domain, &mut smaller_domain, threads);
+        let ops = SubsetOps3d { chunk_size };
+        ops.copy(
+            &bigger_domain,
+            &mut smaller_domain,
+            &smaller_domain_bounds,
+            threads,
+        );
         for x in 0..=9 {
             for y in 0..=9 {
                 for z in 0..=9 {
@@ -151,7 +125,12 @@ mod unit_tests {
         // bigger domain should have some twos too
         smaller_domain.par_set_values(|_| 2.0, chunk_size);
         bigger_domain.par_set_values(|_| 1.0, chunk_size);
-        ops.copy_from_subdomain(&smaller_domain, &mut bigger_domain, threads);
+        ops.copy(
+            &smaller_domain,
+            &mut bigger_domain,
+            &smaller_domain_bounds,
+            threads,
+        );
         for x in 0..=9 {
             for y in 0..=9 {
                 for z in 0..=9 {
