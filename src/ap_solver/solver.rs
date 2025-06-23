@@ -268,23 +268,26 @@ impl<
     ) {
         profiling::scope!("ap_solver::periodic_solve_preallocated_io");
         let periodic_solve = self.plan.unwrap_periodic_node(node_id);
-        std::mem::swap(input_domain, output_domain);
-        input_domain.set_aabb(periodic_solve.input_aabb);
-        self.subset_ops.copy_to_subdomain(
-            output_domain,
-            input_domain,
-            periodic_solve.threads,
+        debug_assert_eq!(
+            *input_domain.aabb(),
+            periodic_solve.input_aabb,
+            "ERROR: n_id: {node_id}"
         );
-        output_domain.set_aabb(periodic_solve.input_aabb);
+        debug_assert_eq!(
+            *output_domain.aabb(),
+            periodic_solve.input_aabb,
+            "ERROR: n_id: {node_id}"
+        );
 
         self.periodic_solve(node_id, input_domain, output_domain, global_time);
 
-        // TODO (rb): Do we need this?
+        // Resize input / output
         std::mem::swap(input_domain, output_domain);
         output_domain.set_aabb(periodic_solve.output_aabb);
-        self.subset_ops.copy_to_subdomain(
+        self.subset_ops.copy(
             input_domain,
             output_domain,
+            &periodic_solve.output_aabb,
             periodic_solve.threads,
         );
         input_domain.set_aabb(periodic_solve.output_aabb);
@@ -317,9 +320,10 @@ impl<
             self.get_input_output(node_id, &periodic_solve.input_aabb);
 
         // copy input
-        self.subset_ops.copy_to_subdomain(
+        self.subset_ops.copy(
             input,
             &mut input_domain,
+            &periodic_solve.input_aabb,
             periodic_solve.threads,
         );
 
@@ -330,13 +334,13 @@ impl<
             global_time,
         );
 
-        // TODO: this could get merged with the copy instruction below
-        // if we had an extra method for copying from AABB
+        // Resize input / output
         std::mem::swap(&mut input_domain, &mut output_domain);
         output_domain.set_aabb(periodic_solve.output_aabb);
-        self.subset_ops.copy_to_subdomain(
+        self.subset_ops.copy(
             &input_domain,
             &mut output_domain,
+            &periodic_solve.output_aabb,
             periodic_solve.threads,
         );
         input_domain.set_aabb(periodic_solve.output_aabb);
@@ -354,9 +358,11 @@ impl<
         }
 
         // copy output to output
-        self.subset_ops.copy_from_subdomain(
+        let output_aabb = *output_domain.aabb();
+        self.subset_ops.copy(
             &output_domain,
             output,
+            &output_aabb,
             periodic_solve.threads,
         );
     }
@@ -424,9 +430,10 @@ impl<
             self.get_input_output(node_id, &direct_solve.input_aabb);
 
         // copy input
-        self.subset_ops.copy_to_subdomain(
+        self.subset_ops.copy(
             input,
             &mut input_domain,
+            &direct_solve.input_aabb,
             direct_solve.threads,
         );
 
@@ -446,31 +453,6 @@ impl<
             &direct_solve.output_aabb,
             direct_solve.threads,
         );
-
-        /*
-        // NOTE (rb): until opt solvers handle_frustrum solves...
-        input_domain.set_aabb(direct_solve.output_aabb);
-        //input_domain.par_from_superset(&output_domain, self.chunk_size);
-        self.subset_ops.copy_from_subdomain(
-            &output_domain,
-            &mut input_domain,
-            direct_solve.threads,
-        );
-        std::mem::swap(&mut input_domain, &mut output_domain);
-
-        debug_assert_eq!(
-            direct_solve.output_aabb,
-            *output_domain.aabb(),
-            "ERROR: n_id: {node_id}, Unexpected solve output"
-        );
-
-        // copy output to output
-        self.subset_ops.copy_from_subdomain(
-            &output_domain,
-            output,
-            direct_solve.threads,
-        );
-        */
     }
 
     pub fn direct_solve_preallocated_io(
@@ -482,32 +464,8 @@ impl<
     ) {
         profiling::scope!("ap_solver::direct_solve_preallocated_io");
         let direct_solve = self.plan.unwrap_direct_node(node_id);
-
-        debug_assert!(input_domain
-            .aabb()
-            .contains_aabb(&direct_solve.input_aabb));
-
-        // For time-cuts, the provided domains
-        // will not have the expected sizes.
-        // All we know is that the provided input domain contains
-        // the expected input domain
-        std::mem::swap(input_domain, output_domain);
-        input_domain.set_aabb(direct_solve.input_aabb);
-        self.subset_ops.copy(
-            output_domain,
-            input_domain,
-            &direct_solve.input_aabb,
-            direct_solve.threads,
-        );
-        /*
-        self.subset_ops.copy_to_subdomain(
-            output_domain,
-            input_domain,
-            direct_solve.threads,
-        );
-        */
-        output_domain.set_aabb(direct_solve.input_aabb);
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
+        debug_assert_eq!(*output_domain.aabb(), direct_solve.input_aabb);
 
         // invoke direct solver
         self.direct_solver.apply(
@@ -519,16 +477,7 @@ impl<
             direct_solve.threads,
         );
 
-        // NOTE (rb): until opt solvers handle_frustrum solves...
         input_domain.set_aabb(direct_solve.output_aabb);
-        //input_domain.par_from_superset(output_domain, self.chunk_size);
-        /*
-        self.subset_ops.copy_from_subdomain(
-            output_domain,
-            input_domain,
-            direct_solve.threads,
-        );
-        */
         self.subset_ops.copy(
             input_domain,
             output_domain,
