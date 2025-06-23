@@ -3,6 +3,15 @@ use crate::domain::view::*;
 pub struct SubsetOps1d {}
 
 impl SubsetOps<1> for SubsetOps1d {
+    fn copy<DomainType: DomainView<1>>(
+        &self,
+        _src: &DomainType,
+        _dst: &mut DomainType,
+        _aabb: &AABB<1>,
+        _threads: usize,
+    ) {
+    }
+
     fn copy_to_subdomain<DomainType: DomainView<1>>(
         &self,
         src_domain: &DomainType,

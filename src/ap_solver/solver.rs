@@ -6,12 +6,10 @@ use crate::ap_solver::scratch::*;
 use crate::ap_solver::scratch_builder::*;
 use crate::ap_solver::solver_parameters::*;
 use crate::direct_solver::*;
-use crate::SolverInterface;
-
 use crate::domain::*;
-
 use crate::mem_fmt::*;
 use crate::util::*;
+use crate::SolverInterface;
 use std::io::prelude::*;
 
 impl<
@@ -442,9 +440,22 @@ impl<
             direct_solve.threads,
         );
 
+        self.subset_ops.copy(
+            &output_domain,
+            output,
+            &direct_solve.output_aabb,
+            direct_solve.threads,
+        );
+
+        /*
         // NOTE (rb): until opt solvers handle_frustrum solves...
         input_domain.set_aabb(direct_solve.output_aabb);
-        input_domain.par_from_superset(&output_domain, self.chunk_size);
+        //input_domain.par_from_superset(&output_domain, self.chunk_size);
+        self.subset_ops.copy_from_subdomain(
+            &output_domain,
+            &mut input_domain,
+            direct_solve.threads,
+        );
         std::mem::swap(&mut input_domain, &mut output_domain);
 
         debug_assert_eq!(
@@ -459,6 +470,7 @@ impl<
             output,
             direct_solve.threads,
         );
+        */
     }
 
     pub fn direct_solve_preallocated_io(
@@ -481,11 +493,19 @@ impl<
         // the expected input domain
         std::mem::swap(input_domain, output_domain);
         input_domain.set_aabb(direct_solve.input_aabb);
+        self.subset_ops.copy(
+            output_domain,
+            input_domain,
+            &direct_solve.input_aabb,
+            direct_solve.threads,
+        );
+        /*
         self.subset_ops.copy_to_subdomain(
             output_domain,
             input_domain,
             direct_solve.threads,
         );
+        */
         output_domain.set_aabb(direct_solve.input_aabb);
         debug_assert_eq!(*input_domain.aabb(), direct_solve.input_aabb);
 
@@ -501,7 +521,20 @@ impl<
 
         // NOTE (rb): until opt solvers handle_frustrum solves...
         input_domain.set_aabb(direct_solve.output_aabb);
-        input_domain.par_from_superset(output_domain, self.chunk_size);
+        //input_domain.par_from_superset(output_domain, self.chunk_size);
+        /*
+        self.subset_ops.copy_from_subdomain(
+            output_domain,
+            input_domain,
+            direct_solve.threads,
+        );
+        */
+        self.subset_ops.copy(
+            input_domain,
+            output_domain,
+            &direct_solve.output_aabb,
+            direct_solve.threads,
+        );
         std::mem::swap(input_domain, output_domain);
 
         debug_assert_eq!(

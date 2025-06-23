@@ -41,7 +41,9 @@ pub fn generate_ap_solver_2d<
     let create_ops_builder = || ApPeriodicOpsBuilder::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainOnly;
-    let subset_ops = SubsetOps2d {chunk_size: params.chunk_size};
+    let subset_ops = SubsetOps2d {
+        chunk_size: params.chunk_size,
+    };
     Solver::new(
         direct_solver,
         subset_ops,
@@ -108,7 +110,9 @@ pub fn generate_tv_ap_solver_2d<
     let create_ops_builder = || TvPeriodicOpsCollector::new(stencil, params);
     let planner_result = generate_plan(stencil, create_ops_builder, params);
     let complex_buffer_type = ComplexBufferType::DomainAndOp;
-    let subset_ops = SubsetOps2d { chunk_size: params.chunk_size };
+    let subset_ops = SubsetOps2d {
+        chunk_size: params.chunk_size,
+    };
     Solver::new(
         direct_solver,
         subset_ops,
