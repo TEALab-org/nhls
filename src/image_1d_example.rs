@@ -209,6 +209,7 @@ impl Args {
         // Write image to file
         if let Some(i) = img {
             let image_path = self.generate_image.as_ref().unwrap();
+            println!("Writing png: {image_path:?}");
             i.write(&image_path);
         }
 
