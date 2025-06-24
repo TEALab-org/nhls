@@ -31,21 +31,18 @@ impl SubsetOps<3> for SubsetOps3d {
         let dst_origin = dst.aabb().coord_to_linear(&aabb.min());
 
         let height = aabb_ex_b[0] as usize;
-        let chunk_size = self.chunk_size.max(height / threads);
+        let chunk_size = height / threads;
+        //let chunk_size = self.chunk_size.max(height / threads);
+
         let chunks = height.div_ceil(chunk_size);
 
-        //println!("h: {height}, cs: {chunk_size}, c: {chunks}");
-        //println!("src_origin: {src_origin}, dst_origin: {dst_origin}");
-
         (0..chunks).into_par_iter().for_each(move |c| {
-            profiling::scope!("subsetops2d::copy Thread callback");
+            profiling::scope!("subsetops3d::copy Thread callback");
             let mut src_index = src_origin + c * chunk_size * src_layer;
             let mut dst_index = dst_origin + c * chunk_size * dst_layer;
 
             let start_row = c * chunk_size;
             let end_row = height.min((c + 1) * chunk_size);
-
-            //println!("c: {c}, src_index: {src_index}, dst_index: {dst_index}, start_row: {start_row}, end_row: {end_row}");
 
             let mut dst_t = dst.unsafe_mut_access();
             for _z in start_row..end_row {
@@ -54,8 +51,6 @@ impl SubsetOps<3> for SubsetOps3d {
                 for _y in 0..aabb_ex_b[1] {
                     let src_end_index = src_row_index + row_width;
                     let dst_end_index = dst_row_index + row_width;
-
-                    //println!("src_row_index: {src_row_index}, dst_row_index: {dst_row_index}, row_width: {row_width}");
 
                     let src_slice = &src.buffer()[src_row_index..src_end_index];
                     let dst_slice =

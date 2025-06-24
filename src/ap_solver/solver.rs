@@ -384,7 +384,7 @@ impl<
             output_domain,
             self.get_complex(node_id),
             self.central_global_time,
-            periodic_solve.threads,
+            self.chunk_size,
         );
 
         // Boundary
