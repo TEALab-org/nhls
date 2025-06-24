@@ -301,5 +301,6 @@ impl<StencilType: TVStencil<2, 5>> DirectSolverInterface<2>
             global_time += 1;
             std::mem::swap(input, output);
         }
+        std::mem::swap(input, output);
     }
 }

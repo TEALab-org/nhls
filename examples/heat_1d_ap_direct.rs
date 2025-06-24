@@ -8,15 +8,8 @@ fn main() {
     let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
 
     // Create BC
-    let grid_bound = args.grid_bounds();
-    let bc = ConstantCheck::new(1.0, grid_bound);
-
-    let mut solver = GeneralDirectBoxSolver::new(
-        &bc,
-        &stencil,
-        args.steps_per_line,
-        args.chunk_size,
-    );
+    let mut solver =
+        Direct3Pt1DSolver::new(&stencil, args.steps_per_line, args.threads);
 
     args.run_solver(&mut solver);
 }
