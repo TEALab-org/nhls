@@ -2,6 +2,7 @@ use crate::direct_solver::*;
 use crate::domain::*;
 use crate::stencil::TVStencil;
 use crate::util::*;
+use crate::SolverInterface;
 
 /// Optimized direct solver for 3pt 1D stencil.
 /// Implements a constant zero boundary condition.
@@ -65,7 +66,7 @@ impl<'a, StencilType: TVStencil<1, 3>> DirectSolver3Pt1DOpt<'a, StencilType> {
                                 + w.get_unchecked(2) * ib.get_unchecked(i);
                         }
                     });
-                    start += end;
+                    start += chunk_size;
                 }
             });
         }
@@ -92,5 +93,57 @@ impl<StencilType: TVStencil<1, 3>> DirectSolverInterface<1>
             global_time += 1;
             std::mem::swap(input, output);
         }
+        std::mem::swap(input, output);
+    }
+}
+
+pub struct Direct3Pt1DSolver<'a, StencilType: TVStencil<1, 3>> {
+    solver: DirectSolver3Pt1DOpt<'a, StencilType>,
+    steps: usize,
+    threads: usize,
+}
+
+impl<'a, StencilType: TVStencil<1, 3>> Direct3Pt1DSolver<'a, StencilType> {
+    pub fn new(stencil: &'a StencilType, steps: usize, threads: usize) -> Self {
+        Direct3Pt1DSolver {
+            solver: DirectSolver3Pt1DOpt { stencil },
+            steps,
+            threads,
+        }
+    }
+}
+
+impl<'a, StencilType: TVStencil<1, 3>> SolverInterface<1>
+    for Direct3Pt1DSolver<'a, StencilType>
+{
+    fn apply<'b>(
+        &mut self,
+        input_domain: &mut SliceDomain<'b, 1>,
+        output_domain: &mut SliceDomain<'b, 1>,
+        mut global_time: usize,
+    ) {
+        debug_assert_eq!(input_domain.aabb(), output_domain.aabb());
+
+        let n_r = input_domain.aabb().buffer_size();
+        for _ in 0..self.steps - 1 {
+            self.solver.apply_step(
+                input_domain,
+                output_domain,
+                self.threads,
+                global_time,
+                n_r,
+            );
+            global_time += 1;
+            std::mem::swap(input_domain, output_domain);
+        }
+        std::mem::swap(input_domain, output_domain);
+    }
+
+    fn print_report(&self) {
+        println!("Direct3Pt1DSolver: No report");
+    }
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, _path: &P) {
+        println!("WARNING: Direct3Pt1DSolver cannot print dot file");
     }
 }
