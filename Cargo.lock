@@ -957,7 +957,6 @@ dependencies = [
  "fftw",
  "float-cmp",
  "image",
- "lazy_static 1.5.0",
  "nalgebra",
  "num 0.4.3",
  "num-traits",

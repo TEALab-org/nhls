@@ -111,3 +111,5 @@ cargo run \
 # Wait for the example to finish running.
 # Sometimes the profiling takes a while to buffer before it starts streaming
 ```
+
+Note that when building with the `profile-with-puffin` feature, executables will have an additional `--puffin-url` flag that can be used to set a custom url if the default one isn't preferred (`127.0.0.1:8585`).

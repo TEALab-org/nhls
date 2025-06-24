@@ -13,21 +13,8 @@ use std::path::PathBuf;
 use std::time::*;
 
 #[cfg(feature = "profile-with-puffin")]
-use std::sync::Mutex;
-
-#[cfg(feature = "profile-with-puffin")]
-lazy_static::lazy_static! {
-    static ref puffin_server: Mutex<Option<puffin_http::Server>> = {
-        println!("Initializing profiling server:");
-        let server_addr =
-                format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
-        println!(
-                "Run this to view profiling data:  puffin_viewer {server_addr}"
-            );
-        let server = puffin_http::Server::new(&server_addr).unwrap();
-        Mutex::new(Some(server))
-    };
-}
+static PUFFIN_SERVER: std::sync::Mutex<Option<puffin_http::Server>> =
+    std::sync::Mutex::new(None);
 
 /// nhls 2D stencil executable
 #[derive(Parser, Debug)]
@@ -110,6 +97,11 @@ pub struct Args {
     /// Write out the solver apply time in seconds to file
     #[arg(long)]
     pub timings_file: Option<PathBuf>,
+
+    /// Puffin Viewer url
+    #[cfg(feature = "profile-with-puffin")]
+    #[arg(long, default_value = "127.0.0.1:8585")]
+    pub puffin_url: String,
 }
 
 impl Args {
@@ -213,12 +205,16 @@ impl Args {
 
         #[cfg(feature = "profile-with-puffin")]
         {
-            let server_lock = &puffin_server.lock().unwrap();
-            let server: &puffin_http::Server = server_lock.as_ref().unwrap();
-            std::thread::sleep(std::time::Duration::from_secs(2));
+            println!("Initializing profiling server:");
+            let server = puffin_http::Server::new(&args.puffin_url).unwrap();
+            println!(
+                "Run this to view profiling data:  puffin_viewer {}",
+                args.puffin_url
+            );
+            let mut server_lock = PUFFIN_SERVER.lock().unwrap();
+            *server_lock = Some(server);
             profiling::puffin::set_scopes_on(true);
             profiling::finish_frame!();
-            println!("t: {}", &server.num_clients());
         }
 
         rayon::ThreadPoolBuilder::new()
@@ -276,8 +272,7 @@ impl Args {
             println!("Flusing profiler");
 
             // We want to drop the server so we can flush the profiling data
-            // https://stackoverflow.com/questions/68866598/how-do-i-free-memory-in-a-lazy-static
-            puffin_server.lock().unwrap().take();
+            PUFFIN_SERVER.lock().unwrap().take();
         }
     }
 }
