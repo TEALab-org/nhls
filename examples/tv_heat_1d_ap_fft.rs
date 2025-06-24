@@ -7,7 +7,7 @@ fn main() {
 
     let stencil = nhls::standard_stencils::TVHeat1D::new();
 
-    let direct_solver = DirectSolver3Pt1DOpt::new(&stencil);
+    let direct_solver = DirectSolver3Pt1DOpt::new(&stencil, args.chunk_size);
     // Create AP Solver
     let solver_params = args.solver_parameters();
     let mut solver =

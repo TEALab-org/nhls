@@ -8,17 +8,21 @@ use crate::SolverInterface;
 /// Implements a constant zero boundary condition.
 pub struct DirectSolver3Pt1DOpt<'a, StencilType: TVStencil<1, 3>> {
     stencil: &'a StencilType,
+    chunk_size: usize,
 }
 
 impl<'a, StencilType: TVStencil<1, 3>> DirectSolver3Pt1DOpt<'a, StencilType> {
-    pub fn new(stencil: &'a StencilType) -> Self {
+    pub fn new(stencil: &'a StencilType, chunk_size: usize) -> Self {
         let expected_offsets = [
             vector![1],  // 0
             vector![-1], // 1
             vector![0],  // 4
         ];
         assert_eq!(&expected_offsets, stencil.offsets());
-        DirectSolver3Pt1DOpt { stencil }
+        DirectSolver3Pt1DOpt {
+            stencil,
+            chunk_size,
+        }
     }
 
     fn apply_step<DomainType: DomainView<1> + Send>(
@@ -51,12 +55,12 @@ impl<'a, StencilType: TVStencil<1, 3>> DirectSolver3Pt1DOpt<'a, StencilType> {
 
             let const_output: &DomainType = output;
             rayon::scope(|s| {
-                profiling::scope!("direct_solver: Thread Callback");
-                let chunk_size = (n_r - 2) / (threads * 2);
+                let chunk_size = ((n_r - 2) / threads).max(self.chunk_size);
                 let mut start: usize = 1;
                 while start < n_r - 1 {
                     let end = (start + chunk_size).min(n_r - 1);
                     s.spawn(move |_| {
+                        profiling::scope!("direct_solver: Thread Callback");
                         let mut o = const_output.unsafe_mut_access();
                         for i in start..end {
                             *o.buffer_mut().get_unchecked_mut(i) = w
@@ -104,9 +108,17 @@ pub struct Direct3Pt1DSolver<'a, StencilType: TVStencil<1, 3>> {
 }
 
 impl<'a, StencilType: TVStencil<1, 3>> Direct3Pt1DSolver<'a, StencilType> {
-    pub fn new(stencil: &'a StencilType, steps: usize, threads: usize) -> Self {
+    pub fn new(
+        stencil: &'a StencilType,
+        steps: usize,
+        threads: usize,
+        chunk_size: usize,
+    ) -> Self {
         Direct3Pt1DSolver {
-            solver: DirectSolver3Pt1DOpt { stencil },
+            solver: DirectSolver3Pt1DOpt {
+                stencil,
+                chunk_size,
+            },
             steps,
             threads,
         }
