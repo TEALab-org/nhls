@@ -19,7 +19,10 @@ impl<'a, StencilType: TVStencil<1, 3>> DirectSolver3Pt1DOpt<'a, StencilType> {
             vector![0],  // 4
         ];
         assert_eq!(&expected_offsets, stencil.offsets());
-        DirectSolver3Pt1DOpt { stencil, chunk_size }
+        DirectSolver3Pt1DOpt {
+            stencil,
+            chunk_size,
+        }
     }
 
     fn apply_step<DomainType: DomainView<1> + Send>(
@@ -105,9 +108,17 @@ pub struct Direct3Pt1DSolver<'a, StencilType: TVStencil<1, 3>> {
 }
 
 impl<'a, StencilType: TVStencil<1, 3>> Direct3Pt1DSolver<'a, StencilType> {
-    pub fn new(stencil: &'a StencilType, steps: usize, threads: usize, chunk_size: usize) -> Self {
+    pub fn new(
+        stencil: &'a StencilType,
+        steps: usize,
+        threads: usize,
+        chunk_size: usize,
+    ) -> Self {
         Direct3Pt1DSolver {
-            solver: DirectSolver3Pt1DOpt { stencil, chunk_size },
+            solver: DirectSolver3Pt1DOpt {
+                stencil,
+                chunk_size,
+            },
             steps,
             threads,
         }
