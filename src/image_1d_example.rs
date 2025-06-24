@@ -3,6 +3,7 @@ use crate::build_info;
 use crate::domain::*;
 use crate::fft_solver::PlanType;
 use crate::image::*;
+use crate::image_example_util::*;
 use crate::initial_conditions::*;
 use crate::util::*;
 use crate::SolverInterface;
@@ -237,9 +238,26 @@ impl Args {
         crate::init_threads(args.threads);
 
         if let Some(ref wisdom_path) = args.wisdom_file {
+            let parent_path = wisdom_path.parent().unwrap();
+            ensure_dir_exists(&parent_path);
             if wisdom_path.exists() {
                 fftw::wisdom::import_wisdom_file_f64(&wisdom_path).unwrap();
             }
+        }
+
+        if let Some(ref image_path) = args.generate_image {
+            let parent_path = image_path.parent().unwrap();
+            ensure_dir_exists(&parent_path);
+        }
+
+        if let Some(ref dot_path) = args.write_dot {
+            let parent_path = dot_path.parent().unwrap();
+            ensure_dir_exists(&parent_path);
+        }
+
+        if let Some(ref timings_path) = args.timings_file {
+            let parent_path = timings_path.parent().unwrap();
+            ensure_dir_exists(&parent_path);
         }
 
         args

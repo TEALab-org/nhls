@@ -14,6 +14,7 @@ pub mod image;
 pub mod image_1d_example;
 pub mod image_2d_example;
 pub mod image_3d_example;
+pub mod image_example_util;
 pub mod initial_conditions;
 pub mod mem_fmt;
 pub mod mirror_domain;
