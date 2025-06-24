@@ -8,7 +8,7 @@ fn main() {
     let stencil = nhls::standard_stencils::heat_1d(1.0, 1.0, 0.5);
 
     // This optimized direct solver implement a uniform boundary condition of 0.0
-    let direct_solver = DirectSolver3Pt1DOpt::new(&stencil);
+    let direct_solver = DirectSolver3Pt1DOpt::new(&stencil, args.chunk_size);
 
     // Create AP Solver
     let solver_params = args.solver_parameters();

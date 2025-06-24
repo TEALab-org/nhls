@@ -89,6 +89,7 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync + Send {
         other: &DomainType,
         chunk_size: usize,
     ) {
+        profiling::scope!("domain::par_set_subdomain");
         let const_self_ref: &Self = self;
         other.buffer()[0..other.aabb().buffer_size()]
             .par_chunks(chunk_size)
@@ -117,6 +118,7 @@ pub trait DomainView<const GRID_DIMENSION: usize>: Sync + Send {
         other: &DomainType,
         chunk_size: usize,
     ) {
+        profiling::scope!("domain::par_from_subdomain");
         self.par_set_values(|world_coord| other.view(&world_coord), chunk_size);
     }
 
