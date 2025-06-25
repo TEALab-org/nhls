@@ -2,6 +2,7 @@ use crate::direct_solver::*;
 use crate::domain::*;
 use crate::stencil::TVStencil;
 use crate::util::*;
+use crate::SolverInterface;
 
 /// Optimized direct solver for 5pt 2D stencil.
 /// Implements a constant zero boundary condition.
@@ -289,7 +290,7 @@ impl<StencilType: TVStencil<2, 5>> DirectSolverInterface<2>
         ];
 
         let exclusive_bounds = input.aabb().exclusive_bounds();
-        for _ in 0..steps - 1 {
+        for _ in 0..steps {
             self.apply_step(
                 input,
                 output,
@@ -302,5 +303,71 @@ impl<StencilType: TVStencil<2, 5>> DirectSolverInterface<2>
             std::mem::swap(input, output);
         }
         std::mem::swap(input, output);
+    }
+}
+
+pub struct Direct5Pt2DSolver<'a, StencilType: TVStencil<2, 5>> {
+    solver: DirectSolver5Pt2DOpt<'a, StencilType>,
+    steps: usize,
+    threads: usize,
+}
+
+impl<'a, StencilType: TVStencil<2, 5>> Direct5Pt2DSolver<'a, StencilType> {
+    pub fn new(
+        stencil: &'a StencilType,
+        steps: usize,
+        threads: usize,
+        _chunk_size: usize,
+    ) -> Self {
+        Direct5Pt2DSolver {
+            solver: DirectSolver5Pt2DOpt { stencil },
+            steps,
+            threads,
+        }
+    }
+}
+
+impl<'a, StencilType: TVStencil<2, 5>> SolverInterface<2>
+    for Direct5Pt2DSolver<'a, StencilType>
+{
+    fn apply<'b>(
+        &mut self,
+        input_domain: &mut SliceDomain<'b, 2>,
+        output_domain: &mut SliceDomain<'b, 2>,
+        mut global_time: usize,
+    ) {
+        debug_assert_eq!(input_domain.aabb(), output_domain.aabb());
+        let offsets_i32 = input_domain
+            .aabb()
+            .coord_offset_to_linear(self.solver.stencil.offsets());
+        let offsets = [
+            offsets_i32[0].unsigned_abs() as usize,
+            offsets_i32[1].unsigned_abs() as usize,
+            offsets_i32[2].unsigned_abs() as usize,
+            offsets_i32[3].unsigned_abs() as usize,
+            offsets_i32[4].unsigned_abs() as usize,
+        ];
+        let exclusive_bounds = input_domain.aabb().exclusive_bounds();
+        for _ in 0..self.steps {
+            self.solver.apply_step(
+                input_domain,
+                output_domain,
+                self.threads,
+                global_time,
+                offsets,
+                exclusive_bounds,
+            );
+            global_time += 1;
+            std::mem::swap(input_domain, output_domain);
+        }
+        std::mem::swap(input_domain, output_domain);
+    }
+
+    fn print_report(&self) {
+        println!("Direct3Pt1DSolver: No report");
+    }
+
+    fn to_dot_file<P: AsRef<std::path::Path>>(&self, _path: &P) {
+        println!("WARNING: Direct3Pt1DSolver cannot print dot file");
     }
 }
