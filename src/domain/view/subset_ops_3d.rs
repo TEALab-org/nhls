@@ -81,6 +81,7 @@ mod unit_tests {
     fn subdomain_3d() {
         let threads = 1;
         let chunk_size = 10;
+        let task_min = 1;
         let bigger_domain_bounds = AABB::new(matrix![0, 9; 0, 9; 0, 9]);
         let mut bigger_domain = OwnedDomain::new(bigger_domain_bounds);
 
@@ -92,7 +93,10 @@ mod unit_tests {
 
         // Bigger domain should be same,
         // smaller domain should be 1s
-        let ops = SubsetOps3d { chunk_size };
+        let ops = SubsetOps3d {
+            chunk_size,
+            task_min,
+        };
         ops.copy(
             &bigger_domain,
             &mut smaller_domain,
