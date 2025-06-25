@@ -66,6 +66,7 @@ pub fn generate_ap_solver_3d<
     let complex_buffer_type = ComplexBufferType::DomainOnly;
     let subset_ops = SubsetOps3d {
         chunk_size: params.chunk_size,
+        task_min: params.task_min,
     };
     Solver::new(
         direct_solver,

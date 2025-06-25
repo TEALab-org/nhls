@@ -2,6 +2,7 @@ use crate::domain::view::*;
 
 pub struct SubsetOps3d {
     pub chunk_size: usize,
+    pub task_min: usize,
 }
 
 impl SubsetOps<3> for SubsetOps3d {
@@ -31,8 +32,13 @@ impl SubsetOps<3> for SubsetOps3d {
         let dst_origin = dst.aabb().coord_to_linear(&aabb.min());
 
         let height = aabb_ex_b[0] as usize;
-        let chunk_size = height / threads;
-        //let chunk_size = self.chunk_size.max(height / threads);
+        let chunk_size = if threads * 2 < height {
+            height / threads
+        } else if self.task_min < height {
+            height / self.task_min
+        } else {
+            height
+        };
 
         let chunks = height.div_ceil(chunk_size);
 
