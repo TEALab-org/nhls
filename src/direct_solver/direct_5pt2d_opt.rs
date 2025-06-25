@@ -216,6 +216,11 @@ impl<'a, StencilType: TVStencil<2, 5>> DirectSolver5Pt2DOpt<'a, StencilType> {
                                     * ib.get_unchecked(
                                         linear_index + offsets.get_unchecked(0),
                                     )
+                                    + w.get_unchecked(2)
+                                        * ib.get_unchecked(
+                                            linear_index
+                                                - offsets.get_unchecked(2),
+                                        )
                                     + w.get_unchecked(3)
                                         * ib.get_unchecked(
                                             linear_index
@@ -347,6 +352,7 @@ impl<'a, StencilType: TVStencil<2, 5>> SolverInterface<2>
             offsets_i32[3].unsigned_abs() as usize,
             offsets_i32[4].unsigned_abs() as usize,
         ];
+        println!("offsets: {:?}", offsets);
         let exclusive_bounds = input_domain.aabb().exclusive_bounds();
         for _ in 0..self.steps {
             self.solver.apply_step(

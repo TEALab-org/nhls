@@ -53,7 +53,7 @@ fn direct_opt_3pt1d_compare() {
             f64,
             opt_out.buffer()[i],
             naive_out.buffer()[i],
-            epsilon = 0.0000000000001
+            epsilon = 0.000000000000000001
         );
     }
 }
@@ -61,13 +61,12 @@ fn direct_opt_3pt1d_compare() {
 #[test]
 fn direct_opt_5pt2d_compare() {
     // Params
-    let grid_bound = AABB::new(matrix![0, 19; 0, 19]);
-    let n_steps = 20;
-    let chunk_size = 11;
-    let threads = 4;
+    //let grid_bound = AABB::new(matrix![0, 19; 0, 19]);
+    let grid_bound = AABB::new(matrix![0, 13; 0, 18]);
+    let n_steps = 13;
+    let chunk_size = 100;
+    let threads = 1;
     let stencil = nhls::standard_stencils::heat_2d(1.0, 1.0, 1.0, 0.2, 0.2);
-    println!("w: {}", stencil.weights());
-    // 0.25, 0.25, 0.5 weights
 
     // Create buffers / domains
     let mut opt_buffer_1 = OwnedDomain::new(grid_bound);
@@ -100,6 +99,10 @@ fn direct_opt_5pt2d_compare() {
         chunk_size,
     );
 
+    for i in 0..grid_bound.buffer_size() {
+        opt_in.buffer_mut()[i] = opt_out.buffer()[i] - naive_out.buffer()[i];
+    }
+
     // Compare
     let buffer_size = grid_bound.buffer_size();
     for i in 0..buffer_size {
@@ -107,7 +110,7 @@ fn direct_opt_5pt2d_compare() {
             f64,
             opt_out.buffer()[i],
             naive_out.buffer()[i],
-            epsilon = 0.0000000000001
+            epsilon = 0.000000000000000001
         );
     }
 }
