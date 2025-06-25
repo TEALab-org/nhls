@@ -92,7 +92,7 @@ impl<StencilType: TVStencil<1, 3>> DirectSolverInterface<1>
         debug_assert_eq!(input.aabb(), output.aabb());
 
         let n_r = input.aabb().buffer_size();
-        for _ in 0..steps - 1 {
+        for _ in 0..steps {
             self.apply_step(input, output, threads, global_time, n_r);
             global_time += 1;
             std::mem::swap(input, output);
@@ -137,7 +137,7 @@ impl<'a, StencilType: TVStencil<1, 3>> SolverInterface<1>
         debug_assert_eq!(input_domain.aabb(), output_domain.aabb());
 
         let n_r = input_domain.aabb().buffer_size();
-        for _ in 0..self.steps - 1 {
+        for _ in 0..self.steps {
             self.solver.apply_step(
                 input_domain,
                 output_domain,

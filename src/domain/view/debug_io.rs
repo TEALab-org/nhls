@@ -41,18 +41,18 @@ pub fn print_debug<
 ) {
     // Write bounds line 1
     let aabb = domain.aabb();
-    println!("{}", aabb);
+    println!("{aabb}");
 
     // Write line for each y value
     for y in aabb.bounds[(1, 0)]..=aabb.bounds[(1, 1)] {
-        print!("*{}: ", y);
+        print!("*{y}: ");
         for x in aabb.bounds[(0, 0)]..=aabb.bounds[(0, 1)] {
             let mut c = Coord::zero();
             c[0] = x;
             c[1] = y;
             let r = domain.view(&c);
             //let b = (r > 2.0 * std::f64::EPSILON) as usize;
-            print!("{:.05}, ", r);
+            print!("{r:.05}, ");
         }
         println!();
     }
