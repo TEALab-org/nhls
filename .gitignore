@@ -16,3 +16,5 @@
 *.txt
 *.svg
 *.dot
+old_scripts
+old_svgs
