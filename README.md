@@ -2,11 +2,11 @@
 
 ![Rust workflow](https://github.com/SallySoul/nhls/actions/workflows/rust.yml/badge.svg?branch=main)
 
-This repo is for exploring ways to solve NHLS problems.
+This repo is for exploring ways to solve NHLS problems. We are also developing a corresponding python module [`nhls_py`](https://github.com/TEALab-org/nhls_py) for utilizing the solvers from this project.
 
 ## Example
 
-A number of examples executables are included.
+A number of example executables are included that demonstrate different linear stencil problems.
 They provide a CLI interface, try using `--help` for more information.
 Consider this example where we generate a short animation of a time-varying stencil computation.
 

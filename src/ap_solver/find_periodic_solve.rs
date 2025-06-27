@@ -17,7 +17,7 @@ pub struct PeriodicSolve<const DIMENSION: usize> {
 /// For a given input AABB and solve parameters,
 /// find the largest periodic solve (in time steps)
 /// we can.
-/// This is used in by the APPlanner.
+/// This is used in by the `Planner`.
 pub fn find_periodic_solve<const DIMENSION: usize>(
     input_aabb: &AABB<DIMENSION>,
     params: &PeriodicSolveParams<DIMENSION>,

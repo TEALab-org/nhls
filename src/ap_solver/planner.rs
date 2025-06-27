@@ -1,14 +1,14 @@
+use crate::ap_solver::find_periodic_solve::*;
+use crate::ap_solver::frustrum::*;
 use crate::ap_solver::index_types::*;
 use crate::ap_solver::periodic_ops::*;
 use crate::ap_solver::plan::*;
 use crate::ap_solver::solver_parameters::*;
-use crate::fft_solver::ap_frustrum::*;
-use crate::fft_solver::find_periodic_solve::*;
 use crate::util::*;
 
 /// Creating a plan results in both a plan and convolution store.
 /// Someday we may separate the creation, if for example we
-/// we add support for saving APPlans to file.
+/// we add support for saving Plans to file.
 pub struct PlannerResult<
     const GRID_DIMENSION: usize,
     PeriodicOpsType: PeriodicOps<GRID_DIMENSION>,
@@ -19,7 +19,7 @@ pub struct PlannerResult<
     pub stencil_slopes: Bounds<GRID_DIMENSION>,
 }
 
-/// Used to create an `APPlan`. See `create_ap_plan`
+/// Used to create an `Plan`. See `create_ap_plan`
 pub struct Planner<
     'a,
     const GRID_DIMENSION: usize,
@@ -50,7 +50,7 @@ impl<
     /// Create a direct solve node for a given frustrum.
     fn generate_direct_node(
         &mut self,
-        frustrum: APFrustrum<GRID_DIMENSION>,
+        frustrum: Frustrum<GRID_DIMENSION>,
         tasks: usize,
     ) -> PlanNode<GRID_DIMENSION> {
         let input_aabb = frustrum.input_aabb(&self.stencil_slopes);
@@ -66,7 +66,7 @@ impl<
 
     fn generate_periodic_node(
         &mut self,
-        mut frustrum: APFrustrum<GRID_DIMENSION>,
+        mut frustrum: Frustrum<GRID_DIMENSION>,
         periodic_solve: PeriodicSolve<GRID_DIMENSION>,
         rel_time_0: usize,
         tasks: usize,
@@ -132,7 +132,7 @@ impl<
     /// a boundary decomposition.
     fn generate_frustrum(
         &mut self,
-        frustrum: APFrustrum<GRID_DIMENSION>,
+        frustrum: Frustrum<GRID_DIMENSION>,
         rel_time_0: usize,
         tasks: usize,
     ) -> PlanNode<GRID_DIMENSION> {
@@ -166,7 +166,7 @@ impl<
     /// it can find within the box and max_steps.
     ///
     /// Note also that the boundary solve decomposition
-    /// is based on `AABB` and not `APFrustrum`.
+    /// is based on `AABB` and not `Frustrum`.
     pub fn generate_central(
         &mut self,
         max_steps: usize,
@@ -203,7 +203,7 @@ impl<
         for d in 0..GRID_DIMENSION {
             for side in [Side::Min, Side::Max] {
                 sub_nodes.push(self.generate_frustrum(
-                    APFrustrum::new(
+                    Frustrum::new(
                         decomposition[d][side.outer_index()],
                         d,
                         side,

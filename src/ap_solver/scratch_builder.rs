@@ -14,11 +14,11 @@ pub enum ComplexBufferType {
     DomainAndOp,
 }
 
-/// `APScratchBuilder` calculates offsets and sizes for the scratch memory
+/// `ScratchBuilder` calculates offsets and sizes for the scratch memory
 /// each node will use in terms of bytes.
-/// See `APScratchBuilder::build` method.
+/// See `ScratchBuilder::build` method.
 /// These offsets will respect `MIN_ALIGMENT`.
-/// Note that these buffers are provided at runtime by `APScratch`,
+/// Note that these buffers are provided at runtime by `Scratch`,
 /// the scratch builder just creates a descriptor for each node in
 /// the plan.
 pub struct ScratchBuilder<'a, const GRID_DIMENSION: usize> {
@@ -28,7 +28,7 @@ pub struct ScratchBuilder<'a, const GRID_DIMENSION: usize> {
 }
 
 impl<'a, const GRID_DIMENSION: usize> ScratchBuilder<'a, GRID_DIMENSION> {
-    /// Static method to create an `APScratch` instance
+    /// Static method to create an `Scratch` instance
     /// and a scratch descriptor for each node
     pub fn build(
         plan: &'a Plan<GRID_DIMENSION>,

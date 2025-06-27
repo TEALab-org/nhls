@@ -1,4 +1,3 @@
-use crate::fft_solver::*;
 use crate::util::*;
 
 /// Frustrums are uniquely defined by their
@@ -57,22 +56,59 @@ impl Side {
     }
 }
 
-/// `APFrustrum` is the object we manipulate in `APPlanner` to create
-/// an `APPlan`.
+/// Calculate the input region for a frustrum solve
+/// based on output region size and other parameters.
+pub fn frustrum_input_aabb<const GRID_DIMENSION: usize>(
+    steps: usize,
+    output_box: &AABB<GRID_DIMENSION>,
+    sloped_sides: &Bounds<GRID_DIMENSION>,
+    stencil_slopes: &Bounds<GRID_DIMENSION>,
+) -> AABB<GRID_DIMENSION> {
+    let trapezoid_slopes =
+        slopes_to_outward_diff(&stencil_slopes.component_mul(sloped_sides));
+    output_box.add_bounds_diff(steps as i32 * trapezoid_slopes)
+}
+
+/// This needs to match logic from AABB::decomposition
+pub fn decomposition_slopes<const DIMENSION: usize>(
+) -> [[Bounds<DIMENSION>; 2]; DIMENSION] {
+    let lower = 0;
+    let upper = 1;
+
+    // Start will all ones, turn off things that don't slope
+    let mut result = [[Bounds::from_element(1); 2]; DIMENSION];
+
+    for d in 0..DIMENSION {
+        result[d][lower][(d, lower)] = 0;
+        result[d][upper][(d, upper)] = 0;
+
+        for d0 in d + 1..DIMENSION {
+            result[d][lower][(d0, lower)] = 0;
+            result[d][lower][(d0, upper)] = 0;
+            result[d][upper][(d0, lower)] = 0;
+            result[d][upper][(d0, upper)] = 0;
+        }
+    }
+
+    result
+}
+
+/// `Frustrum` is the object we manipulate in `Planner` to create
+/// an `Plan`.
 ///
 /// It defines the volumetric (over time) regions of space that arise
 /// for boundary solves in the aperiodic recursion.
 /// Some sides are defined by boundary conditions and do not slope.
 /// Other sides slope inwards over time.
 ///
-/// An APFrustrum is defined by
+/// A Frustrum is defined by
 ///   - An output AABB
 ///   - Steps
 ///   - Recursion dimension
 ///   - Side
 ///
 /// It can implicily provide a input AABB and which sides are sloped.
-/// An `APFrustrum` can be used to define a direct solve region.
+/// An `Frustrum` can be used to define a direct solve region.
 /// Alternativley, we can solve some or all of it with a periodic solve.
 /// The periodic solve will create new boundary solve frustrums we call a
 /// decomposition.
@@ -86,14 +122,14 @@ impl Side {
 /// Note that although stencil slopes are key the implicit values we can provide,
 /// they are constant in a given plan so we don't store them on the frustrum itself.
 #[derive(Debug, PartialEq, Eq)]
-pub struct APFrustrum<const GRID_DIMENSION: usize> {
+pub struct Frustrum<const GRID_DIMENSION: usize> {
     pub output_aabb: AABB<GRID_DIMENSION>,
     pub recursion_dimension: usize,
     pub side: Side,
     pub steps: usize,
 }
 
-impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
+impl<const GRID_DIMENSION: usize> Frustrum<GRID_DIMENSION> {
     /// All the things required to uniquely define a frustrum.
     pub fn new(
         output_aabb: AABB<GRID_DIMENSION>,
@@ -101,7 +137,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         side: Side,
         steps: usize,
     ) -> Self {
-        APFrustrum {
+        Frustrum {
             output_aabb,
             recursion_dimension,
             side,
@@ -143,7 +179,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         &mut self,
         cut_steps: usize,
         stencil_slopes: &Bounds<GRID_DIMENSION>,
-    ) -> Option<APFrustrum<GRID_DIMENSION>> {
+    ) -> Option<Frustrum<GRID_DIMENSION>> {
         debug_assert!(cut_steps <= self.steps);
 
         // No time cut
@@ -152,7 +188,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         }
 
         let remaining_steps = self.steps - cut_steps;
-        let next_frustrum = APFrustrum::new(
+        let next_frustrum = Frustrum::new(
             self.output_aabb,
             self.recursion_dimension,
             self.side,
@@ -171,7 +207,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
     pub fn decompose(
         &self,
         stencil_slopes: &Bounds<GRID_DIMENSION>,
-    ) -> Vec<APFrustrum<GRID_DIMENSION>> {
+    ) -> Vec<Frustrum<GRID_DIMENSION>> {
         let mut result = Vec::new();
 
         // The periodic solve covers `self.steps`,
@@ -190,7 +226,7 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
         output_aabb.bounds[(rec_d, self.side.inner_index())] = outer_bound
             + self.side.inner_coef()
                 * slope_modifiers[(rec_d, self.side.inner_index())];
-        result.push(APFrustrum::new(output_aabb, rec_d, self.side, self.steps));
+        result.push(Frustrum::new(output_aabb, rec_d, self.side, self.steps));
 
         // From here we maintain a remainder AABB,
         // to track the remaining portion of the output AABB.
@@ -207,13 +243,13 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
             let min_bound = min_aabb.bounds[(d, 0)];
             min_aabb.bounds[(d, 1)] =
                 min_bound + slope_modifiers[(rec_d, self.side.inner_index())];
-            result.push(APFrustrum::new(min_aabb, d, Side::Min, self.steps));
+            result.push(Frustrum::new(min_aabb, d, Side::Min, self.steps));
 
             let mut max_aabb = remainder;
             let max_bound = max_aabb.bounds[(d, 1)];
             max_aabb.bounds[(d, 0)] =
                 max_bound - slope_modifiers[(rec_d, self.side.inner_index())];
-            result.push(APFrustrum::new(max_aabb, d, Side::Max, self.steps));
+            result.push(Frustrum::new(max_aabb, d, Side::Max, self.steps));
 
             let remainder_modifier =
                 remainder_modifiers[(rec_d, self.side.inner_index())];
@@ -229,9 +265,37 @@ impl<const GRID_DIMENSION: usize> APFrustrum<GRID_DIMENSION> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+    use crate::ap_solver::find_periodic_solve::*;
+
+    #[test]
+    fn decomposition_slopes_test() {
+        {
+            let d1 = decomposition_slopes::<1>();
+            assert_eq!(d1, [[matrix![0, 1], matrix![1, 0]]]);
+        }
+
+        {
+            let d2 = decomposition_slopes::<2>();
+            let expected = [
+                [matrix![0, 1; 0, 0], matrix![1, 0; 0, 0]],
+                [matrix![1, 1; 0, 1], matrix![1, 1; 1, 0]],
+            ];
+            assert_eq!(d2, expected);
+        }
+
+        {
+            let d3 = decomposition_slopes::<3>();
+            let expected = [
+                [matrix![0, 1; 0,0; 0,0], matrix![1, 0; 0, 0; 0, 0]],
+                [matrix![1, 1; 0, 1; 0,0], matrix![1, 1; 1, 0; 0,0]],
+                [matrix![1, 1; 1, 1; 0, 1], matrix![1, 1; 1, 1; 1, 0]],
+            ];
+            assert_eq!(d3, expected);
+        }
+    }
 
     fn test_decomp<const GRID_DIMENSION: usize>(
-        frustrum: &APFrustrum<GRID_DIMENSION>,
+        frustrum: &Frustrum<GRID_DIMENSION>,
         solve_output: &AABB<GRID_DIMENSION>,
         stencil_slopes: &Bounds<GRID_DIMENSION>,
     ) {
@@ -259,7 +323,7 @@ mod unit_tests {
         let cutoff = 40;
         let ratio = 0.5;
         let stencil_slopes = Bounds::from_element(1);
-        let frustrum = APFrustrum::new(
+        let frustrum = Frustrum::new(
             AABB::new(matrix![0, 37; 0, 60; 0, 60]),
             0,
             Side::Min,
@@ -286,20 +350,20 @@ mod unit_tests {
         {
             let stencil_slopes = Bounds::from_element(1);
             let aabb = AABB::new(matrix![0, 10]);
-            let f1 = APFrustrum::new(aabb, 0, Side::Min, 2);
+            let f1 = Frustrum::new(aabb, 0, Side::Min, 2);
             let d1 = f1.decompose(&stencil_slopes);
             assert_eq!(d1.len(), 1);
             assert_eq!(
                 d1[0],
-                APFrustrum::new(AABB::new(matrix![0, 1]), 0, Side::Min, 2)
+                Frustrum::new(AABB::new(matrix![0, 1]), 0, Side::Min, 2)
             );
 
-            let f2 = APFrustrum::new(aabb, 0, Side::Max, 2);
+            let f2 = Frustrum::new(aabb, 0, Side::Max, 2);
             let d2 = f2.decompose(&stencil_slopes);
             assert_eq!(d2.len(), 1);
             assert_eq!(
                 d2[0],
-                APFrustrum::new(AABB::new(matrix![9, 10]), 0, Side::Max, 2)
+                Frustrum::new(AABB::new(matrix![9, 10]), 0, Side::Max, 2)
             );
         }
 
@@ -308,12 +372,12 @@ mod unit_tests {
             let stencil_slopes = Bounds::from_element(1);
             let steps = 20;
             let aabb = AABB::new(matrix![0, 50; 0, 200]);
-            let f1 = APFrustrum::new(aabb, 0, Side::Min, steps);
+            let f1 = Frustrum::new(aabb, 0, Side::Min, steps);
             let d1 = f1.decompose(&stencil_slopes);
             assert_eq!(d1.len(), 3);
             assert_eq!(
                 d1[0],
-                APFrustrum::new(
+                Frustrum::new(
                     AABB::new(matrix![0, 19; 0, 200]),
                     0,
                     Side::Min,
@@ -322,7 +386,7 @@ mod unit_tests {
             );
             assert_eq!(
                 d1[1],
-                APFrustrum::new(
+                Frustrum::new(
                     AABB::new(matrix![20, 50; 0, 19]),
                     1,
                     Side::Min,
@@ -331,7 +395,7 @@ mod unit_tests {
             );
             assert_eq!(
                 d1[2],
-                APFrustrum::new(
+                Frustrum::new(
                     AABB::new(matrix![20, 50; 181, 200]),
                     1,
                     Side::Max,
@@ -339,12 +403,12 @@ mod unit_tests {
                 )
             );
 
-            let f2 = APFrustrum::new(aabb, 0, Side::Max, steps);
+            let f2 = Frustrum::new(aabb, 0, Side::Max, steps);
             let d2 = f2.decompose(&stencil_slopes);
             assert_eq!(d2.len(), 3);
             assert_eq!(
                 d2[0],
-                APFrustrum::new(
+                Frustrum::new(
                     AABB::new(matrix![31, 50; 0, 200]),
                     0,
                     Side::Max,
@@ -353,7 +417,7 @@ mod unit_tests {
             );
             assert_eq!(
                 d2[1],
-                APFrustrum::new(
+                Frustrum::new(
                     AABB::new(matrix![0, 30; 0, 19]),
                     1,
                     Side::Min,
@@ -362,7 +426,7 @@ mod unit_tests {
             );
             assert_eq!(
                 d2[2],
-                APFrustrum::new(
+                Frustrum::new(
                     AABB::new(matrix![0, 30; 181, 200]),
                     1,
                     Side::Max,
@@ -376,12 +440,12 @@ mod unit_tests {
             let stencil_slopes = Bounds::from_element(1);
             let steps = 20;
             let aabb = AABB::new(matrix![0, 200; 0, 50]);
-            let f1 = APFrustrum::new(aabb, 1, Side::Min, steps);
+            let f1 = Frustrum::new(aabb, 1, Side::Min, steps);
             let d1 = f1.decompose(&stencil_slopes);
             assert_eq!(d1.len(), 1);
             assert_eq!(
                 d1[0],
-                APFrustrum::new(
+                Frustrum::new(
                     AABB::new(matrix![0, 200; 0, 19]),
                     1,
                     Side::Min,
@@ -389,12 +453,12 @@ mod unit_tests {
                 )
             );
 
-            let f2 = APFrustrum::new(aabb, 1, Side::Max, steps);
+            let f2 = Frustrum::new(aabb, 1, Side::Max, steps);
             let d2 = f2.decompose(&stencil_slopes);
             assert_eq!(d2.len(), 1);
             assert_eq!(
                 d2[0],
-                APFrustrum::new(
+                Frustrum::new(
                     AABB::new(matrix![0, 200; 31, 50]),
                     1,
                     Side::Max,
@@ -408,25 +472,25 @@ mod unit_tests {
     fn sloped_sides_test() {
         {
             let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
-            let f = APFrustrum::new(output_aabb, 0, Side::Min, 10);
+            let f = Frustrum::new(output_aabb, 0, Side::Min, 10);
             debug_assert_eq!(f.sloped_sides(), matrix![0, 1; 0, 0]);
         }
 
         {
             let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
-            let f = APFrustrum::new(output_aabb, 0, Side::Max, 10);
+            let f = Frustrum::new(output_aabb, 0, Side::Max, 10);
             debug_assert_eq!(f.sloped_sides(), matrix![1, 0; 0, 0]);
         }
 
         {
             let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
-            let f = APFrustrum::new(output_aabb, 1, Side::Min, 10);
+            let f = Frustrum::new(output_aabb, 1, Side::Min, 10);
             debug_assert_eq!(f.sloped_sides(), matrix![1, 1; 0, 1]);
         }
 
         {
             let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
-            let f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
+            let f = Frustrum::new(output_aabb, 1, Side::Max, 10);
             debug_assert_eq!(f.sloped_sides(), matrix![1, 1; 1, 0]);
         }
     }
@@ -436,7 +500,7 @@ mod unit_tests {
         {
             let ss = matrix![1, 1; 1, 1];
             let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
-            let mut f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
+            let mut f = Frustrum::new(output_aabb, 1, Side::Max, 10);
             debug_assert_eq!(f.time_cut(10, &ss), None);
         }
 
@@ -444,10 +508,10 @@ mod unit_tests {
         {
             let ss = matrix![1, 1; 1, 1];
             let output_aabb = AABB::new(matrix![20, 40; 20, 40]);
-            let mut f = APFrustrum::new(output_aabb, 1, Side::Max, 10);
+            let mut f = Frustrum::new(output_aabb, 1, Side::Max, 10);
             debug_assert_eq!(
                 f.time_cut(1, &ss),
-                Some(APFrustrum::new(
+                Some(Frustrum::new(
                     AABB::new(matrix![20, 40; 20, 40]),
                     1,
                     Side::Max,
@@ -467,7 +531,7 @@ mod unit_tests {
 
         for d in 0..3 {
             for side in [Side::Min, Side::Max] {
-                let frustrum = APFrustrum::new(
+                let frustrum = Frustrum::new(
                     decomposition[d][side.outer_index()],
                     d,
                     side,
@@ -478,7 +542,7 @@ mod unit_tests {
             }
         }
 
-        let mut frustrum = APFrustrum::new(
+        let mut frustrum = Frustrum::new(
             decomposition[0][Side::Min.outer_index()],
             0,
             Side::Min,
