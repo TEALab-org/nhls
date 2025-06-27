@@ -21,9 +21,9 @@ fn main() {
     };
 
     // Create AP Solver
-    let solver_parameters = args.solver_parameters();
+    let solver_params = args.solver_parameters();
     let mut solver =
-        generate_ap_solver(&stencil, direct_solver, &solver_parameters);
+        generate_ap_solver_3d(&stencil, direct_solver, &solver_params);
 
     args.run_solver(&mut solver);
 }
