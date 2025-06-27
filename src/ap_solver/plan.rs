@@ -83,7 +83,7 @@ pub enum PlanNode<const GRID_DIMENSION: usize> {
     Range(RangeNode),
 }
 
-/// An `APPlan` describes an aperiodic solve over a fixed AABB
+/// An `Plan` describes an aperiodic solve over a fixed AABB
 /// for fixed number of time steps.
 /// The root node should always be the only repeat node in the tree.
 pub struct Plan<const GRID_DIMENSION: usize> {

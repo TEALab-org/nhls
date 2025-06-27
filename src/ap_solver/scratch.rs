@@ -60,7 +60,7 @@ impl Scratch {
         Scratch { scratch_ptr, size }
     }
 
-    /// Only use this function with the values provided by APScratchBuilder
+    /// Only use this function with the values provided by ScratchBuilder
     /// This is very unsafe!
     /// offset in bytes
     /// len in bytes

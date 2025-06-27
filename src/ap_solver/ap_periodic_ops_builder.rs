@@ -16,7 +16,7 @@ struct ConvolutionDescriptor<const GRID_DIMENSION: usize> {
     threads: usize,
 }
 
-/// Used by APPlaner to create convolution operations,
+/// Used by Planner to create convolution operations,
 /// and assign them IDs.
 pub struct ApPeriodicOpsBuilder<
     'a,

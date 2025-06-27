@@ -1,4 +1,6 @@
 pub mod account_builder;
+pub mod find_periodic_solve;
+pub mod frustrum;
 pub mod index_types;
 pub mod periodic_ops;
 pub mod plan;

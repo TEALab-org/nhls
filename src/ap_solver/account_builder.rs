@@ -5,11 +5,11 @@ use crate::ap_solver::MIN_ALIGNMENT;
 use crate::util::*;
 use std::ops::Range;
 
-/// Used to calculate the memory requirement for each node in an `APPlan`.
+/// Used to calculate the memory requirement for each node in a `Plan`.
 /// See the static `node_requirements` method.
 ///
 /// Since we require all domains to use buffers allocated in terms of
-/// `MIN_ALIGMENT`, the `APAccountBuilder` calculates requirements in terms
+/// `MIN_ALIGMENT`, the `AccountBuilder` calculates requirements in terms
 /// of `MIN_ALIGNMENT` sized blocks.
 pub struct AccountBuilder<'a, const GRID_DIMENSION: usize> {
     plan: &'a Plan<GRID_DIMENSION>,
