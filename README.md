@@ -2,11 +2,20 @@
 
 ![Rust workflow](https://github.com/TEALab-org/nhls/actions/workflows/rust.yml/badge.svg?branch=main)
 
-This repo is for exploring ways to solve NHLS problems. We are also developing a corresponding python module [`nhls_py`](https://github.com/TEALab-org/nhls_py) for utilizing the solvers from this project.
+Fast Fourier transform acceleration for inhomogenous linear stencil computations. Please see / cite 
+```
+@inproceedings{bentley2025applying,
+  title={Applying Fast Fourier Transforms to Accelerate Spatially and Temporally Inhomogeneous Stencil Computations},
+  author={Bentley, Russell and Chowdhury, Rezaul and Gregory, Aaron and Santomauro, Michael},
+  booktitle={Proceedings of the 37th ACM Symposium on Parallelism in Algorithms and Architectures},
+  pages={17--33},
+  year={2025}
+}
+```
 
 ## Example
 
-A number of example executables are included that demonstrate different linear stencil problems.
+A number of example executables are included that demonstrate different linear stencil problems and solvers.
 They provide a CLI interface, try using `--help` for more information.
 Consider this example where we generate a short animation of a time-varying stencil computation.
 
