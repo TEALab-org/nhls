@@ -20,6 +20,8 @@ fn main() {
     let variance = 24.0;
     let n_f = n as f64;
     let sigma_sq: f64 = (n_f / variance) * (n_f / variance);
+    let mut input_boundaries = Vec::new();
+    let mut output_boundaries = Vec::new();
     for i in 0..n {
         let x = (i as f64) - (n_f / 2.0);
         let exp = -x * x / (2.0 * sigma_sq);
@@ -29,6 +31,10 @@ fn main() {
             input_mask[i] = Domain::S1;
         } else {
             input_mask[i] = Domain::S2;
+        }
+
+        if i > 0 && input_mask[i - 1] != input_mask[i] {
+            input_boundaries.push(i);
         }
     }
 
@@ -55,49 +61,43 @@ fn main() {
         //let r = args[2];
         match domains {
             // No Change
-            [Domain::S1, Domain::S1, Domain::S1] => Domain::S1,
-            [Domain::S2, Domain::S2, Domain::S2] => Domain::S2,
+            [Domain::S1, Domain::S1, Domain::S1] => (0, Domain::S1),
+            [Domain::S2, Domain::S2, Domain::S2] => (0, Domain::S2),
             [Domain::S1, Domain::S1, Domain::S2] => {
                 if c > 0.5 {
-                    Domain::S2
+                   (-1 , Domain::S2)
                 } else {
-                    Domain::S1
+                   (0 , Domain::S1)
                 }
-            }
+            },
             [Domain::S2, Domain::S1, Domain::S1] => {
                 if c > 0.5 {
-                    Domain::S2
+                   (1, Domain::S2) 
                 } else {
-                    Domain::S1
+                   (0, Domain::S1)
                 }
             }
             [Domain::S2, Domain::S1, Domain::S2] => {
-                if c > 0.5 {
-                    Domain::S2
-                } else {
-                    Domain::S1
-                }
+                println!("Shouldn't hapen");
+                (0, Domain::S1)
             }
             [Domain::S2, Domain::S2, Domain::S1] => {
                 if c > 0.5 {
-                    Domain::S2
+                   (0, Domain::S2)
                 } else {
-                    Domain::S1
+                    (-1, Domain::S1)
                 }
-            }
+            },
             [Domain::S1, Domain::S2, Domain::S2] => {
                 if c > 0.5 {
-                    Domain::S2
+                    (0, Domain::S2)
                 } else {
-                    Domain::S1
+                   (1, Domain::S1)
                 }
-            }
+            },
             [Domain::S1, Domain::S2, Domain::S1] => {
-                if c > 0.5 {
-                    Domain::S2
-                } else {
-                    Domain::S1
-                }
+                println!("Shouldn't hapen");
+                (0, Domain::S2)
             }
         }
     };
@@ -119,13 +119,14 @@ fn main() {
     data_img.add_line(0, &input);
     mask_img.add_line(0, &output);
     for t in 1..n_steps {
+        //output_mask = input_mask;
+        println!("i: {}, o: {}", input_boundaries.len(), output_boundaries.len());
         for i in 0..n {
             let l_i = if i == 0 { n - 1 } else { i - 1 };
 
             let r_i = if i == n - 1 { 0 } else { i + 1 };
 
             let args_i = [input[l_i], input[i], input[r_i]];
-            let domains = [input_mask[l_i], input_mask[i], input_mask[r_i]];
 
             match input_mask[i] {
                 Domain::S1 => {
@@ -137,12 +138,20 @@ fn main() {
             }
 
             let args_o = [output[l_i], output[i], output[r_i]];
-            output_mask[i] = oracle(domains, args_o);
+            if input_boundaries.contains(&i) {
+                let domains = [input_mask[l_i], input_mask[i], input_mask[r_i]];
+                let (ix, d) = oracle(domains, args_o);
+                output_mask[i] = d;
+                output_boundaries.push(((i as i32) + ix) as usize);
+            }
+            //output_mask[i] = oracle(domains, args_o);
         }
 
         // Update images
         std::mem::swap(&mut input, &mut output);
         std::mem::swap(&mut input_mask, &mut output_mask);
+        std::mem::swap(&mut input_boundaries, &mut output_boundaries);
+        output_boundaries.clear();
 
         for i in 0..n {
             match input_mask[i] {
