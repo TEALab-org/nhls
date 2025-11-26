@@ -2,11 +2,13 @@ mod chunk;
 mod debug_io;
 mod owned;
 mod slice;
+mod mask;
 
 pub use chunk::*;
 pub use debug_io::*;
 pub use owned::*;
 pub use slice::*;
+pub use mask::*;
 
 use crate::util::*;
 use rayon::prelude::*;
