@@ -26,6 +26,16 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         AABB { bounds }
     }
 
+    /// Create an AABB with min max, and max min,
+    /// such that it can be incrementally grown
+    pub fn empty() -> Self {
+        let min = Coord::from_element(i32::MAX);
+        let max = Coord::from_element(i32::MIN);
+        AABB {
+            bounds: Bounds::from_columns(&[min, max]),
+        }
+    }
+
     /// Create AABB from corners.
     pub fn from_mm(min: Coord<DIMENSION>, max: Coord<DIMENSION>) -> Self {
         let result = AABB {
@@ -45,6 +55,15 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
     /// i.e. [0, 9]  would have exclusive size of 10.
     pub fn exclusive_bounds(&self) -> Coord<DIMENSION> {
         (self.bounds.column(1) - self.bounds.column(0)).add_scalar(1)
+    }
+
+    pub fn add_coord(&mut self, c: &Coord<DIMENSION>) {
+        let mut new_bounds = Bounds::zero();
+        for i in 0..DIMENSION {
+            new_bounds[(i, 0)] = c[i].min(self.min()[i]);
+            new_bounds[(i, 1)] = c[i].max(self.max()[i]);
+        }
+        self.bounds = new_bounds;
     }
 
     /// Return the number of coordinates contained in the instance.
@@ -567,5 +586,21 @@ mod unit_tests {
             assert!(a1.ex_greater_than(&a2));
             assert!(!a2.ex_greater_than(&a1));
         }
+    }
+
+    #[test]
+    fn empty_add() {
+        let mut a = AABB::<2>::empty();
+        assert_eq!(a.min(), vector![i32::MAX, i32::MAX]);
+        assert_eq!(a.max(), vector![i32::MIN, i32::MIN]);
+        a.add_coord(&vector![0, 0]);
+        assert_eq!(a.min(), vector![0, 0]);
+        assert_eq!(a.max(), vector![0, 0]);
+        a.add_coord(&vector![-2, 2]);
+        assert_eq!(a.min(), vector![-2, 0]);
+        assert_eq!(a.max(), vector![0, 2]);
+        a.add_coord(&vector![-1, 1]);
+        assert_eq!(a.min(), vector![-2, 0]);
+        assert_eq!(a.max(), vector![0, 2]);
     }
 }
