@@ -3,14 +3,14 @@ use crate::util::*;
 use std::collections::HashSet;
 
 #[derive(Clone)]
-pub struct BoundarySet<const GRID_DIMENSION: usize> {
+pub struct CoordSet<const GRID_DIMENSION: usize> {
     pub cells: HashSet<Coord<GRID_DIMENSION>>,
     aabb: AABB<GRID_DIMENSION>,
 }
 
-impl<const GRID_DIMENSION: usize> BoundarySet<GRID_DIMENSION> {
+impl<const GRID_DIMENSION: usize> CoordSet<GRID_DIMENSION> {
     pub fn empty() -> Self {
-        BoundarySet {
+        CoordSet {
             cells: HashSet::new(),
             aabb: AABB::empty(),
         }

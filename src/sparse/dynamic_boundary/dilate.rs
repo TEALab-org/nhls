@@ -12,7 +12,7 @@ pub fn dilate_in<
 ) -> OwnedDynamicBoundary<GRID_DIMENSION> {
     // Old in becomes out, calc new in?
 
-    let mut new_in = BoundarySet::empty();
+    let mut new_in = CoordSet::empty();
 
     for coord in boundary.inside().coord_iter() {
         for offset in stencil.roi_offsets() {
