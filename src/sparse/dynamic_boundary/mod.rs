@@ -3,12 +3,16 @@ mod coord_set;
 mod dilate;
 mod owned;
 mod vtk;
+mod find_boundary;
+mod image_loader;
 
 pub use borrow::*;
 pub use coord_set::*;
 pub use dilate::*;
 pub use owned::*;
 pub use vtk::*;
+pub use find_boundary::*;
+pub use image_loader::*;
 
 pub trait DynamicBoundary<const GRID_DIMENSION: usize> {
     fn inside(&self) -> &CoordSet<GRID_DIMENSION>;
