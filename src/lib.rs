@@ -21,6 +21,7 @@ pub mod mirror_domain;
 pub mod par_slice;
 pub mod par_stencil;
 pub mod solver_interface;
+pub mod sparse;
 pub mod stencil;
 pub mod time_varying;
 pub mod util;

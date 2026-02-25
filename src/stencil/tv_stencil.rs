@@ -8,6 +8,10 @@ pub trait TVStencil<const GRID_DIMENSION: usize, const NEIGHBORHOOD_SIZE: usize>
 
     fn offsets(&self) -> &[Coord<GRID_DIMENSION>; NEIGHBORHOOD_SIZE];
 
+    fn roi_offsets(&self) -> impl Iterator<Item = Coord<GRID_DIMENSION>> {
+        self.offsets().iter().map(|&c| -c)
+    }
+
     fn slopes(&self) -> Bounds<GRID_DIMENSION> {
         let mut result = Bounds::zero();
         for neighbor in self.offsets() {

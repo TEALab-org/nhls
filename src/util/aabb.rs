@@ -66,6 +66,15 @@ impl<const DIMENSION: usize> AABB<DIMENSION> {
         self.bounds = new_bounds;
     }
 
+    pub fn add_aabb(&mut self, other: &Self) {
+        let mut new_bounds = Bounds::zero();
+        for i in 0..DIMENSION {
+            new_bounds[(i, 0)] = other.min()[i].min(self.min()[i]);
+            new_bounds[(i, 1)] = other.max()[i].max(self.max()[i]);
+        }
+        self.bounds = new_bounds;
+    }
+
     /// Return the number of coordinates contained in the instance.
     #[inline]
     pub fn buffer_size(&self) -> usize {
@@ -589,7 +598,7 @@ mod unit_tests {
     }
 
     #[test]
-    fn empty_add() {
+    fn empty_add_coord() {
         let mut a = AABB::<2>::empty();
         assert_eq!(a.min(), vector![i32::MAX, i32::MAX]);
         assert_eq!(a.max(), vector![i32::MIN, i32::MIN]);
@@ -602,5 +611,13 @@ mod unit_tests {
         a.add_coord(&vector![-1, 1]);
         assert_eq!(a.min(), vector![-2, 0]);
         assert_eq!(a.max(), vector![0, 2]);
+    }
+
+    #[test]
+    fn add_aabb() {
+        let mut a = AABB::new(matrix![0, 9]);
+        let b = AABB::new(matrix![-1, 3]);
+        a.add_aabb(&b);
+        assert_eq!(a.bounds, matrix![-1, 9]);
     }
 }
