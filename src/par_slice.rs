@@ -48,6 +48,26 @@ pub fn multiply_by<NumType: NumTrait>(
         });
 }
 
+/// Implements a = a * b over slice elements.
+pub fn multiply_by_t<NumType: NumTrait>(
+    a_slice: &mut [NumType],
+    b_slice: &[NumType],
+    threads: usize,
+) {
+    debug_assert_eq!(a_slice.len(), b_slice.len());
+    let chunk_size = a_slice.len() / threads;
+
+    a_slice
+        .par_chunks_mut(chunk_size)
+        .zip(b_slice.par_chunks(chunk_size))
+        .for_each(|(a_chunk, b_chunk)| {
+            profiling::scope!("par_slice::multiply_by_t Thread Callback");
+            for (a, b) in a_chunk.iter_mut().zip(b_chunk.iter()) {
+                *a = *a * *b;
+            }
+        });
+}
+
 /// Implements a = a / c over slice elements.
 pub fn div<NumType: NumTrait>(
     a_slice: &mut [NumType],
@@ -56,6 +76,22 @@ pub fn div<NumType: NumTrait>(
 ) {
     a_slice.par_chunks_mut(chunk_size).for_each(|a_chunk| {
         profiling::scope!("par_slice::div Thread Callback");
+        for a in a_chunk.iter_mut() {
+            *a = *a / c;
+        }
+    });
+}
+
+/// Implements a = a / c over slice elements.
+pub fn div_t<NumType: NumTrait>(
+    a_slice: &mut [NumType],
+    c: NumType,
+    threads: usize,
+) {
+    let chunk_size = a_slice.len() / threads;
+
+    a_slice.par_chunks_mut(chunk_size).for_each(|a_chunk| {
+        profiling::scope!("par_slice::div_t Thread Callback");
         for a in a_chunk.iter_mut() {
             *a = *a / c;
         }

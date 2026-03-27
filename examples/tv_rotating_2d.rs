@@ -14,7 +14,7 @@ fn main() {
     // Create AP Solver
     let solver_params = args.solver_parameters();
     let mut solver =
-        generate_tv_ap_solver(&stencil, direct_solver, &solver_params);
+        generate_tv_ap_solver_2d(&stencil, direct_solver, &solver_params);
 
     args.run_solver(&mut solver);
 }
